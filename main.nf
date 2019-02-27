@@ -81,7 +81,8 @@ process quantify {
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
     output:
-        set val(species), file ("*/*.abundance.h5") into QUANT_FILES        
+        set val(species), file ("*/*.abundance.h5") into QUANT_FILES 
+        file('quantifcation.log')    
 
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
@@ -93,8 +94,9 @@ process quantify {
         fi
 
         RESULTS_ROOT=\$PWD
-     
-        pushd \$SCXA_WORK > /dev/null
+        SUBDIR=$exp_name/$species/\$quantification_workflow     
+
+        pushd \$SCXA_WORK/$SUBDIR > /dev/null
 
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
@@ -102,12 +104,19 @@ process quantify {
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
-            -work-dir $SCXA_WORK/$exp_name/$species/\$workflow \
-            -with-report $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/report.html \
+            -work-dir $SCXA_WORK/$SUBDIR \
+            -with-report $SCXA_RESULTS/reports/$SUBDIR/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/flowchart.pdf \
+            -with-dag $SCXA_RESULTS/reports/$SUBDIR/flowchart.pdf
 
+        if [ \$? -ne 0 ]; then
+            echo "Workflow failed for $exp_name - $species - $quantification_workflow" 1>&2
+            exit 1
+        fi
+        
         popd > /dev/null
+
+        cp $SCXA_WORK/$SUBDIR/.nextflow.log quantification.log
    """
 }
 
