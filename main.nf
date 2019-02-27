@@ -81,8 +81,8 @@ process quantify {
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
     output:
-        set val(species), file ("*/*.abundance.h5") into QUANT_FILES 
-        file('quantifcation.log')    
+        set val(species), file ("kallisto/*/*.abundance.h5") into QUANT_FILES 
+        set val(species), file('quantifcation.log')    
 
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
@@ -97,6 +97,7 @@ process quantify {
         SUBDIR="$exp_name/$species/\$quantification_workflow"     
 
         mkdir -p \$SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
         pushd \$SCXA_WORK/\$SUBDIR > /dev/null
 
         nextflow run \
@@ -106,9 +107,9 @@ process quantify {
             -resume \
             \$quantification_workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
-            -with-report $SCXA_RESULTS/reports/\$SUBDIR/report.html \
+            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/reports/\$SUBDIR/flowchart.pdf
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $exp_name - $species - \$quantification_workflow" 1>&2
