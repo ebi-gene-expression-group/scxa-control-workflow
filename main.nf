@@ -96,7 +96,7 @@ process quantify {
         RESULTS_ROOT=\$PWD
         SUBDIR=$exp_name/$species/\$quantification_workflow     
 
-        pushd \$SCXA_WORK/$SUBDIR > /dev/null
+        pushd \$SCXA_WORK/\$SUBDIR > /dev/null
 
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
@@ -104,10 +104,10 @@ process quantify {
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
-            -work-dir $SCXA_WORK/$SUBDIR \
-            -with-report $SCXA_RESULTS/reports/$SUBDIR/report.html \
+            -work-dir $SCXA_WORK/\$SUBDIR \
+            -with-report $SCXA_RESULTS/reports/\$SUBDIR/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/reports/$SUBDIR/flowchart.pdf
+            -with-dag $SCXA_RESULTS/reports/\$SUBDIR/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $exp_name - $species - $quantification_workflow" 1>&2
@@ -116,7 +116,7 @@ process quantify {
         
         popd > /dev/null
 
-        cp $SCXA_WORK/$SUBDIR/.nextflow.log quantification.log
+        cp $SCXA_WORK/\$SUBDIR/.nextflow.log quantification.log
    """
 }
 
