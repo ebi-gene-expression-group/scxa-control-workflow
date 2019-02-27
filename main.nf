@@ -82,7 +82,7 @@ process quantify {
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
         if [ \$? -eq 0 ]; then
-            quantification_workflow=smartseq
+            quantification_workflow=scxa-smartseq-workflow
         else
             echo "No workflow avialable for this experiment type" 1>&2
             exit 1
@@ -97,12 +97,12 @@ process quantify {
             --sdrf $sdrfFile \
             --resultsRoot \$RESULTS_ROOT \
             -resume \
+            \$quantification_workflow \
             -offline \
             -work-dir $SCXA_WORK/$exp_name/$species/\$workflow \
             -with-report $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/report.html \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/flowchart.pdf \
-            \$quantification_workflow
 
         popd > /dev/null
    """
