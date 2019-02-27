@@ -12,7 +12,7 @@ IDF = Channel.fromPath("${sdrf_dir}/${exp_name}.idf.txt", checkIfExists: true)
 
 process generate_config {
 
-    publishDir 'conf/study', mode: 'copy', overwrite: false
+    publishDir 'conf/study', mode: 'copy', overwrite: true
 
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
@@ -25,9 +25,6 @@ process generate_config {
         file '*.sdrf.txt' into SDRF_FILES
         
     """
-    export WF_BINDIR=${workflow.projectDir}/bin
-    export SCXA_CONF=${workflow.projectDir}/conf
-
     sdrfToNfConf.R \
         --sdrf=$sdrf_file \
         --idf=$idf_file \
@@ -47,7 +44,7 @@ process mark_conf_species {
         set stdout, file (confFile) into CONF_BY_SPECIES
 
     """
-    echo $confFile | awk -F'.' '{print $2}'
+    echo $confFile | awk -F'.' '{print \$2}'
     """
 }
 
@@ -60,45 +57,45 @@ process mark_sdrf_species {
         set stdout, file (sdrfFile) into SDRF_BY_SPECIES
 
     """
-    echo $confFile | awk -F'.' '{print $2}'
+    echo $sdrfFile | awk -F'.' '{print \$2}'
     """
 }
 
 CONF_BY_SPECIES
     .join(SDRF_BY_SPECIES)
-    .set(COMBINED_CONFIG)
+    .set{COMBINED_CONFIG}
 
 // Run quantification
 
-process quantify {
+//process quantify {
 
-    input:
-        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
+//    input:
+//        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
-    output:
+ //   output:
 
     
 
-    """
-        grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
-        if [ \$? -eq 0 ]; then
-            quantification_workflow=smartseq
-        else
-            echo "No workflow avialable for this experiment type" 1>&2
-            exit 1
-        fi
- 
-        nextflow run \
-            -config $conf_file \
-            -resume \
-            -offline \
-            -work-dir $WORKFLOW_WORK_DIR/$wf \
-                -with-report $WORKFLOW_RESULTS_DIR/reports/${wf}/report.html \
-                -N $SCXA_REPORT_EMAIL \
-                -with-dag $WORKFLOW_RESULTS_DIR/reports/${wf}/flowchart.pdf \
-                $SCXA_WORKFLOW_DIR/${wf}.nf
-    """
-}
+//    """
+//        grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
+//        if [ \$? -eq 0 ]; then
+//            quantification_workflow=smartseq
+//        else
+//            echo "No workflow avialable for this experiment type" 1>&2
+//            exit 1
+//        fi
+// 
+//        nextflow run \
+//            -config $conf_file \
+//            -resume \
+//            -offline \
+//            -work-dir $WORKFLOW_WORK_DIR/$wf \
+//                -with-report $WORKFLOW_RESULTS_DIR/reports/${wf}/report.html \
+ //               -N $SCXA_REPORT_EMAIL \
+//                -with-dag $WORKFLOW_RESULTS_DIR/reports/${wf}/flowchart.pdf \
+ //               $SCXA_WORKFLOW_DIR/${wf}.nf
+  //  """
+//}
 
 
 // Run aggregation
