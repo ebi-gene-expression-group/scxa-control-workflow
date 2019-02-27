@@ -90,6 +90,9 @@ process quantify {
 
         RESULTS_ROOT=\$PWD
      
+        echo "PWD: \$PWD"
+        echo "WORK: \$SCXA_WORK"
+
         pushd \$SCXA_WORK > /dev/null
 
         nextflow run \
