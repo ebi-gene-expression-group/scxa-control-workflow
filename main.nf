@@ -73,6 +73,10 @@ process quantify {
 
     storeDir "$SCXA_RESULTS/$exp_name/$species/quantification"
     
+    memory { 4.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130 ||  ? 'retry' : 'finish' }
+    maxRetries 20
+    
     input:
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
