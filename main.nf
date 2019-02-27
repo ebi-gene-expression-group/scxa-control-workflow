@@ -94,7 +94,7 @@ process quantify {
         fi
 
         RESULTS_ROOT=\$PWD
-        SUBDIR=$exp_name/$species/\$quantification_workflow     
+        SUBDIR="$exp_name/$species/\$quantification_workflow"     
 
         pushd \$SCXA_WORK/\$SUBDIR > /dev/null
 
