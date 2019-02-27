@@ -110,7 +110,7 @@ process quantify {
             -with-dag $SCXA_RESULTS/reports/\$SUBDIR/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $exp_name - $species - $quantification_workflow" 1>&2
+            echo "Workflow failed for $exp_name - $species - \$quantification_workflow" 1>&2
             exit 1
         fi
         
