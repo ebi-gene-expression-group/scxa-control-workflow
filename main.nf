@@ -102,7 +102,7 @@ process quantify {
             -with-report $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/report.html \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/flowchart.pdf
-            \$workflow
+            \$quantification_workflow
 
         popd > /dev/null
    """
