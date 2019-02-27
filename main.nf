@@ -44,7 +44,7 @@ process mark_conf_species {
         set stdout, file (confFile) into CONF_BY_SPECIES
 
     """
-    echo $confFile | awk -F'.' '{print \$2}'
+    echo $confFile | awk -F'.' '{printf "%s", \$2}'
     """
 }
 
@@ -57,7 +57,7 @@ process mark_sdrf_species {
         set stdout, file (sdrfFile) into SDRF_BY_SPECIES
 
     """
-    echo $sdrfFile | awk -F'.' '{print \$2}'
+    echo $sdrfFile | awk -F'.' '{printf "%s", \$2}'
     """
 }
 
@@ -116,7 +116,7 @@ process quantify {
         
         popd > /dev/null
 
-        cp $SCXA_WORK/\$SUBDIR/.nextflow.log quantification.log
+        cp "$SCXA_WORK/\$SUBDIR/.nextflow.log" quantification.log
    """
 }
 
