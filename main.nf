@@ -12,7 +12,7 @@ IDF = Channel.fromPath("${sdrf_dir}/${exp_name}.idf.txt", checkIfExists: true)
 
 process generate_config {
 
-    publishDir 'conf/study', mode: 'copy', overwrite: true
+    publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
 
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
@@ -29,7 +29,7 @@ process generate_config {
         --sdrf=$sdrf_file \
         --idf=$idf_file \
         --name=$exp_name \
-        --verbose
+        --verbose \
     """
 }
 
