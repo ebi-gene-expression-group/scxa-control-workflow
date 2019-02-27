@@ -71,13 +71,13 @@ process quantify {
 
     conda 'nextflow'
 
-    storeDir "$SCXA_RESULTS/$exp_name/quantification"
+    storeDir "$SCXA_RESULTS/$exp_name/$species/quantification"
     
     input:
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
     output:
-        file '*/*.abundance.h5' into CONFIG_FILES        
+        set val(species), file "*/*.abundance.h5" into QUANT_FILES        
 
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
@@ -87,12 +87,15 @@ process quantify {
             echo "No workflow avialable for this experiment type" 1>&2
             exit 1
         fi
- 
+
+        RESULTS_ROOT=\$PWD
+     
         pushd \$SCXA_WORK > /dev/null
 
         nextflow run \
             -config $conf_file \
-            --sdrf $sdrfFile
+            --sdrf $sdrfFile \
+            --resultsRoot \$RESULTS_ROOT \
             -resume \
             -offline \
             -work-dir $SCXA_WORK/$exp_name/$species/\$workflow \
