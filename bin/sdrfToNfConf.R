@@ -1,6 +1,6 @@
 #!/usr/bin/env Rscript
 
-source(file.path(Sys.getenv(c("WF_BINDIR")), "utils.R"))
+source(file.path(Sys.getenv(c("SCXA_BIN")), "utils.R"))
 
 # Load optparse we need to check inputs
 
