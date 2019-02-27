@@ -96,6 +96,7 @@ process quantify {
         RESULTS_ROOT=\$PWD
         SUBDIR="$exp_name/$species/\$quantification_workflow"     
 
+        mkdir -p \$SCXA_WORK/\$SUBDIR
         pushd \$SCXA_WORK/\$SUBDIR > /dev/null
 
         nextflow run \
