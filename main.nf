@@ -82,7 +82,7 @@ process quantify {
 
     output:
         set val(species), file ("kallisto/*/abundance.h5") into QUANT_FILES 
-        set val(species), file('quantifcation.log')    
+        set val(species), file('quantification.log')    
 
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
@@ -118,7 +118,7 @@ process quantify {
         
         popd > /dev/null
 
-        cp "$SCXA_WORK/\$SUBDIR/.nextflow.log" quantification.log
+        cp $SCXA_WORK/\$SUBDIR/.nextflow.log quantification.log
    """
 }
 
