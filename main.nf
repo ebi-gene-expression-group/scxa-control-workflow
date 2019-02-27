@@ -12,17 +12,21 @@ IDF = Channel.fromPath("${sdrf_dir}/${exp_name}.idf.txt", checkIfExists: true)
 
 process generate_config {
 
-    conda 'r-data.table'
+    publishDir 'conf/study', mode: 'copy', overwrite: false
+
+    conda 'r-optparse r-data.table r-workflowscriptscommon'
 
     input:
         file(sdrf_file) from SDRF
         file(idf_file) from IDF
 
     output:
-        file '*/*.conf' into CONFIG_FILES
+        file '*.conf' into CONFIG_FILES
+        file '*.sdrf.txt' into SDRF_FILES
         
     """
     export WF_BINDIR=${workflow.projectDir}/bin
+    export SCXA_CONF=${workflow.projectDir}/conf
 
     sdrfToNfConf.R \
         --sdrf=$sdrf_file \
@@ -32,7 +36,69 @@ process generate_config {
     """
 }
 
+// Mark config files with species
+
+process mark_conf_species {
+    
+    input:
+        file(confFile) from CONFIG_FILES
+
+    output:
+        set stdout, file (confFile) into CONF_BY_SPECIES
+
+    """
+    echo $confFile | awk -F'.' '{print $2}'
+    """
+}
+
+process mark_sdrf_species {
+    
+    input:
+        file(sdrfFile) from SDRF_FILES
+
+    output:
+        set stdout, file (sdrfFile) into SDRF_BY_SPECIES
+
+    """
+    echo $confFile | awk -F'.' '{print $2}'
+    """
+}
+
+CONF_BY_SPECIES
+    .join(SDRF_BY_SPECIES)
+    .set(COMBINED_CONFIG)
+
 // Run quantification
+
+process quantify {
+
+    input:
+        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
+
+    output:
+
+    
+
+    """
+        grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
+        if [ \$? -eq 0 ]; then
+            quantification_workflow=smartseq
+        else
+            echo "No workflow avialable for this experiment type" 1>&2
+            exit 1
+        fi
+ 
+        nextflow run \
+            -config $conf_file \
+            -resume \
+            -offline \
+            -work-dir $WORKFLOW_WORK_DIR/$wf \
+                -with-report $WORKFLOW_RESULTS_DIR/reports/${wf}/report.html \
+                -N $SCXA_REPORT_EMAIL \
+                -with-dag $WORKFLOW_RESULTS_DIR/reports/${wf}/flowchart.pdf \
+                $SCXA_WORKFLOW_DIR/${wf}.nf
+    """
+}
 
 
 // Run aggregation

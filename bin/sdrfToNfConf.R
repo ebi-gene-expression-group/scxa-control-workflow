@@ -868,7 +868,6 @@ configs <- lapply(names(sdrf.by.species), function(species){
         paste0('        max = ', num.max.c),
         paste0('    }')
     )
-
     protocol.config.file <- file.path(Sys.getenv("SCXA_CONF"), 'protocol', paste0(sc.protocol, '.conf'))
 
     if ( ! file.exists(protocol.config.file) ) {
@@ -949,9 +948,9 @@ for (species in names(configs)){
   out.dir <- file.path(opt$out_conf, species)
   dir.create(out.dir, showWarnings = FALSE)
  
-  conf.file <- file.path(out.dir, paste0(opt$name, ".conf"))
-  meta.file <- file.path(out.dir, paste0(opt$name, ".metadata.tsv"))
-  sdrf.file <- file.path(out.dir, basename(opt$sdrf_file))
+  conf.file <- file.path(opt$out_conf, paste0(opt$name, '.', species, ".conf"))
+  meta.file <- file.path(opt$out_conf, paste0(opt$name, '.', species, ".metadata.tsv"))
+  sdrf.file <- file.path(opt$out_conf, paste0(opt$name, '.', species, ".sdrf.txt"))
   
   # If there is metadata then point to it from the config file
   
