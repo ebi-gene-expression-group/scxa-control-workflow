@@ -81,7 +81,7 @@ process quantify {
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
     output:
-        set val(species), file ("kallisto/*/*.abundance.h5") into QUANT_FILES 
+        set val(species), file ("kallisto/*/abundance.h5") into QUANT_FILES 
         set val(species), file('quantifcation.log')    
 
     """
