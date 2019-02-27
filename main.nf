@@ -93,8 +93,8 @@ process quantify {
         pushd \$SCXA_WORK > /dev/null
 
         nextflow run \
-            -config $confFile \
-            --sdrf $sdrfFile \
+            -config \$RESULTS_ROOT/$confFile \
+            --sdrf \$RESULTS_ROOT/$sdrfFile \
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
