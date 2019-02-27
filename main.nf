@@ -69,6 +69,8 @@ CONF_BY_SPECIES
 
 process quantify {
 
+    conda 'nextflow'
+
     storeDir "$SCXA_RESULTS/$exp_name/quantification"
     
     input:
