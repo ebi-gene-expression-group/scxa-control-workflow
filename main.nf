@@ -98,7 +98,6 @@ process quantify {
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
-            -offline \
             -work-dir $SCXA_WORK/$exp_name/$species/\$workflow \
             -with-report $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/report.html \
             -N $SCXA_REPORT_EMAIL \
