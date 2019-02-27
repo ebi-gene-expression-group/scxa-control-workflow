@@ -67,35 +67,41 @@ CONF_BY_SPECIES
 
 // Run quantification
 
-//process quantify {
+process quantify {
 
-//    input:
-//        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
-
- //   output:
-
+    storeDir "$SCXA_RESULTS/$exp_name/quantification"
     
+    input:
+        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
-//    """
-//        grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
-//        if [ \$? -eq 0 ]; then
-//            quantification_workflow=smartseq
-//        else
-//            echo "No workflow avialable for this experiment type" 1>&2
-//            exit 1
-//        fi
-// 
-//        nextflow run \
-//            -config $conf_file \
-//            -resume \
-//            -offline \
-//            -work-dir $WORKFLOW_WORK_DIR/$wf \
-//                -with-report $WORKFLOW_RESULTS_DIR/reports/${wf}/report.html \
- //               -N $SCXA_REPORT_EMAIL \
-//                -with-dag $WORKFLOW_RESULTS_DIR/reports/${wf}/flowchart.pdf \
- //               $SCXA_WORKFLOW_DIR/${wf}.nf
-  //  """
-//}
+    output:
+        file '*/*.abundance.h5' into CONFIG_FILES        
+
+    """
+        grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
+        if [ \$? -eq 0 ]; then
+            quantification_workflow=smartseq
+        else
+            echo "No workflow avialable for this experiment type" 1>&2
+            exit 1
+        fi
+ 
+        pushd \$SCXA_WORK > /dev/null
+
+        nextflow run \
+            -config $conf_file \
+            --sdrf $sdrfFile
+            -resume \
+            -offline \
+            -work-dir $SCXA_WORK/$exp_name/$species/\$workflow \
+            -with-report $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/report.html \
+            -N $SCXA_REPORT_EMAIL \
+            -with-dag $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/flowchart.pdf
+            \$workflow
+
+        popd > /dev/null
+   """
+}
 
 
 // Run aggregation
