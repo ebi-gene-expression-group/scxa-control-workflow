@@ -77,7 +77,7 @@ process quantify {
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
 
     output:
-        set val(species), file "*/*.abundance.h5" into QUANT_FILES        
+        set val(species), file ("*/*.abundance.h5") into QUANT_FILES        
 
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
