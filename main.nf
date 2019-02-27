@@ -90,9 +90,6 @@ process quantify {
 
         RESULTS_ROOT=\$PWD
      
-        echo "PWD: \$PWD"
-        echo "WORK: \$SCXA_WORK"
-
         pushd \$SCXA_WORK > /dev/null
 
         nextflow run \
@@ -104,7 +101,7 @@ process quantify {
             -work-dir $SCXA_WORK/$exp_name/$species/\$workflow \
             -with-report $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/flowchart.pdf
+            -with-dag $SCXA_RESULTS/reports/$exp_name/$species/\$workflow/flowchart.pdf \
             \$quantification_workflow
 
         popd > /dev/null
