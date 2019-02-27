@@ -793,12 +793,11 @@ configs <- lapply(names(sdrf.by.species), function(species){
   
   # Generate starting config file content
  
-  reference.configs <- paste0("\nincludeConfig '", file.path(Sys.getenv("SCXA_CONF"), 'reference', paste0(species, '.conf') ), "'")
+  reference.configs <- paste0("\nincludeConfig '", file.path(Sys.getenv("SCXA_PRE_CONF"), 'reference', paste0(species, '.conf') ), "'")
  
   config <- c(
     "\nparams{",
     paste0("    name = '", opt$name, "'"),
-    paste0("    sdrf = '",  file.path(Sys.getenv("SCXA_CONF"), 'studies', opt$name, species, basename(opt$sdrf_file)), "'"),
     paste0("    organism = '", species, "'"),
     paste0("\n    fields {"),
     paste0("        run = '", run.col, "'"),
@@ -817,7 +816,7 @@ configs <- lapply(names(sdrf.by.species), function(species){
     spikein <- tolower(unique(species.sdrf[[spike.in.col]]))
     if ( grepl("ercc.*",spikein) ) {
       config <- c( config, paste0("        spike = '", paste(spike.in.col, collapse=','), "'") )
-      reference.configs <- c(reference.configs, paste0("includeConfig '", file.path(Sys.getenv("SCXA_CONF"), 'reference', 'ercc.conf' ), "'")) 
+      reference.configs <- c(reference.configs, paste0("includeConfig '", file.path(Sys.getenv("SCXA_PRE_CONF"), 'reference', 'ercc.conf' ), "'")) 
     }else{
       print(paste("ignoring", spikein))
     }
@@ -868,7 +867,7 @@ configs <- lapply(names(sdrf.by.species), function(species){
         paste0('        max = ', num.max.c),
         paste0('    }')
     )
-    protocol.config.file <- file.path(Sys.getenv("SCXA_CONF"), 'protocol', paste0(sc.protocol, '.conf'))
+    protocol.config.file <- file.path(Sys.getenv("SCXA_PRE_CONF"), 'protocol', paste0(sc.protocol, '.conf'))
 
     if ( ! file.exists(protocol.config.file) ) {
       perror(paste0('Protocol configuration file ', protocol.config.file, ' does not exist'))
