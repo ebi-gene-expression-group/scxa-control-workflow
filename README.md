@@ -57,7 +57,7 @@ See Nextflow documentation for further command line options.
 This will download the workflow, create any necessary environments, and run the workflow with the specified inputs. Future executions will use a cached copy of the pipeline, should you wish to update the code in future, you can do so like:
 
 ```
-nextflow pull ebi-gene-expression-group/scanpy-workflow
+nextflow pull ebi-gene-expression-group/scxa-smartseq-workflow
 ```
 
 ### Outputs
