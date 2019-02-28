@@ -85,6 +85,9 @@ process quantify {
 
     output:
         set val(species), file ("kallisto/*") into KALLISTO_DIRS 
+        set val(species), file("reference/reference.fastq.gz") into REFERENCE_FASTA
+        set val(species), file("reference/reference.gtf.gz") into REFERENCE_GTF
+        set val(species), file ("kallisto/*") into KALLISTO_DIRS 
         set val(species), file('quantification.log')    
 
     """
@@ -140,6 +143,7 @@ process aggregate {
     input:
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
         set val(species), file ('*') from KALLISTO_DIRS.collect()
+        set val(species), file(referenceGtf) from REFERENCE_GTF
 
     output:
         set val(species), file("*_counts.zip") into KALLISTO_COUNT_MATRIX
@@ -158,6 +162,7 @@ process aggregate {
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
+            --referenceGtf ${referenceGtf}\
             -resume \
             scxa-aggregation-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
