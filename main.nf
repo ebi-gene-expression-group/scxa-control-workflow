@@ -66,6 +66,7 @@ CONF_BY_SPECIES
     .into{
         COMBINED_CONFIG_FOR_QUANTIFY
         COMBINED_CONFIG_FOR_AGGREGATION
+        COMBINED_CONFIG_FOR_SCANPY
     }
 
 // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
@@ -216,6 +217,7 @@ process scanpy {
     
     input:
         set val(species), file(countMatrix), file(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
+        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
 
     output:
         set val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
