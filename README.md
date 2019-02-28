@@ -62,4 +62,4 @@ nextflow pull ebi-gene-expression-group/scanpy-workflow
 
 ### Outputs
 
-Outputs will be placed in the directory defined as SCXA_RESULTS under 'env' in nextflow.config ('results' by default). Outputs include:
+Outputs will be placed in the directory defined as SCXA_RESULTS under 'env' in nextflow.config ('results' by default).
