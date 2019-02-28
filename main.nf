@@ -87,9 +87,9 @@ process quantify {
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
         if [ \$? -eq 0 ]; then
-            quantification_workflow=scxa-smartseq-workflow
+            quantification_workflow=scxa-smartseq-quantification-workflow
         else
-            echo "No workflow avialable for this experiment type" 1>&2
+            echo "This is not a SMART-seq experiment" 1>&2
             exit 1
         fi
 
