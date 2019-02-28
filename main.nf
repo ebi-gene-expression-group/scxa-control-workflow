@@ -63,7 +63,10 @@ process mark_sdrf_species {
 
 CONF_BY_SPECIES
     .join(SDRF_BY_SPECIES)
-    .set{COMBINED_CONFIG}
+    .into{
+        COMBINED_CONFIG_FOR_QUANTIFY
+        COMBINED_CONFIG_FOR_AGGREGATION
+    }
 
 // Run quantification
 
@@ -78,7 +81,7 @@ process quantify {
     maxRetries 20
     
     input:
-        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG
+        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
 
     output:
         set val(species), file ("kallisto/*") into KALLISTO_DIRS 
@@ -135,6 +138,7 @@ process aggregate {
     maxRetries 20
     
     input:
+        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
         set val(species), file ('*') from KALLISTO_DIRS.collect()
 
     output:
