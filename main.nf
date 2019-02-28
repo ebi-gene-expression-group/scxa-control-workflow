@@ -122,3 +122,53 @@ process quantify {
    """
 }
 
+// Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
+
+process aggregate {
+    
+    conda 'nextflow'
+
+    storeDir "$SCXA_RESULTS/$exp_name/$species/matrices"
+    
+    memory { 4.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+    maxRetries 20
+    
+    input:
+        set val(species), file ('*') from KALLISTO_DIRS.collect()
+
+    output:
+        set val(species), file("*_counts.zip") into KALLISTO_COUNT_MATRIX
+        set val(species), file("*_tpm.zip") into KALLISTO_ABUNDANCE_MATRIX
+        set val(species), file("*.stats.tsv") into KALLISTO_STATS
+        set val(species), file('aggregation.log')    
+
+    """
+        RESULTS_ROOT=\$PWD
+        SUBDIR="$exp_name/$species/aggregation"     
+
+        mkdir -p \$SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+        pushd \$SCXA_WORK/\$SUBDIR > /dev/null
+
+        nextflow run \
+            -config \$RESULTS_ROOT/$confFile \
+            --resultsRoot \$RESULTS_ROOT \
+            -resume \
+            scxa-aggregation-workflow \
+            -work-dir $SCXA_WORK/\$SUBDIR \
+            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+            -N $SCXA_REPORT_EMAIL \
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+
+        if [ \$? -ne 0 ]; then
+            echo "Workflow failed for $exp_name - $species - scxa_aggregation_workflow" 1>&2
+            exit 1
+        fi
+        
+        popd > /dev/null
+
+        cp $SCXA_WORK/\$SUBDIR/.nextflow.log aggregation.log
+   """
+    
+}
