@@ -1,4 +1,4 @@
-# Single-cell Expression Atlas SMART-seq workflow
+# IN DEVELOPMENT: Single-cell Expression Atlas SMART-seq workflow
 
 This is a Nextflow workflow which:
 
@@ -49,7 +49,7 @@ Default base configuration is in [nextflow.config](nextflow.config). Further con
 The workflow can be run directly from this repository:
 
 ```
-nextflow run -resume scxa-smartseq-workflow --exp_name <exp name> --sdrf_dir <sdrf dir> 
+nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --exp_name <exp name> --sdrf_dir <sdrf dir> 
 ```
 
 See Nextflow documentation for further command line options.
