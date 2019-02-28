@@ -198,7 +198,7 @@ process add_reference_for_scanpy {
         set val(species), file(countMatrix), stdout into KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
 
     """
-    cat ${baseDir}/conf/reference/${species}.conf | grep 'gtf' | grep -o "'.*'" | sed "s/'//g"
+    cat ${baseDir}/conf/reference/${species}.conf | grep 'gtf' | grep -o "'.*'" | sed "s/'//g" | tr '\n' '\0'
     """
 
 }
