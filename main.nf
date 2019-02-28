@@ -215,7 +215,7 @@ process scanpy {
     maxRetries 20
     
     input:
-        set val(species), file(countMatrix), file(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
+        set val(species), file(countMatrix), file(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
 
     output:
         set val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
