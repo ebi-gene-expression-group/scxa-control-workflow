@@ -133,7 +133,7 @@ process aggregate {
     
     conda 'nextflow'
 
-    storeDir "$SCXA_RESULTS/$exp_name/$species/matrices"
+    storeDir "$SCXA_RESULTS/$exp_name/$species"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
