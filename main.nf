@@ -195,7 +195,7 @@ process add_reference_for_scanpy {
         set val(species), file(countMatrix) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
     
     output:
-        set val(species), file(countMatrix), file(stdout) into KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
+        set val(species), file(countMatrix), stdout into KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
 
     """
     cat ${baseDir}/conf/reference/${species}.conf | grep 'gtf' | grep -o "'.*'" | sed "s/'//g"
@@ -216,7 +216,7 @@ process scanpy {
     maxRetries 20
     
     input:
-        set val(species), file(countMatrix), file(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
+        set val(species), file(countMatrix), val(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
         set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
 
     output:
