@@ -148,7 +148,7 @@ process aggregate {
         set val(species), file("matrices/*_counts.zip") into KALLISTO_COUNT_MATRIX
         set val(species), file("matrices/*_tpm.zip") into KALLISTO_ABUNDANCE_MATRIX
         set val(species), file("matrices/*.stats.tsv") into KALLISTO_STATS
-        set val(species), file('aggregation.log')    
+        set val(species), file('matrices/aggregation.log')    
 
     """
         RESULTS_ROOT=\$PWD
@@ -176,7 +176,7 @@ process aggregate {
         
         popd > /dev/null
 
-        cp $SCXA_WORK/\$SUBDIR/.nextflow.log aggregation.log
+        cp $SCXA_WORK/\$SUBDIR/.nextflow.log matrices/aggregation.log
    """
     
 }
