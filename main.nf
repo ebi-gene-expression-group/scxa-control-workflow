@@ -101,9 +101,10 @@ process quantify {
         RESULTS_ROOT=\$PWD
         SUBDIR="$exp_name/$species/quantification"     
 
-        mkdir -p \$SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
         mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-        pushd \$SCXA_WORK/\$SUBDIR > /dev/null
+        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
@@ -123,7 +124,7 @@ process quantify {
         
         popd > /dev/null
 
-        cp $SCXA_WORK/\$SUBDIR/.nextflow.log quantification.log
+        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
    """
 }
 
@@ -154,9 +155,10 @@ process aggregate {
         RESULTS_ROOT=\$PWD
         SUBDIR="$exp_name/$species/aggregation"     
 
-        mkdir -p \$SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
         mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-        pushd \$SCXA_WORK/\$SUBDIR > /dev/null
+        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
@@ -176,7 +178,7 @@ process aggregate {
         
         popd > /dev/null
 
-        cp $SCXA_WORK/\$SUBDIR/.nextflow.log matrices/aggregation.log
+        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log matrices/aggregation.log
    """
     
 }
