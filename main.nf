@@ -99,7 +99,7 @@ process quantify {
         fi
 
         RESULTS_ROOT=\$PWD
-        SUBDIR="$exp_name/$species/\$quantification_workflow"     
+        SUBDIR="$exp_name/$species/quantification"     
 
         mkdir -p \$SCXA_WORK/\$SUBDIR
         mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
@@ -133,7 +133,7 @@ process aggregate {
     
     conda 'nextflow'
 
-    storeDir "$SCXA_RESULTS/$exp_name/$species"
+    storeDir "$SCXA_RESULTS/$exp_name/$species/aggregation"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
