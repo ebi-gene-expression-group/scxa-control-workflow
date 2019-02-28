@@ -87,7 +87,6 @@ process quantify {
         set val(species), file ("kallisto/*") into KALLISTO_DIRS 
         set val(species), file("reference/reference.fastq.gz") into REFERENCE_FASTA
         set val(species), file("reference/reference.gtf.gz") into REFERENCE_GTF
-        set val(species), file ("kallisto/*") into KALLISTO_DIRS 
         set val(species), file('quantification.log')    
 
     """
