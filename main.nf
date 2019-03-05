@@ -77,7 +77,7 @@ CONF_BY_SPECIES
 
 process quantify {
 
-    conda 'nextflow'
+    conda "${baseDir}/envs/nextflow.yml"
 
     storeDir "$SCXA_RESULTS/$exp_name/$species/quantification"
     
@@ -137,7 +137,7 @@ process quantify {
 
 process aggregate {
     
-    conda 'nextflow'
+    conda "${baseDir}/envs/nextflow.yml"
 
     storeDir "$SCXA_RESULTS/$exp_name/$species/aggregation"
     
@@ -211,7 +211,7 @@ process add_reference_for_scanpy {
 
 process scanpy {
     
-    conda 'nextflow'
+    conda "${baseDir}/envs/nextflow.yml"
 
     storeDir "$SCXA_RESULTS/$exp_name/$species/scanpy"
     
@@ -269,7 +269,7 @@ process scanpy {
 
 process bundle {
     
-    conda 'nextflow'
+    conda "${baseDir}/envs/nextflow.yml"
 
     storeDir "$SCXA_RESULTS/$exp_name/$species/bundle"
     
