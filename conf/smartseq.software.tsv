@@ -1,5 +1,5 @@
 Analysis	Workflow	Software	Environment	Package	Citation
-Pipeline	scxa-smartseq-workflow	Gene expression group single-cell analysis pipeline (Nextflow)	scxa_workflows	nextflow	https://github.com/ebi-gene-expression-group/scxa_worflows
+Pipeline	scxa-smartseq-workflow	Gene expression group single-cell analysis pipeline (Nextflow)	nextflow	nextflow	https://github.com/ebi-gene-expression-group/scxa_worflows
 QC	scxa-smartseq-quantification-workflow	FastQC	fastqc	fastqc	http://www.bioinformatics.babraham.ac.uk/projects/fastqc/
 Filtering and trimming	scxa-smartseq-quantification-workflow	FASTX-Toolkit	fastx_toolkit	fastx_toolkit	http://hannonlab.cshl.edu/fastx_toolkit/
 Filtering and trimming	scxa-smartseq-quantification-workflow	fastq_utils	fastq_utils	fastq_utils	https://github.com/nunofonseca/fastq_utils
