@@ -20,7 +20,7 @@ process find_idf {
 
     """
         expName=\$(echo $sdrfFile | awk -F'.' '{print \$1}') 
-        ln -s $sdrfDir/\${expName}.idf.txt 
+        cp $sdrfDir/\${expName}.idf.txt .
         echo \$expName
     """
 }
