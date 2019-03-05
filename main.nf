@@ -60,7 +60,7 @@ process mark_conf_species {
         set val(expName), file(confFile), file(sdrfFile) from CONFIG_FILES
 
     output:
-        set val(expName), stdout, file(confFile) file(sdrfFile) into CONF_BY_SPECIES
+        set val(expName), stdout, file(confFile), file(sdrfFile) into CONF_BY_SPECIES
 
     """
     echo $confFile | awk -F'.' '{printf "%s", \$2}'
