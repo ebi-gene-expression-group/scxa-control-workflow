@@ -32,7 +32,7 @@ process generate_config {
         --verbose
 
     for f in *.conf; do
-        echo -e "includeConfig '${baseDir}/nextflow.config'\n"|cat - \$f > \$f.tmp && mv \$f.tmp \$f
+        echo -e "includeConfig '${baseDir}/params.config'\n"|cat - \$f > \$f.tmp && mv \$f.tmp \$f
     done
     """
 }
