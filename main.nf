@@ -16,7 +16,7 @@ process find_idf {
         file(sdrfFile) from SDRF
    
     output:
-        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName}.idf.txt")
+        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt")
 
     """
         expName=$(echo $sdrfFile | awk -F'.' '{print $1}') 
