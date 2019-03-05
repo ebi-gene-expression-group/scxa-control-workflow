@@ -305,6 +305,7 @@ process bundle {
             --clusters ${clusters} \
             --tsneDir ${tsneDir} \
             --markersDir ${markersDir} \
+            --softwareTemplate ${baseDir}/conf/smartseq.software.tsv \
             -resume \
             scanpy-bundle-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
