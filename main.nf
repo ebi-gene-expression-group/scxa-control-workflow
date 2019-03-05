@@ -227,10 +227,10 @@ process scanpy {
         set val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
         set val(species), file("matrices/*_normalised.zip") into NORMALISED_MATRIX
         set val(species), file("pca/*") into PCA
-        set val(species), file("clustering/*") into CLUSTERING
+        set val(species), file("clustering/clusters.txt") into CLUSTERS
         set val(species), file("umap/*") into UMAP
-        set val(species), file("tsne/*") into TSNE
-        set val(species), file("markers/*") into MARKERS
+        set val(species), file("tsne/embeddings_*.csv") into TSNE_EMBEDDINGS
+        set val(species), file("markers/markers_*.csv") into MARKERS
 
     """
         RESULTS_ROOT=\$PWD
@@ -267,20 +267,59 @@ process scanpy {
 
 // Make a bundle from the Scanpy outputs
 
-//process bundle {
+process bundle {
     
-//    input:
-//        set val(species), file('*') from FILTERED_MATRIX
-//        set val(species), file('*') from NORMALISED_MATRIX
-//        set val(species), file("*") into CLUSTERING
-//        set val(species), file("**") into TSNE
-//        set val(species), file("*") into MARKERS
-        
-//    output:
-//        file('bundle/MANIFEST')
-//        file('bunlde/software.tsv')
-//        
-        
+    conda 'nextflow'
 
+    storeDir "$SCXA_RESULTS/$exp_name/$species/bundle"
     
-//}
+    memory { 4.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+    maxRetries 20
+    
+    input:
+        set val(species), file(filteredMatrix) from FILTERED_MATRIX
+        set val(species), file(normalisedMatrix) from NORMALISED_MATRIX
+        set val(species), file(tpmMatrix) from KALLISTO_ABUNDANCE_MATRIX
+        set val(species), file(clusters) from CLUSTERS
+        set val(species), file("*") from TSNE_EMBEDDINGS
+        set val(species), file("*") from MARKERS
+        
+    output:
+        file('bundle/*')
+        
+    """    
+        RESULTS_ROOT=\$PWD
+        SUBDIR="$exp_name/$species/bundle"     
+
+        mkdir -p $SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
+        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+
+        nextflow run \
+            --resultsRoot \$RESULTS_ROOT \
+            --rawFilteredMatrix ${filteredMatrix} \
+            --normalisedMatrix ${normalisedMatrix} \
+            --tpmMatrix ${tpmMatrix} \
+            --clusters ${clusters} \
+            --tsneDir ${tsneDir} \
+            --markersDir ${markersDir} \
+            -resume \
+            scanpy-bundle-workflow \
+            -work-dir $SCXA_WORK/\$SUBDIR \
+            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+            -N $SCXA_REPORT_EMAIL \
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+
+        if [ \$? -ne 0 ]; then
+            echo "Workflow failed for $exp_name - $species - scanpy-workflow" 1>&2
+            exit 1
+        fi
+        
+        popd > /dev/null
+
+        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log scanpy.log
+   """
+    
+}
