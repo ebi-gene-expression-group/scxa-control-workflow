@@ -1,12 +1,29 @@
 #!/usr/bin/env nextflow
 
-// Generate a config file for the main sub-workflows
+// Watch the SDRF directory for incoming SDRF files
 
-exp_name = params.exp_name
-sdrf_dir = params.sdrf_dir
+sdrfDir = params.sdrfDir
 
-SDRF = Channel.fromPath("${sdrf_dir}/${exp_name}.sdrf.txt", checkIfExists: true)
-IDF = Channel.fromPath("${sdrf_dir}/${exp_name}.idf.txt", checkIfExists: true)
+Channel
+    .watchPath( "${sdrfDir}/*.sdrf.txt" )
+    .set{ SDRF }
+
+// Locate matching IDF files and determine experiment ID
+
+process find_idf {
+    
+    input:
+        file(sdrfFile) from SDRF
+   
+    output:
+        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName}.idf.txt")
+
+    """
+        expName=$(echo $sdrfFile | awk -F'.' '{print $1}') 
+        echo $expName
+        ln -s $sdrfDir/${expName}.idf.txt 
+    """
+}
 
 // Derive the config files
 
@@ -17,18 +34,16 @@ process generate_config {
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
     input:
-        file(sdrf_file) from SDRF
-        file(idf_file) from IDF
+        set val(expName), file(sdrfFile), file(idfFile) from SDRF
 
     output:
-        file '*.conf' into CONFIG_FILES
-        file '*.sdrf.txt' into SDRF_FILES
+        set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
         
     """
     sdrfToNfConf.R \
-        --sdrf=$sdrf_file \
-        --idf=$idf_file \
-        --name=$exp_name \
+        --sdrf=$sdrfFile \
+        --idf=$idfFile \
+        --name=$expName \
         --verbose
 
     for f in *.conf; do
@@ -42,31 +57,17 @@ process generate_config {
 process mark_conf_species {
     
     input:
-        file(confFile) from CONFIG_FILES
+        set val(expName), file(confFile), file(sdrfFile) from CONFIG_FILES
 
     output:
-        set stdout, file (confFile) into CONF_BY_SPECIES
+        set val(expName), stdout, file(confFile) file(sdrfFile) into CONF_BY_SPECIES
 
     """
     echo $confFile | awk -F'.' '{printf "%s", \$2}'
     """
 }
 
-process mark_sdrf_species {
-    
-    input:
-        file(sdrfFile) from SDRF_FILES
-
-    output:
-        set stdout, file (sdrfFile) into SDRF_BY_SPECIES
-
-    """
-    echo $sdrfFile | awk -F'.' '{printf "%s", \$2}'
-    """
-}
-
 CONF_BY_SPECIES
-    .join(SDRF_BY_SPECIES)
     .into{
         COMBINED_CONFIG_FOR_QUANTIFY
         COMBINED_CONFIG_FOR_AGGREGATION
@@ -77,22 +78,24 @@ CONF_BY_SPECIES
 
 process quantify {
 
+    maxForks 1
+
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$exp_name/$species/quantification"
+    storeDir "$SCXA_RESULTS/$expName/$species/quantification"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
-        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
+        set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
 
     output:
-        set val(species), file ("kallisto/*") into KALLISTO_DIRS 
-        set val(species), file("reference/reference.fastq.gz") into REFERENCE_FASTA
-        set val(species), file("reference/reference.gtf.gz") into REFERENCE_GTF
-        set val(species), file('quantification.log')    
+        set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
+        set val(expName), val(species), file("reference/reference.fastq.gz") into REFERENCE_FASTA
+        set val(expName), val(species), file("reference/reference.gtf.gz") into REFERENCE_GTF
+        set val(expName), val(species), file('quantification.log')    
 
     """
         grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
@@ -104,7 +107,7 @@ process quantify {
         fi
 
         RESULTS_ROOT=\$PWD
-        SUBDIR="$exp_name/$species/quantification"     
+        SUBDIR="$expName/$species/quantification"     
 
         mkdir -p $SCXA_WORK/\$SUBDIR
         mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
@@ -123,7 +126,7 @@ process quantify {
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $exp_name - $species - \$quantification_workflow" 1>&2
+            echo "Workflow failed for $expName - $species - \$quantification_workflow" 1>&2
             exit 1
         fi
         
@@ -139,26 +142,26 @@ process aggregate {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$exp_name/$species/aggregation"
+    storeDir "$SCXA_RESULTS/$expName/$species/aggregation"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
-        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
-        set val(species), file ('*') from KALLISTO_DIRS.collect()
-        set val(species), file(referenceGtf) from REFERENCE_GTF
+        set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
+        set val(expName), val(species), file ('*') from KALLISTO_DIRS.collect()
+        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF
 
     output:
-        set val(species), file("matrices/*_counts.zip") into KALLISTO_COUNT_MATRIX
-        set val(species), file("matrices/*_tpm.zip") into KALLISTO_ABUNDANCE_MATRIX
-        set val(species), file("matrices/*.stats.tsv") into KALLISTO_STATS
-        set val(species), file('matrices/aggregation.log')    
+        set val(expName), val(species), file("matrices/*_counts.zip") into KALLISTO_COUNT_MATRIX
+        set val(expName), val(species), file("matrices/*_tpm.zip") into KALLISTO_ABUNDANCE_MATRIX
+        set val(expName), val(species), file("matrices/*.stats.tsv") into KALLISTO_STATS
+        set val(expName), val(species), file('matrices/aggregation.log')    
 
     """
         RESULTS_ROOT=\$PWD
-        SUBDIR="$exp_name/$species/aggregation"     
+        SUBDIR="$expName/$species/aggregation"     
 
         mkdir -p $SCXA_WORK/\$SUBDIR
         mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
@@ -177,7 +180,7 @@ process aggregate {
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $exp_name - $species - scxa_aggregation_workflow" 1>&2
+            echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
             exit 1
         fi
         
@@ -196,10 +199,10 @@ KALLISTO_COUNT_MATRIX.into{
 process add_reference_for_scanpy {
 
     input:
-        set val(species), file(countMatrix) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
+        set val(expName), val(species), file(countMatrix) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
     
     output:
-        set val(species), file(countMatrix), stdout into KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
+        set val(expName), val(species), file(countMatrix), stdout into KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
 
     """
     cat ${baseDir}/conf/reference/${species}.conf | grep 'gtf' | grep -o "'.*'" | sed "s/'//g" | tr -d \'\\n\'
@@ -213,28 +216,28 @@ process scanpy {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$exp_name/$species/scanpy"
+    storeDir "$SCXA_RESULTS/$expName/$species/scanpy"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
-        set val(species), file(countMatrix), val(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
-        set val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
+        set val(expName), val(species), file(countMatrix), val(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
+        set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
 
     output:
-        set val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
-        set val(species), file("matrices/*_normalised.zip") into NORMALISED_MATRIX
-        set val(species), file("pca/*") into PCA
-        set val(species), file("clustering/clusters.txt") into CLUSTERS
-        set val(species), file("umap/*") into UMAP
-        set val(species), file("tsne/embeddings_*.csv") into TSNE_EMBEDDINGS
-        set val(species), file("markers/markers_*.csv") into MARKERS
+        set val(expName), val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
+        set val(expName), val(species), file("matrices/*_normalised.zip") into NORMALISED_MATRIX
+        set val(expName), val(species), file("pca/*") into PCA
+        set val(expName), val(species), file("clustering/clusters.txt") into CLUSTERS
+        set val(expName), val(species), file("umap/*") into UMAP
+        set val(expName), val(species), file("tsne/embeddings_*.csv") into TSNE_EMBEDDINGS
+        set val(expName), val(species), file("markers/markers_*.csv") into MARKERS
 
     """
         RESULTS_ROOT=\$PWD
-        SUBDIR="$exp_name/$species/scanpy"     
+        SUBDIR="$expName/$species/scanpy"     
 
         mkdir -p $SCXA_WORK/\$SUBDIR
         mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
@@ -254,7 +257,7 @@ process scanpy {
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $exp_name - $species - scanpy-workflow" 1>&2
+            echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
             exit 1
         fi
         
@@ -271,26 +274,26 @@ process bundle {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$exp_name/$species/bundle"
+    storeDir "$SCXA_RESULTS/$expName/$species/bundle"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
-        set val(species), file(filteredMatrix) from FILTERED_MATRIX
-        set val(species), file(normalisedMatrix) from NORMALISED_MATRIX
-        set val(species), file(tpmMatrix) from KALLISTO_ABUNDANCE_MATRIX
-        set val(species), file(clusters) from CLUSTERS
-        set val(species), file("*") from TSNE_EMBEDDINGS
-        set val(species), file("*") from MARKERS
+        set val(expName), val(species), file(filteredMatrix) from FILTERED_MATRIX
+        set val(expName), val(species), file(normalisedMatrix) from NORMALISED_MATRIX
+        set val(expName), val(species), file(tpmMatrix) from KALLISTO_ABUNDANCE_MATRIX
+        set val(expName), val(species), file(clusters) from CLUSTERS
+        set val(expName), val(species), file("*") from TSNE_EMBEDDINGS
+        set val(expName), val(species), file("*") from MARKERS
         
     output:
         file('bundle/*')
         
     """    
         RESULTS_ROOT=\$PWD
-        SUBDIR="$exp_name/$species/bundle"     
+        SUBDIR="$expName/$species/bundle"     
 
         mkdir -p $SCXA_WORK/\$SUBDIR
         mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
@@ -314,7 +317,7 @@ process bundle {
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $exp_name - $species - scanpy-workflow" 1>&2
+            echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
             exit 1
         fi
         
