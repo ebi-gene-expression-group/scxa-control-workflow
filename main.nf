@@ -16,7 +16,7 @@ process find_idf {
         file(sdrfFile) from SDRF
    
     output:
-        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt")
+        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") into SDRF_IDF
 
     """
         expName=\$(echo $sdrfFile | awk -F'.' '{print \$1}') 
@@ -34,7 +34,7 @@ process generate_config {
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
     input:
-        set val(expName), file(sdrfFile), file(idfFile) from SDRF
+        set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF
 
     output:
         set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
