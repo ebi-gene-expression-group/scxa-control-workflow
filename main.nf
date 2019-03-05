@@ -5,7 +5,7 @@
 sdrfDir = params.sdrfDir
 
 Channel
-    .watchPath( "${sdrfDir}/*.sdrf.txt" )
+    .watchPath( "${sdrfDir}/*.sdrf.txt", 'create,modify' )
     .set{ SDRF }
 
 // Locate matching IDF files and determine experiment ID
