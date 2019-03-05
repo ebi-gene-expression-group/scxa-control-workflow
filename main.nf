@@ -29,7 +29,11 @@ process generate_config {
         --sdrf=$sdrf_file \
         --idf=$idf_file \
         --name=$exp_name \
-        --verbose \
+        --verbose
+
+    for f in *.conf; do
+        echo "includeConfig '${baseDir}/nextflow.conf'"|cat - \$f > \$f.tmp && mv \$f.tmp \$f
+    done
     """
 }
 
@@ -260,3 +264,23 @@ process scanpy {
    """
     
 }
+
+// Make a bundle from the Scanpy outputs
+
+//process bundle {
+    
+//    input:
+//        set val(species), file('*') from FILTERED_MATRIX
+//        set val(species), file('*') from NORMALISED_MATRIX
+//        set val(species), file("*") into CLUSTERING
+//        set val(species), file("**") into TSNE
+//        set val(species), file("*") into MARKERS
+        
+//    output:
+//        file('bundle/MANIFEST')
+//        file('bunlde/software.tsv')
+//        
+        
+
+    
+//}

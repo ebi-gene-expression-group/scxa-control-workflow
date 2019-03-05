@@ -867,19 +867,9 @@ configs <- lapply(names(sdrf.by.species), function(species){
         paste0('        max = ', num.max.c),
         paste0('    }')
     )
-    protocol.config.file <- file.path(Sys.getenv("SCXA_PRE_CONF"), 'protocol', paste0(sc.protocol, '.conf'))
-
-    if ( ! file.exists(protocol.config.file) ) {
-      perror(paste0('Protocol configuration file ', protocol.config.file, ' does not exist'))
-      q(status=1)
-    }
-
-    protocol.config <- paste0("includeConfig '", protocol.config.file, "'")
-  }else{
-    protocol.config <- c()
   }
   
-  config <- c(reference.configs, protocol.config, config)
+  config <- c(reference.configs, config)
   config <- c(paste("// Generated", date(), "from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
 
   # Generate metadata file content to save
