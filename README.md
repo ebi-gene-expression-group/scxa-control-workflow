@@ -46,19 +46,29 @@ Default base configuration is in [nextflow.config](nextflow.config). Further con
 
 ### Execution
 
-The workflow can be run directly from this repository:
+The workflow can be run directly from this repository. To do so for a single experiment use a command like the following:
 
 ```
-nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --exp_name <exp name> --sdrf_dir <sdrf dir> 
+nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --expName <exp name> --sdrfDir <sdrf dir> 
 ```
 
-See Nextflow documentation for further command line options.
+See Nextflow documentation for further command line options. This will download the workflow, create any necessary environments, and run the workflow with the specified inputs. 
 
-This will download the workflow, create any necessary environments, and run the workflow with the specified inputs. Future executions will use a cached copy of the pipeline, should you wish to update the code in future, you can do so like:
+Future executions will use a cached copy of the pipeline, should you wish to update the code in future, you can do so like:
 
 ```
 nextflow pull ebi-gene-expression-group/scxa-smartseq-workflow
 ```
+
+#### Watcher mode:
+
+If you do not supply an experiment ID:
+
+```
+nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --sdrfDir <sdrf dir> 
+```
+
+Then the nextflow process will start, but it will 'watch' the SDRF directory for new files to run with.
 
 ### Outputs
 

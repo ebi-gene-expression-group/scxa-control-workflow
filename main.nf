@@ -1,12 +1,17 @@
 #!/usr/bin/env nextflow
 
-// Watch the SDRF directory for incoming SDRF files
-
 sdrfDir = params.sdrfDir
 
-Channel
-    .watchPath( "${sdrfDir}/*.sdrf.txt", 'create,modify' )
-    .set{ SDRF }
+// If user has supplied an experiment ID, then just run for that experiment.
+// Otherwise, watch the SDRF directory for incoming SDRF files
+
+if ( params.containsKey('expName')){
+    SDRF = Channel.fromPath("${sdrfDir}/${params.expName}.sdrf.txt", checkIfExists: true)
+}else{
+    Channel
+        .watchPath( "${sdrfDir}/*.sdrf.txt", 'create,modify' )
+        .set{ SDRF }
+}
 
 // Locate matching IDF files and determine experiment ID
 
