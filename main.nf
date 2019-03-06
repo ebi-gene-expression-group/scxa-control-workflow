@@ -311,8 +311,8 @@ process bundle {
             --normalisedMatrix ${normalisedMatrix} \
             --tpmMatrix ${tpmMatrix} \
             --clusters ${clusters} \
-            --tsneDir ${tsneDir} \
-            --markersDir ${markersDir} \
+            --tsneDir tsne \
+            --markersDir markers \
             --softwareTemplate ${baseDir}/conf/smartseq.software.tsv \
             -resume \
             scanpy-bundle-workflow \
