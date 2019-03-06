@@ -42,7 +42,7 @@ Expected inputs are:
 
 ### Parameters
 
-Default base configuration is in [nextflow.config](nextflow.config). Further configuration is derived from the SDRF files and passed to child workflows.
+Default base configuration is in [nextflow.config](nextflow.config) and [params.config](params.config). Further configuration is derived from the SDRF files and passed to child workflows.
 
 ### Execution
 
