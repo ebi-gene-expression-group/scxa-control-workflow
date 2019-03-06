@@ -315,7 +315,7 @@ process bundle {
             --markersDir markers \
             --softwareTemplate ${baseDir}/conf/smartseq.software.tsv \
             -resume \
-            scanpy-bundle-workflow \
+            scxa-bundle-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
