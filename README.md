@@ -11,7 +11,7 @@ It's actually a workflow-of-workflows comprising:
  * [scxa-smartseq-quantification-workflow](https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow)
  * [scxa-aggregation-workflow](https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow)
  * [scanpy-workflow](https://github.com/ebi-gene-expression-group/scanpy-workflow)
- * [scxa-bundle-workflow](https://github.com/ebi-gene-expression-group/scxa-bundle-workflow) - IN PROGRESS
+ * [scxa-bundle-workflow](https://github.com/ebi-gene-expression-group/scxa-bundle-workflow)
 
 
 ## Setup
