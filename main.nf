@@ -234,11 +234,11 @@ process scanpy {
     output:
         set val(expName), val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
         set val(expName), val(species), file("matrices/*_normalised.zip") into NORMALISED_MATRIX
-        set val(expName), val(species), file("pca/*") into PCA
+        set val(expName), val(species), file("pca") into PCA
         set val(expName), val(species), file("clustering/clusters.txt") into CLUSTERS
-        set val(expName), val(species), file("umap/*") into UMAP
-        set val(expName), val(species), file("tsne/embeddings_*.csv") into TSNE_EMBEDDINGS
-        set val(expName), val(species), file("markers/markers_*.csv") into MARKERS
+        set val(expName), val(species), file("umap") into UMAP
+        set val(expName), val(species), file("tsne") into TSNE
+        set val(expName), val(species), file("markers") into MARKERS
 
     """
         RESULTS_ROOT=\$PWD
@@ -290,8 +290,8 @@ process bundle {
         set val(expName), val(species), file(normalisedMatrix) from NORMALISED_MATRIX
         set val(expName), val(species), file(tpmMatrix) from KALLISTO_ABUNDANCE_MATRIX
         set val(expName), val(species), file(clusters) from CLUSTERS
-        set val(expName), val(species), file("*") from TSNE_EMBEDDINGS
-        set val(expName), val(species), file("*") from MARKERS
+        set val(expName), val(species), file('*') from TSNE
+        set val(expName), val(species), file('*') from MARKERS
         
     output:
         file('bundle/*')
