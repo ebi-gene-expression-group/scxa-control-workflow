@@ -279,7 +279,7 @@ process bundle {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$expName/$species/bundle"
+    storeDir "$SCXA_RESULTS/$expName/$species"
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
