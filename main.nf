@@ -175,8 +175,8 @@ process quantify {
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
             --sdrf \$RESULTS_ROOT/$sdrfFile \
-            --referenceFasta $referenceFasta \
-            --contaminationIndex $contaminationIndex \
+            --referenceFasta \$RESULTS_ROOT/$referenceFasta \
+            --contaminationIndex \$RESULTS_ROOT/$contaminationIndex \
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
