@@ -151,7 +151,7 @@ process quantify {
         set val(expName), val(species), file('quantification.log')    
 
     """
-        protocol=$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
+        protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
 
         echo \$protocol | grep "smart-seq" > /dev/null
         if [ \$? -eq 0 ]; then
