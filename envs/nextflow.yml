@@ -1,3 +1,4 @@
 name: nextflow
 dependencies:
   - nextflow=19.01.0
+  - pyyaml

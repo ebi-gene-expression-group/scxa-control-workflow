@@ -60,7 +60,9 @@ process generate_config {
 // Mark config files with species
 
 process mark_conf_species {
-    
+   
+    conda 'pyyaml' 
+ 
     input:
         set val(expName), file(confFile), file(sdrfFile) from CONFIG_FILES
 
@@ -84,6 +86,8 @@ CONF_BY_SPECIES
 
 process prepare_reference {
 
+    conda 'pyyaml' 
+    
     publishDir "$resultsRoot/reference", mode: 'copy', overwrite: true
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
