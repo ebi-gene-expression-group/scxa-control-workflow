@@ -793,8 +793,6 @@ configs <- lapply(names(sdrf.by.species), function(species){
   
   # Generate starting config file content
  
-  reference.configs <- paste0("\nincludeConfig '", file.path(Sys.getenv("SCXA_PRE_CONF"), 'reference', paste0(species, '.conf') ), "'")
- 
   config <- c(
     "\nparams{",
     paste0("    name = '", opt$name, "'"),
@@ -812,11 +810,13 @@ configs <- lapply(names(sdrf.by.species), function(species){
 
   ## Anything other than ERCC will be ignored
 
+  spikes <- c()
+
   if (properties$has.spikes){
     spikein <- tolower(unique(species.sdrf[[spike.in.col]]))
     if ( grepl("ercc.*",spikein) ) {
       config <- c( config, paste0("        spike = '", paste(spike.in.col, collapse=','), "'") )
-      reference.configs <- c(reference.configs, paste0("includeConfig '", file.path(Sys.getenv("SCXA_PRE_CONF"), 'reference', 'ercc.conf' ), "'")) 
+      spikes <- paste0("    spikes = 'ercc'"  )
     }else{
       print(paste("ignoring", spikein))
     }
@@ -837,6 +837,10 @@ configs <- lapply(names(sdrf.by.species), function(species){
   # Close out that config section
 
   config <- c(config, '    }\n')
+
+  # Put spikes in if present
+
+  config <- c (config, spikes)
  
   # SC prototol
   
@@ -869,7 +873,6 @@ configs <- lapply(names(sdrf.by.species), function(species){
     )
   }
   
-  config <- c(reference.configs, config)
   config <- c(paste("// Generated", date(), "from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
 
   # Generate metadata file content to save

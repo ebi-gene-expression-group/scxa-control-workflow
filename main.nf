@@ -68,16 +68,64 @@ process mark_conf_species {
         set val(expName), stdout, file(confFile), file(sdrfFile) into CONF_BY_SPECIES
 
     """
-    echo $confFile | awk -F'.' '{printf "%s", \$2}'
+    parseNfConfig.py --paramFile $confFile --paramKeys params,organism
     """
 }
 
 CONF_BY_SPECIES
     .into{
+        COMBINED_CONFIG_FOR_REFERENCE
         COMBINED_CONFIG_FOR_QUANTIFY
         COMBINED_CONFIG_FOR_AGGREGATION
         COMBINED_CONFIG_FOR_SCANPY
     }
+
+// Prepare a reference depending on spikes
+
+process prepare_reference {
+
+    publishDir "$resultsRoot/reference", mode: 'copy', overwrite: true
+
+    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
+
+    cache true
+
+    input:
+        set val(expName), val(species), file(confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_REFERENCE
+    
+    output:
+        file("reference.fastq.gz") into REFERENCE_FASTA
+        file("reference.gtf.gz") into REFERENCE_GTF
+        stdout CONTAMINATION_INDEX
+
+    """
+    species_conf="$SCXA_PRE_CONF/reference/${species}.conf")
+    cdna_fasta=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
+    cdna_gtf=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
+    spikes=$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
+
+    if [ \$spikes != 'None' ]; then
+        spikes_conf="$SCXA_PRE_CONF/reference/\${spikes}.conf")
+        spikes_fasta=$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
+        spikes_gtf=$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
+        
+        cat \$cdna_fasta \$spikes_fasta > reference.fastq.gz
+        cat \$cdna_gtf \$spikes_gtf > reference.gtf.gz
+    else
+        ln -s \$cdna_fasta reference.fastq.gz
+        ln -s \$cdna_gtf reference.gtf.gz
+    fi
+
+    contamination_index=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
+    if [ \$contamination_index != 'None' ]; then
+        echo $SCXA_DATA/contamination/\$contamination_index
+    else
+        echo None
+    fi
+
+    """
+}
+
 
 // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
 
@@ -95,15 +143,17 @@ process quantify {
     
     input:
         set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
+        file(referenceFasta) from REFERENCE_FASTA
+        val(contaminationIndex) from CONTAMINATION_INDEX
 
     output:
         set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
-        set val(expName), val(species), file("reference/reference.fastq.gz") into REFERENCE_FASTA
-        set val(expName), val(species), file("reference/reference.gtf.gz") into REFERENCE_GTF
         set val(expName), val(species), file('quantification.log')    
 
     """
-        grep "sc_protocol" $confFile | grep "smart-seq" > /dev/null
+        protocol=$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
+
+        echo \$protocol | grep "smart-seq" > /dev/null
         if [ \$? -eq 0 ]; then
             quantification_workflow=scxa-smartseq-quantification-workflow
         else
@@ -122,6 +172,8 @@ process quantify {
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
             --sdrf \$RESULTS_ROOT/$sdrfFile \
+            --referenceFasta $referenceFasta \
+            --contaminationIndex $contaminationIndex\
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
