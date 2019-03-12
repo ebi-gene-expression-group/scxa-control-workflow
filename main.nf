@@ -99,7 +99,7 @@ process prepare_reference {
         stdout CONTAMINATION_INDEX
 
     """
-    species_conf="$SCXA_PRE_CONF/reference/${species}.conf"
+    species_conf=$SCXA_PRE_CONF/reference/${species}.conf
     cdna_fasta=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
     cdna_gtf=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
     spikes=$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
