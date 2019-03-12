@@ -116,7 +116,7 @@ process prepare_reference {
         ln -s \$cdna_gtf reference.gtf.gz
     fi
 
-    contamination_index=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
+    contamination_index=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
     if [ \$contamination_index != 'None' ]; then
         echo $SCXA_DATA/contamination/\$contamination_index
     else
