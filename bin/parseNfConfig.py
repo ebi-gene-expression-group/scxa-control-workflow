@@ -2,6 +2,7 @@
 
 import argparse
 import yaml
+import sys
 from functools import reduce
 
 parser = argparse.ArgumentParser(description='Extract parameter values from a Nextflow configuration')
@@ -24,4 +25,4 @@ with open(args.param_file, 'r') as nf_file:
 # Parse content as YAML
 
 nf_config = yaml.load(nf_content)
-print(reduce(dict.get, args.param_keys.split(','), nf_config))
+sys.stdout.write(reduce(dict.get, args.param_keys.split(','), nf_config))
