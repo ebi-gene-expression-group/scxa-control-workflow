@@ -105,7 +105,7 @@ process prepare_reference {
     spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
 
     if [ \$spikes != 'None' ]; then
-        spikes_conf="$SCXA_PRE_CONF/reference/\${spikes}.conf")
+        spikes_conf="$SCXA_PRE_CONF/reference/\${spikes}.conf"
         spikes_fasta=\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
         spikes_gtf=\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
         
