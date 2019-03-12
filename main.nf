@@ -100,14 +100,14 @@ process prepare_reference {
 
     """
     species_conf=$SCXA_PRE_CONF/reference/${species}.conf
-    cdna_fasta=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
-    cdna_gtf=$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
-    spikes=$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
+    cdna_fasta=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
+    cdna_gtf=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
+    spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
 
     if [ \$spikes != 'None' ]; then
         spikes_conf="$SCXA_PRE_CONF/reference/\${spikes}.conf")
-        spikes_fasta=$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
-        spikes_gtf=$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
+        spikes_fasta=\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
+        spikes_gtf=\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
         
         cat \$cdna_fasta \$spikes_fasta > reference.fastq.gz
         cat \$cdna_gtf \$spikes_gtf > reference.gtf.gz
