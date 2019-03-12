@@ -98,9 +98,9 @@ process prepare_reference {
         set val(expName), val(species), file(confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_REFERENCE
     
     output:
-        file("reference.fastq.gz") into REFERENCE_FASTA
-        file("reference.gtf.gz") into REFERENCE_GTF
-        stdout CONTAMINATION_INDEX
+        set val(expName), val(species), file("reference.fastq.gz") into REFERENCE_FASTA
+        set val(expName), val(species), file("reference.gtf.gz") into REFERENCE_GTF
+        set val(expName), val(species), stdout into CONTAMINATION_INDEX
 
     """
     species_conf=$SCXA_PRE_CONF/reference/${species}.conf
@@ -147,8 +147,8 @@ process quantify {
     
     input:
         set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
-        file(referenceFasta) from REFERENCE_FASTA
-        val(contaminationIndex) from CONTAMINATION_INDEX
+        set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
+        set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
 
     output:
         set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
