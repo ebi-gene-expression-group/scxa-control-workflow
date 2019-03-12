@@ -122,14 +122,13 @@ process prepare_reference {
 
     contamination_index=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
     if [ \$contamination_index != 'None' ]; then
-        echo $SCXA_DATA/contamination/\$contamination_index
+        printf $SCXA_DATA/contamination/\$contamination_index
     else
         echo None
     fi
 
     """
 }
-
 
 // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
 
@@ -177,7 +176,7 @@ process quantify {
             -config \$RESULTS_ROOT/$confFile \
             --sdrf \$RESULTS_ROOT/$sdrfFile \
             --referenceFasta $referenceFasta \
-            --contaminationIndex $contaminationIndex\
+            --contaminationIndex $contaminationIndex \
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
@@ -232,7 +231,7 @@ process aggregate {
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
-            --referenceGtf ${referenceGtf}\
+            --referenceGtf ${referenceGtf} \
             -resume \
             scxa-aggregation-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
