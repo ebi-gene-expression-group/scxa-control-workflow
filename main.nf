@@ -130,70 +130,93 @@ process prepare_reference {
     """
 }
 
-// Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
+// Allow a forcible skipping of the quantification phase. Useful if we've
+// modified the workflows in some way that would make NF recompute, but we know
+// that's not necessary
 
-process quantify {
+if ( params.containsKey('skipQuantification')){
 
-    maxForks 1
+    process spoof_quantify {
 
-    conda "${baseDir}/envs/nextflow.yml"
+        input:
+            set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
+            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
+            set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
 
-    storeDir "$SCXA_RESULTS/$expName/$species/quantification"
-    
-    memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
-    maxRetries 20
-    
-    input:
-        set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
-        set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
-        set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
+        output:
+            set val(expName), val(species), file ("*") into KALLISTO_DIRS 
 
-    output:
-        set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
-        set val(expName), val(species), file('quantification.log')    
+        """
+            ln -s "$SCXA_RESULTS/$expName/$species/quantification/*"
+        """
+    }
+}else{
 
-    """
-        protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
+    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
 
-        echo \$protocol | grep "smart-seq" > /dev/null
-        if [ \$? -eq 0 ]; then
-            quantification_workflow=scxa-smartseq-quantification-workflow
-        else
-            echo "This is not a SMART-seq experiment" 1>&2
-            exit 1
-        fi
+    process quantify {
 
-        RESULTS_ROOT=\$PWD
-        SUBDIR="$expName/$species/quantification"     
+        maxForks 1
 
-        mkdir -p $SCXA_WORK/\$SUBDIR
-        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
-        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+        conda "${baseDir}/envs/nextflow.yml"
 
-        nextflow run \
-            -config \$RESULTS_ROOT/$confFile \
-            --sdrf \$RESULTS_ROOT/$sdrfFile \
-            --referenceFasta \$RESULTS_ROOT/$referenceFasta \
-            --contaminationIndex $contaminationIndex \
-            --resultsRoot \$RESULTS_ROOT \
-            -resume \
-            \$quantification_workflow \
-            -work-dir $SCXA_WORK/\$SUBDIR \
-            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
-            -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
-
-        if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $expName - $species - \$quantification_workflow" 1>&2
-            exit 1
-        fi
+        storeDir "$SCXA_RESULTS/$expName/$species/quantification"
         
-        popd > /dev/null
+        memory { 4.GB * task.attempt }
+        errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+        maxRetries 20
+        
+        input:
+            set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
+            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
+            set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
 
-        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
-   """
+        output:
+            set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
+            set val(expName), val(species), file('quantification.log')    
+
+        """
+            protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
+
+            echo \$protocol | grep "smart-seq" > /dev/null
+            if [ \$? -eq 0 ]; then
+                quantification_workflow=scxa-smartseq-quantification-workflow
+            else
+                echo "This is not a SMART-seq experiment" 1>&2
+                exit 1
+            fi
+
+            RESULTS_ROOT=\$PWD
+            SUBDIR="$expName/$species/quantification"     
+
+            mkdir -p $SCXA_WORK/\$SUBDIR
+            mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
+            mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+            pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+
+            nextflow run \
+                -config \$RESULTS_ROOT/$confFile \
+                --sdrf \$RESULTS_ROOT/$sdrfFile \
+                --referenceFasta \$RESULTS_ROOT/$referenceFasta \
+                --contaminationIndex $contaminationIndex \
+                --resultsRoot \$RESULTS_ROOT \
+                -resume \
+                \$quantification_workflow \
+                -work-dir $SCXA_WORK/\$SUBDIR \
+                -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+                -N $SCXA_REPORT_EMAIL \
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+
+            if [ \$? -ne 0 ]; then
+                echo "Workflow failed for $expName - $species - \$quantification_workflow" 1>&2
+                exit 1
+            fi
+            
+            popd > /dev/null
+
+            cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
+       """
+    }
 }
 
 // Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
