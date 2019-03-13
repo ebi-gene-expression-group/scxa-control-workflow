@@ -88,7 +88,7 @@ process prepare_reference {
 
     conda 'pyyaml' 
     
-    storeDir "$SCXA_RESULTS/$expName/$species/reference"
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
