@@ -134,7 +134,7 @@ process prepare_reference {
 // modified the workflows in some way that would make NF recompute, but we know
 // that's not necessary
 
-if ( params.containsKey('skipQuantification')){
+if ( params.containsKey('skipQuantification') && params.skipQuantification == 'yes'){
 
     process spoof_quantify {
 
