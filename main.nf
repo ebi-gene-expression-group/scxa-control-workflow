@@ -88,7 +88,7 @@ process prepare_reference {
 
     conda 'pyyaml' 
     
-    publishDir "$resultsRoot/reference", mode: 'copy', overwrite: true
+    storeDir "$SCXA_RESULTS/$expName/$species/reference"
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
@@ -145,9 +145,11 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         output:
             set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
+            set val(expName), val(species), file ("qc/*") into QUANT_QC 
 
         """
             ln -s $SCXA_RESULTS/$expName/$species/quantification/kallisto .
+            ln -s $SCXA_RESULTS/$expName/$species/quantification/qc .
         """
     }
 }else{
@@ -173,6 +175,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         output:
             set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
+            set val(expName), val(species), file ("qc/*") into QUANT_QC
             set val(expName), val(species), file('quantification.log')    
 
         """
