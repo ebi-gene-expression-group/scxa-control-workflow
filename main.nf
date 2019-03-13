@@ -130,6 +130,11 @@ process prepare_reference {
     """
 }
 
+REFERENCE_GTF.into{
+    REFERENCE_GTF_FOR_AGGREGATION
+    REFERENCE_GTF_FOR_SCANPY
+}
+
 // Allow a forcible skipping of the quantification phase. Useful if we've
 // modified the workflows in some way that would make NF recompute, but we know
 // that's not necessary
@@ -237,7 +242,7 @@ process aggregate {
     input:
         set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
         set val(expName), val(species), file ('*') from KALLISTO_DIRS.collect()
-        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF
+        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_AGGREGATION
 
     output:
         set val(expName), val(species), file("matrices/*_counts.zip") into KALLISTO_COUNT_MATRIX
@@ -282,20 +287,6 @@ KALLISTO_COUNT_MATRIX.into{
     KALLISTO_COUNT_MATRIX_FOR_BUNDLE
 }
 
-process add_reference_for_scanpy {
-
-    input:
-        set val(expName), val(species), file(countMatrix) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
-    
-    output:
-        set val(expName), val(species), file(countMatrix), stdout into KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
-
-    """
-    cat ${baseDir}/conf/reference/${species}.conf | grep 'gtf' | grep -o "'.*'" | sed "s/'//g" | tr -d \'\\n\'
-    """
-
-}
-
 // Run Scanpy with https://github.com/ebi-gene-expression-group/scanpy-workflow
 
 process scanpy {
@@ -309,8 +300,9 @@ process scanpy {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file(countMatrix), val(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY_WITH_REF
+        set val(expName), val(species), file(countMatrix), from KALLISTO_COUNT_MATRIX_FOR_SCANPY
         set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
+        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_SCANPY
 
     output:
         set val(expName), val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
