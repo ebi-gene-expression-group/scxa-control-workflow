@@ -176,7 +176,7 @@ process quantify {
             -config \$RESULTS_ROOT/$confFile \
             --sdrf \$RESULTS_ROOT/$sdrfFile \
             --referenceFasta \$RESULTS_ROOT/$referenceFasta \
-            --contaminationIndex \$RESULTS_ROOT/$contaminationIndex \
+            --contaminationIndex $contaminationIndex \
             --resultsRoot \$RESULTS_ROOT \
             -resume \
             \$quantification_workflow \
