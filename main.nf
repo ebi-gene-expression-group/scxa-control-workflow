@@ -144,10 +144,10 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
 
         output:
-            set val(expName), val(species), file ("*") into KALLISTO_DIRS 
+            set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
 
         """
-            ln -s "$SCXA_RESULTS/$expName/$species/quantification/*"
+            ln -s $SCXA_RESULTS/$expName/$species/quantification/kallisto .
         """
     }
 }else{
