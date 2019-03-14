@@ -183,7 +183,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         """
             for stage in aggregation scanpy bundle; do
-                rm -rf $SCXA_RESULTS/$expName/$species/$stage
+                rm -rf $SCXA_RESULTS/$expName/$species/\$stage
             done
 
             protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
@@ -254,7 +254,7 @@ process aggregate {
 
     """
         for stage in scanpy bundle; do
-            rm -rf $SCXA_RESULTS/$expName/$species/$stage
+            rm -rf $SCXA_RESULTS/$expName/$species/\$stage
         done
         
         RESULTS_ROOT=\$PWD
