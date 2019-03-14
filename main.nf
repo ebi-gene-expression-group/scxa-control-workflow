@@ -168,7 +168,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
         storeDir "$SCXA_RESULTS/$expName/$species/quantification"
         
         memory { 4.GB * task.attempt }
-        errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
         maxRetries 20
         
         input:
@@ -238,7 +238,7 @@ process aggregate {
     storeDir "$SCXA_RESULTS/$expName/$species/aggregation"
     
     memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
@@ -302,7 +302,7 @@ process scanpy {
     storeDir "$SCXA_RESULTS/$expName/$species/scanpy"
     
     memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
@@ -364,7 +364,7 @@ process bundle {
     storeDir "$SCXA_RESULTS/$expName/$species"
     
     memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130  ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
     maxRetries 20
     
     input:
