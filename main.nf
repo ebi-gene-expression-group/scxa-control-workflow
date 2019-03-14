@@ -340,7 +340,7 @@ process scanpy {
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
-            --gtf \$SCXA_DATA/reference/${referenceGtf} \
+            --gtf \$RESULTS_ROOT/${referenceGtf} \
             --matrix \$RESULTS_ROOT/${countMatrix} \
             -resume \
             scanpy-workflow \
