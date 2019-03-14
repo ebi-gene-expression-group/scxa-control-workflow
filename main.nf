@@ -14,6 +14,8 @@ if ( params.containsKey('expName')){
 // Locate matching IDF files and determine experiment ID
 
 process find_idf {
+
+    cache 'lenient'
     
     input:
         file(sdrfFile) from SDRF
@@ -32,6 +34,8 @@ process find_idf {
 
 process generate_config {
 
+    cache 'lenient'
+    
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
 
     conda 'r-optparse r-data.table r-workflowscriptscommon'
@@ -43,6 +47,10 @@ process generate_config {
         set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
         
     """
+    for stage in quantification aggregation scanpy bundle; do
+        rm -rf $SCXA_RESULTS/$expName/$species/\$stage
+    done
+
     sdrfToNfConf.R \
         --sdrf=$sdrfFile \
         --idf=$idfFile \
@@ -89,8 +97,6 @@ process prepare_reference {
     publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
 
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
-
-    cache true
 
     input:
         set val(expName), val(species), file(confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_REFERENCE
