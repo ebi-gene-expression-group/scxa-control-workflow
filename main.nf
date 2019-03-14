@@ -8,9 +8,7 @@ sdrfDir = params.sdrfDir
 if ( params.containsKey('expName')){
     SDRF = Channel.fromPath("${sdrfDir}/${params.expName}.sdrf.txt", checkIfExists: true)
 }else{
-    Channel
-        .watchPath( "${sdrfDir}/*.sdrf.txt", 'create,modify' )
-        .set{ SDRF }
+    SDRF = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true)
 }
 
 // Locate matching IDF files and determine experiment ID
@@ -184,6 +182,10 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             set val(expName), val(species), file('quantification.log')    
 
         """
+            for stage in aggregation scanpy bundle; do
+                rm -rf $SCXA_RESULTS/$expName/$species/$stage
+            done
+
             protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
 
             echo \$protocol | grep "smart-seq" > /dev/null
@@ -251,6 +253,10 @@ process aggregate {
         set val(expName), val(species), file('matrices/aggregation.log')    
 
     """
+        for stage in scanpy bundle; do
+            rm -rf $SCXA_RESULTS/$expName/$species/$stage
+        done
+        
         RESULTS_ROOT=\$PWD
         SUBDIR="$expName/$species/aggregation"     
 
@@ -312,8 +318,11 @@ process scanpy {
         set val(expName), val(species), file("umap") into UMAP
         set val(expName), val(species), file("tsne") into TSNE
         set val(expName), val(species), file("markers") into MARKERS
+        file('scanpy.log')
 
     """
+        rm -rf $SCXA_RESULTS/$expName/$species/bundle
+        
         RESULTS_ROOT=\$PWD
         SUBDIR="$expName/$species/scanpy"     
 
@@ -368,6 +377,7 @@ process bundle {
         
     output:
         file('bundle/*')
+        file('bundle.log')
         
     """    
         RESULTS_ROOT=\$PWD
@@ -401,7 +411,7 @@ process bundle {
         
         popd > /dev/null
 
-        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log scanpy.log
+        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log bundle.log
    """
     
 }
