@@ -300,7 +300,7 @@ process scanpy {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file(countMatrix), from KALLISTO_COUNT_MATRIX_FOR_SCANPY
+        set val(expName), val(species), file(countMatrix) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
         set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
         set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_SCANPY
 
