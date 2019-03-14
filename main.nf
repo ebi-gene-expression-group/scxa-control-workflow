@@ -30,7 +30,10 @@ process find_idf {
     """
 }
 
-// Derive the config files
+// Derive the config files. We cache based on input file size and path
+// ('lenient'). If we do run, we remove the downstream stored results,
+// triggering the sub-workflows (not normally re-run). These will then check
+// their own caches and re-run where required. 
 
 process generate_config {
 
@@ -48,7 +51,7 @@ process generate_config {
         
     """
     for stage in quantification aggregation scanpy bundle; do
-        rm -rf $SCXA_RESULTS/$expName/$species/\$stage
+        rm -rf $SCXA_RESULTS/$expName/*/\$stage
     done
 
     sdrfToNfConf.R \
