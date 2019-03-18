@@ -2,6 +2,12 @@
 
 sdrfDir = params.sdrfDir
 
+enaSshUser = 'null'
+
+if ( params.containsKey('enaSshUser') ){
+    enaSshUser = params.enaSshUser
+}
+
 // If user has supplied an experiment ID, then just run for that experiment.
 // Otherwise, watch the SDRF directory for incoming SDRF files
 
@@ -219,6 +225,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
                 --contaminationIndex $contaminationIndex \
                 --resultsRoot \$RESULTS_ROOT \
+                --enaSshUser $enaSshUser \
                 -resume \
                 \$quantification_workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
