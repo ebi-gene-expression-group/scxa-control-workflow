@@ -67,7 +67,7 @@ process generate_config {
         --verbose
 
     for f in *.conf; do
-        echo -e "includeConfig '${baseDir}/params.config'\n"|cat - \$f > \$f.tmp && mv \$f.tmp \$f
+        echo "includeConfig '${baseDir}/params.config'" | cat - \$f > \$f.tmp && mv \$f.tmp \$f
     done
     """
 }
