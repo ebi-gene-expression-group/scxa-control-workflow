@@ -25,7 +25,7 @@ process find_new_updated {
     cache 'lenient'
 
     input:
-        file(sdrfFile) from SDRF_PROC
+        file(sdrfFile) from SDRF
 
     output:
         set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
