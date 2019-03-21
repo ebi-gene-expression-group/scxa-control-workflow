@@ -410,11 +410,11 @@ process bundle {
         set val(expName), val(species), file(clusters) from CLUSTERS
         set val(expName), val(species), file('*') from TSNE
         set val(expName), val(species), file('*') from MARKERS
-        file('bundleLines.txt') into NEW_BUNDLE_LINES
         
     output:
         file('bundle/*')
         file('bundle.log')
+        file('bundleLines.txt') into NEW_BUNDLE_LINES
         
     """    
         RESULTS_ROOT=\$PWD
