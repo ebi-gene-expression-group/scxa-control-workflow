@@ -17,22 +17,42 @@ if ( params.containsKey('expName')){
     SDRF = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true)
 }
 
-// Locate matching IDF files and determine experiment ID
+// Determine which SDRF files have up-to-date bundles. For new/ updated
+// experiments, output to the channel with the relevant IDF
 
-process find_idf {
+process find_new_updated {
 
     cache 'lenient'
-    
+
     input:
-        file(sdrfFile) from SDRF
-   
+        file(sdrfFile) from SDRF_PROC
+
     output:
-        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") into SDRF_IDF
+        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
+        file('bundleLines.txt') optional true into OLD_BUNDLE_LINES
 
     """
         expName=\$(echo $sdrfFile | awk -F'.' '{print \$1}') 
-        cp $sdrfDir/\${expName}.idf.txt .
-        echo \$expName | tr -d \'\\n\'
+        
+        newExperiment=1
+        bundleLogs=\$(ls \$SCXA_RESULTS/\$expName/*/bundle.log 2>/dev/null || true)
+        
+        if [ -n "\$bundleLogs" ]; then
+            newExperiment=0
+            while read -r bundleLog; do
+                if [ $sdrfFile -nt "\$bundleLog" ]; then
+                    newExperiment=1
+                else
+                    species=\$(echo \$bundleLog | awk -F'/' '{print \$(NF-1)}' | tr -d \'\\n\')
+                    echo -e "\$expName\\t\$species\\t$SCXA_RESULTS/\$expName/\$species/bundle" > bundleLines.txt
+                fi
+            done <<< "\$(echo -e "\$bundleLogs")"
+        fi
+
+        if [ \$newExperiment -eq 1 ]; then
+            cp $sdrfDir/\${expName}.idf.txt .
+            echo \$expName | tr -d \'\\n\'
+        fi
     """
 }
 
@@ -390,6 +410,7 @@ process bundle {
         set val(expName), val(species), file(clusters) from CLUSTERS
         set val(expName), val(species), file('*') from TSNE
         set val(expName), val(species), file('*') from MARKERS
+        file('bundleLines.txt') into NEW_BUNDLE_LINES
         
     output:
         file('bundle/*')
@@ -428,6 +449,15 @@ process bundle {
         popd > /dev/null
 
         cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log bundle.log
+
+        echo -e "$expName\\t$species\\t$SCXA_RESULTS/$expName/$species/bundle" > bundleLines.txt
    """
     
 }
+
+// Record the completed bundles
+
+OLD_BUNDLE_LINES
+    .concat ( NEW_BUNDLE_LINES )
+    .collectFile(name: 'all.done.txt', sort: true, storeDir: "$SCXA_RESULTS")
+

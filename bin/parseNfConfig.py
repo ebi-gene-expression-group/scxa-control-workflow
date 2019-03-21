@@ -24,5 +24,5 @@ with open(args.param_file, 'r') as nf_file:
 
 # Parse content as YAML
 
-nf_config = yaml.load(nf_content)
+nf_config = yaml.load(nf_content, Loader=yaml.FullLoader)
 sys.stdout.write(reduce(dict.get, args.param_keys.split(','), nf_config))
