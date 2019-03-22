@@ -464,4 +464,28 @@ process bundle {
 OLD_BUNDLE_LINES
     .concat ( NEW_BUNDLE_LINES )
     .collectFile(name: 'all.done.txt', sort: true, storeDir: "$SCXA_RESULTS")
+    .set{
+        BUNDLE_LINES
+    }
+
+// For each experiment and species with a completed bundle, remove the work dir
+
+process cleanup {
+    
+    input:
+        file(bundleLines) from BUNDLE_LINES
+    
+    output:
+        file('.cleaned')
+
+    """
+    cat ${bundleLines} | while read -r l; do
+        expName=\$(echo "\$l" | awk '{print \$1}')
+        species=\$(echo "\$l" | awk '{print \$2}')
+        rm -rf $SCXA_WORK/\$expName/\$species
+    done
+
+    touch .cleaned
+    """
+}
 
