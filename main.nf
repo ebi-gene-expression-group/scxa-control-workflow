@@ -240,6 +240,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
             nextflow run \
+                -latest \
                 -config \$RESULTS_ROOT/$confFile \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
@@ -302,6 +303,7 @@ process aggregate {
         pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
+             -latest \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
             --referenceGtf ${referenceGtf} \
@@ -368,6 +370,7 @@ process scanpy {
         pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
+            -latest \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
             --gtf \$RESULTS_ROOT/${referenceGtf} \
@@ -426,6 +429,7 @@ process bundle {
         pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
+            -latest \
             --resultsRoot \$RESULTS_ROOT \
             --rawFilteredMatrix ${filteredMatrix} \
             --normalisedMatrix ${normalisedMatrix} \
