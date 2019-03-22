@@ -478,10 +478,12 @@ if ( is.singlecell ) {
     ## OK, OK filtered or not OK
     
     print.info(single.cell.quality.counts["not ok"]," runs/cells will be discarded due to 'not ok' quality status")
-    
-    if (single.cell.quality.counts["not ok"] == nrow(sdrf)){
+   
+    if ( "not ok" %in% names(single.cell.quality.counts)){ 
+      if (single.cell.quality.counts["not ok"] == nrow(sdrf)){
         perror(paste("All rows will be removed by the", sc.quality.col, "criterion - stopping"))
         q(status=1)
+      }
     }
   }else{
     print("NO QUALITY COL")
