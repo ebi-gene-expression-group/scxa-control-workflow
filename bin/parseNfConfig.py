@@ -25,4 +25,12 @@ with open(args.param_file, 'r') as nf_file:
 # Parse content as YAML
 
 nf_config = yaml.load(nf_content, Loader=yaml.FullLoader)
-sys.stdout.write(reduce(dict.get, args.param_keys.split(','), nf_config))
+
+# Get the value out of the dict by list keys
+
+result = reduce(dict.get, args.param_keys.split(','), nf_config)
+
+if result is not None:
+    sys.stdout.write(result)
+else:
+    sys.stdout.write('None')
