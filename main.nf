@@ -200,7 +200,6 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         conda "${baseDir}/envs/nextflow.yml"
 
-//        storeDir "$SCXA_RESULTS/$expName/$species/quantification"
         publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
         
         memory { 4.GB * task.attempt }
@@ -273,7 +272,7 @@ process aggregate {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$expName/$species/aggregation"
+    publishDir "$SCXA_RESULTS/$expName/$species/aggregation", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
@@ -339,7 +338,7 @@ process scanpy {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$expName/$species/scanpy"
+    publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
@@ -402,7 +401,7 @@ process bundle {
     
     conda "${baseDir}/envs/nextflow.yml"
 
-    storeDir "$SCXA_RESULTS/$expName/$species"
+    publishDir "$SCXA_RESULTS/$expName/$species", mode: 'copy', overwrite: true
     
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
