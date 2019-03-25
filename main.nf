@@ -212,8 +212,8 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
 
         output:
-            set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
-            set val(expName), val(species), file ("qc/*") into QUANT_QC
+            set val(expName), val(species), file ("kallisto") into KALLISTO_DIRS 
+            set val(expName), val(species), file ("qc") into QUANT_QC
             set val(expName), val(species), file('quantification.log')    
 
         """
@@ -280,7 +280,7 @@ process aggregate {
     
     input:
         set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
-        set val(expName), val(species), file ('*') from KALLISTO_DIRS.collect()
+        set val(expName), val(species), file ('kallisto') from KALLISTO_DIRS
         set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_AGGREGATION
 
     output:
@@ -306,6 +306,7 @@ process aggregate {
              -latest \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
+            --quantDir \$RESULTS_ROOT/kallisto
             --referenceGtf ${referenceGtf} \
             -resume \
             scxa-aggregation-workflow \
