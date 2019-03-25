@@ -196,7 +196,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
     process quantify {
 
-        maxForks 1
+        maxForks params.maxConcurrentQuantifications
 
         conda "${baseDir}/envs/nextflow.yml"
 
