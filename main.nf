@@ -306,7 +306,7 @@ process aggregate {
              -latest \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
-            --quantDir \$RESULTS_ROOT/kallisto
+            --quantDir \$RESULTS_ROOT/kallisto \
             --referenceGtf ${referenceGtf} \
             -resume \
             scxa-aggregation-workflow \
