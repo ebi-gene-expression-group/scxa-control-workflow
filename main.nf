@@ -22,6 +22,8 @@ if ( params.containsKey('expName')){
 
 process find_new_updated {
 
+    executor 'local'
+
     cache 'lenient'
 
     input:
