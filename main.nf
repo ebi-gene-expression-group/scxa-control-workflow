@@ -300,7 +300,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
-                --downloadConfig $downloadConfig \
+                --downloadConfig \$RESULTS_ROOT/$downloadConfig \
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
                 --contaminationIndex $contaminationIndex \
                 --resultsRoot \$RESULTS_ROOT \
