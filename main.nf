@@ -242,7 +242,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             file(downloadConfig) from DOWNLOAD_CONFIG
 
         output:
-            file(downloadConfig), file("$NXF_TEMP/fastq_provider.probe") into DOWNLOAD_CONFIG_INIT
+            set file(downloadConfig), file("fastq_provider.probe") into DOWNLOAD_CONFIG_INIT
 
         """
         initialiseEnaProbe.sh -c ${downloadConfig} -t fastq_provider.probe
