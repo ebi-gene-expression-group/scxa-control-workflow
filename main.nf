@@ -194,6 +194,61 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
     }
 }else{
 
+    // Make a configuration for the Fastq provider, and make initial assessment of
+    // the available ENA download methods. 
+
+    process configure_download {
+        
+        conda "${baseDir}/envs/atlas-fastq-provider.yml"
+            
+        publishDir "$SCXA_RESULTS/", mode: 'copy', overwrite: true
+        
+        output:
+            file('atlas_fastq_provider_config.sh') into DOWNLOAD_CONFIG
+
+        script:
+            downloadConfig = file('atlas_fastq_provider_config.sh')
+            sshUser=''
+            if (params.containsKey('enaSshUser')){
+                sshUser=params.enaSshUser
+            }      
+
+            """
+                echo ENA_RETRIES=\\'${params.downloadRetries}\\' > download_config.sh
+                echo FETCH_FREQ_MILLIS=\\'${params.fetchFreqMillis}\\' >> download_config.sh
+                echo FASTQ_PROVIDER_TEMPDIR=\\'$NXF_TEMP/atlas-fastq-provider\\' >> download_config.sh
+                echo ALLOWED_DOWNLOAD_METHODS=\\'${params.allowedDownloadMethods}\\' >> download_config.sh
+
+                if [ -n "$sshUser" ]; then
+                    echo ENA_SSH_USER=\\'${params.enaSshUser}\\' >> download_config.sh
+                fi
+
+                initialiseEnaProbe.sh -c download_config.sh
+                cp download_config.sh atlas_fastq_provider_config.sh 
+            """
+    }
+
+    // Inialise the probe file describing download method performance
+
+    process initialise_download_probe {
+        
+        conda "${baseDir}/envs/atlas-fastq-provider.yml"
+
+        cache false
+
+        publishDir "$NXF_TEMP/atlas-fastq-provider/", mode: 'copy', overwrite: true
+
+        input:
+            file(downloadConfig) from DOWNLOAD_CONFIG
+
+        output:
+            file(downloadConfig), file("$NXF_TEMP/fastq_provider.probe") into DOWNLOAD_CONFIG_INIT
+
+        """
+        initialiseEnaProbe.sh -c ${downloadConfig} -t fastq_provider.probe
+        """
+    }
+
     // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
 
     process quantify {
@@ -212,6 +267,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
             set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
             set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
+            set file(downloadConfig), file(downloadProbe) from DOWNLOAD_CONFIG_INIT
 
         output:
             set val(expName), val(species), file ("kallisto") into KALLISTO_DIRS 
@@ -244,6 +300,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
+                --downloadConfig $downloadConfig \
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
                 --contaminationIndex $contaminationIndex \
                 --resultsRoot \$RESULTS_ROOT \
