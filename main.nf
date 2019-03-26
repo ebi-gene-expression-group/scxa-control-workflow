@@ -481,6 +481,7 @@ process cleanup {
         species=\$(echo "\$l" | awk '{print \$2}')
         rm -rf $SCXA_WORK/\$expName/\$species
     done
+    rm -rf $SCXA_WORK/scxa-smartseq-workflow
 
     touch .cleaned
     """
