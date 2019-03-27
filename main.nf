@@ -500,6 +500,7 @@ process cleanup {
         file('.cleaned')
 
     """
+    touch $SCXA_WORK/.success
     cat ${bundleLines} | while read -r l; do
         expName=\$(echo "\$l" | awk '{print \$1}')
         species=\$(echo "\$l" | awk '{print \$2}')
