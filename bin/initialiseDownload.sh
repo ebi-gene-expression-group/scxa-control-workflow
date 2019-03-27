@@ -8,7 +8,11 @@ sshUser=${4:-''}
 retries=$(parseNfConfig.py --paramFile $confFile --paramKeys params,downloadRetries)
 fetchFreq=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fetchFreqMillis)
 allowedDownloadMethods=$(parseNfConfig.py --paramFile $confFile --paramKeys params,allowedDownloadMethods)
-tempDir=$NXF_TEMP/atlas-fastq-provider
+
+# Make sure destination dir exists
+
+mkdir -p $(dirname $downloadConfig)
+mkdir -p $(dirname $probeFile)
 
 # Create downloader config
 
