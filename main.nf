@@ -207,14 +207,8 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         cache false
 
-        publishDir "$NXF_TEMP/atlas-fastq-provider/", mode: 'copy', overwrite: true
-
-        input:
-            file(downloadConfig) from DOWNLOAD_CONFIG
-
         output:
             val true into INIT_DONE
-
 
         """
         initialiseDownload.sh ${baseDir}/params.config $NXF_TEMP/atlas-fastq-provider/download_config.sh $NXF_TEMP/atlas-fastq-provider/fastq_provider.probe 
@@ -272,7 +266,6 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
-                --downloadConfig \$RESULTS_ROOT/$downloadConfig \
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
                 --contaminationIndex $contaminationIndex \
                 --resultsRoot \$RESULTS_ROOT \
