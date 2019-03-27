@@ -429,6 +429,7 @@ process bundle {
     maxRetries 20
     
     input:
+        set val(expName), val(species), file(rawMatrix) from KALLISTO_COUNT_MATRIX_FOR_BUNDLE
         set val(expName), val(species), file(filteredMatrix) from FILTERED_MATRIX
         set val(expName), val(species), file(normalisedMatrix) from NORMALISED_MATRIX
         set val(expName), val(species), file(tpmMatrix) from KALLISTO_ABUNDANCE_MATRIX
@@ -452,6 +453,7 @@ process bundle {
 
         nextflow run \
             --resultsRoot \$RESULTS_ROOT \
+            --rawMatrix ${rawMatrix} \
             --rawFilteredMatrix ${filteredMatrix} \
             --normalisedMatrix ${normalisedMatrix} \
             --tpmMatrix ${tpmMatrix} \
