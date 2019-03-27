@@ -22,10 +22,12 @@ if ( params.containsKey('expName')){
 
 process find_new_updated {
 
+    conda "${baseDir}/envs/atlas-fastq-provider.yml"
+    
     executor 'local'
 
     cache 'lenient'
-
+        
     input:
         file(sdrfFile) from SDRF
 
@@ -194,43 +196,12 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
     }
 }else{
 
-    // Make a configuration for the Fastq provider, and make initial assessment of
-    // the available ENA download methods. 
+    // Make a configuration for the Fastq provider, and make initial assessment
+    // of the available ENA download methods. This establishes a mock
+    // dependency with the quantify process, as per
+    // http://nextflow-io.github.io/patterns/index.html#_mock_dependency 
 
-    process configure_download {
-        
-        conda "${baseDir}/envs/atlas-fastq-provider.yml"
-            
-        publishDir "$SCXA_RESULTS/", mode: 'copy', overwrite: true
-        
-        output:
-            file('atlas_fastq_provider_config.sh') into DOWNLOAD_CONFIG
-
-        script:
-            downloadConfig = file('atlas_fastq_provider_config.sh')
-            sshUser=''
-            if (params.containsKey('enaSshUser')){
-                sshUser=params.enaSshUser
-            }      
-
-            """
-                echo ENA_RETRIES=\\'${params.downloadRetries}\\' > download_config.sh
-                echo FETCH_FREQ_MILLIS=\\'${params.fetchFreqMillis}\\' >> download_config.sh
-                echo FASTQ_PROVIDER_TEMPDIR=\\'$NXF_TEMP/atlas-fastq-provider\\' >> download_config.sh
-                echo ALLOWED_DOWNLOAD_METHODS=\\'${params.allowedDownloadMethods}\\' >> download_config.sh
-
-                if [ -n "$sshUser" ]; then
-                    echo ENA_SSH_USER=\\'${params.enaSshUser}\\' >> download_config.sh
-                fi
-
-                initialiseEnaProbe.sh -c download_config.sh
-                cp download_config.sh atlas_fastq_provider_config.sh 
-            """
-    }
-
-    // Inialise the probe file describing download method performance
-
-    process initialise_download_probe {
+    process initialise_downloader {
         
         conda "${baseDir}/envs/atlas-fastq-provider.yml"
 
@@ -242,10 +213,11 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             file(downloadConfig) from DOWNLOAD_CONFIG
 
         output:
-            set file(downloadConfig), file("fastq_provider.probe") into DOWNLOAD_CONFIG_INIT
+            val true into INIT_DONE
+
 
         """
-        initialiseEnaProbe.sh -c ${downloadConfig} -t fastq_provider.probe
+        initialiseDownload.sh ${baseDir}/params.config $NXF_TEMP/atlas-fastq-provider/download_config.sh $NXF_TEMP/atlas-fastq-provider/fastq_provider.probe 
         """
     }
 
@@ -267,7 +239,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
             set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
             set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
-            set file(downloadConfig), file(downloadProbe) from DOWNLOAD_CONFIG_INIT
+            val flag from INIT_DONE
 
         output:
             set val(expName), val(species), file ("kallisto") into KALLISTO_DIRS 
