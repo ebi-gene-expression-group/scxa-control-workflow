@@ -228,7 +228,6 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
         memory { 4.GB * task.attempt }
         errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
         maxRetries 20
-        submitRateLimit '1 / 30 s' 
         
         input:
             set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
