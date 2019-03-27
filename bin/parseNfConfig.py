@@ -31,6 +31,6 @@ nf_config = yaml.load(nf_content, Loader=yaml.FullLoader)
 result = reduce(dict.get, args.param_keys.split(','), nf_config)
 
 if result is not None:
-    sys.stdout.write(result)
+    sys.stdout.write(str(result))
 else:
     sys.stdout.write('None')
