@@ -170,6 +170,12 @@ process prepare_reference {
 REFERENCE_GTF.into{
     REFERENCE_GTF_FOR_AGGREGATION
     REFERENCE_GTF_FOR_SCANPY
+    REFERENCE_GTF_FOR_BUNDLE
+}
+
+REFERENCE_FASTA.into{
+    REFERENCE_FASTA_FOR_QUANT
+    REFERENCE_FASTA_FOR_BUNDLE
 }
 
 // Allow a forcible skipping of the quantification phase. Useful if we've
@@ -182,7 +188,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         input:
             set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
-            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
+            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA_FOR_QUANT
             set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
 
         output:
@@ -231,7 +237,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
         
         input:
             set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
-            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
+            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA_FOR_QUANT
             set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
             val flag from INIT_DONE
 
@@ -436,6 +442,8 @@ process bundle {
         set val(expName), val(species), file(clusters) from CLUSTERS
         set val(expName), val(species), file('*') from TSNE
         set val(expName), val(species), file('*') from MARKERS
+        set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA_FOR_BUNDLE
+        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_BUNDLE
         
     output:
         file('bundle/*')
@@ -454,6 +462,8 @@ process bundle {
         nextflow run \
             --resultsRoot \$RESULTS_ROOT \
             --rawMatrix ${rawMatrix} \
+            --referenceFasta ${referenceFasta} \
+            --referenceGtf ${referenceGtf} \
             --rawFilteredMatrix ${filteredMatrix} \
             --normalisedMatrix ${normalisedMatrix} \
             --tpmMatrix ${tpmMatrix} \
