@@ -181,9 +181,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
     process spoof_quantify {
 
         input:
-            set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
-            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
-            set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
+            set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from COMBINED_CONFIG_FOR_QUANTIFY.join( REFERENCE_FASTA, by: [0,1] ).join( CONTAMINATION_INDEX, by: [0,1] )
 
         output:
             set val(expName), val(species), file ("kallisto/*") into KALLISTO_DIRS 
@@ -230,9 +228,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
         maxRetries 20
         
         input:
-            set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_QUANTIFY
-            set val(expName), val(species), file(referenceFasta) from REFERENCE_FASTA
-            set val(expName), val(species), val(contaminationIndex) from CONTAMINATION_INDEX
+            set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from COMBINED_CONFIG_FOR_QUANTIFY.join( REFERENCE_FASTA, by: [0,1] ).join( CONTAMINATION_INDEX, by: [0,1] )
             val flag from INIT_DONE
 
         output:
@@ -302,9 +298,7 @@ process aggregate {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_AGGREGATION
-        set val(expName), val(species), file ('kallisto') from KALLISTO_DIRS
-        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_AGGREGATION
+        set val(expName), val(species), file (confFile), file(sdrfFile), file ('kallisto'), file(referenceGtf) from COMBINED_CONFIG_FOR_AGGREGATION.join(KALLISTO_DIRS, by: [0,1]).join(REFERENCE_GTF_FOR_AGGREGATION, by: [0,1]) 
 
     output:
         set val(expName), val(species), file("matrices/*_counts.zip") into KALLISTO_COUNT_MATRIX
@@ -367,9 +361,7 @@ process scanpy {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file(countMatrix) from KALLISTO_COUNT_MATRIX_FOR_SCANPY
-        set val(expName), val(species), file (confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_SCANPY
-        set val(expName), val(species), file(referenceGtf) from REFERENCE_GTF_FOR_SCANPY
+        set val(expName), val(species), file(countMatrix), file (confFile), file(sdrfFile), file(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY.join(COMBINED_CONFIG_FOR_SCANPY, by: [0,1]).join(REFERENCE_GTF_FOR_SCANPY, by: [0,1])
 
     output:
         set val(expName), val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
@@ -429,13 +421,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file(rawMatrix) from KALLISTO_COUNT_MATRIX_FOR_BUNDLE
-        set val(expName), val(species), file(filteredMatrix) from FILTERED_MATRIX
-        set val(expName), val(species), file(normalisedMatrix) from NORMALISED_MATRIX
-        set val(expName), val(species), file(tpmMatrix) from KALLISTO_ABUNDANCE_MATRIX
-        set val(expName), val(species), file(clusters) from CLUSTERS
-        set val(expName), val(species), file('*') from TSNE
-        set val(expName), val(species), file('*') from MARKERS
+        set val(expName), val(species), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(tpmMatrix), file(clusters), file('*'), file('*') from KALLISTO_COUNT_MATRIX_FOR_BUNDLE.join(FILTERED_MATRIX, by: [0,1]).join(NORMALISED_MATRIX, by: [0,1]).join(KALLISTO_ABUNDANCE_MATRIX, by: [0,1]).join(CLUSTERS, by: [0,1]).join(TSNE, by: [0,1]).join(MARKERS, by: [0,1])
         
     output:
         file('bundle/*')
