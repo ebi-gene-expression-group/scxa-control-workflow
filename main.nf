@@ -223,9 +223,11 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
         
-        memory { 8.GB * task.attempt }
-        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
-        maxRetries 20
+        //memory { 8.GB * task.attempt }
+        memory { 200.KB * sdrfFile.readLines().size()  }
+        //errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+        //maxRetries 20
         
         input:
             set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from COMBINED_CONFIG_FOR_QUANTIFY.join( REFERENCE_FASTA, by: [0,1] ).join( CONTAMINATION_INDEX, by: [0,1] )
