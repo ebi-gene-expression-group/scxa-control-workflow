@@ -223,8 +223,8 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
         
-        //memory { 8.GB * task.attempt }
-        memory { (10 + sdrfFile.numLines()) * 200.KB  }
+        memory { 40.GB * task.attempt }
+        //memory { (10 + sdrfFile.numLines()) * 200.KB  }
         //errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
         //maxRetries 20
