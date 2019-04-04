@@ -801,6 +801,7 @@ configs <- lapply(names(sdrf.by.species), function(species){
     paste0("    organism = '", species, "'"),
     paste0("\n    fields {"),
     paste0("        run = '", run.col, "'"),
+    paste0("        layout = '", library.layout.col, "'"),
     paste0("        fastq = '", paste(fastq.fields, collapse=','), "'")
   )
 
