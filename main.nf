@@ -279,7 +279,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -N $SCXA_REPORT_EMAIL \
                 -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-                $BRANCH
+                \$BRANCH
 
             if [ \$? -ne 0 ]; then
                 echo "Workflow failed for $expName - $species - \$quantification_workflow" 1>&2
@@ -343,7 +343,7 @@ process aggregate {
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            $BRANCH
+            \$BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
@@ -414,7 +414,7 @@ process scanpy {
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            $BRANCH
+            \$BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
@@ -485,7 +485,7 @@ process bundle {
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            $BRANCH
+            \$BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
