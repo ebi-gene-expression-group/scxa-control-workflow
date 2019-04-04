@@ -261,6 +261,11 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
+            BRANCH=''
+            if [ -n "$SCXA_BRANCH" ]; then
+                BRANCH="-r $SCXA_BRANCH"
+            fi
+
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
@@ -273,7 +278,8 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -N $SCXA_REPORT_EMAIL \
-                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+                $BRANCH
 
             if [ \$? -ne 0 ]; then
                 echo "Workflow failed for $expName - $species - \$quantification_workflow" 1>&2
@@ -321,6 +327,11 @@ process aggregate {
         mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
         pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
+        BRANCH=''
+        if [ -n "$SCXA_BRANCH" ]; then
+            BRANCH="-r $SCXA_BRANCH"
+        fi
+
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
@@ -331,7 +342,8 @@ process aggregate {
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+            $BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
@@ -385,6 +397,11 @@ process scanpy {
         mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
         mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
         pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+            
+        BRANCH=''
+        if [ -n "$SCXA_BRANCH" ]; then
+            BRANCH="-r $SCXA_BRANCH"
+        fi
 
         nextflow run \
             -config \$RESULTS_ROOT/$confFile \
@@ -396,7 +413,8 @@ process scanpy {
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+            $BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
@@ -444,6 +462,11 @@ process bundle {
         cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
         cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
 
+        BRANCH=''
+        if [ -n "$SCXA_BRANCH" ]; then
+            BRANCH="-r $SCXA_BRANCH"
+        fi
+
         nextflow run \
             --resultsRoot \$RESULTS_ROOT \
             --rawMatrix ${rawMatrix} \
@@ -461,7 +484,8 @@ process bundle {
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+            $BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
