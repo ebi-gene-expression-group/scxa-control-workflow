@@ -182,6 +182,8 @@ COMBINED_CONFIG_FOR_QUANTIFY
 
 process select_workflow{
 
+    conda 'pyyaml' 
+    
     input:
         set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from QUANTIFICATION_INPUTS
 
