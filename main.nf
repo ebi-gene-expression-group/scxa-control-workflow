@@ -194,9 +194,9 @@ process select_workflow{
     protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
 
     if [ "\$protocol" == 'smart-seq' ] ||  [ "\$protocol" == 'smart-seq2' ] || [ "\$protocol" == 'smarter' ] || [ "\$protocol" == 'smart-like' ]; then
-        echo smartseq
+        echo -n smartseq
     elif [ "\$protocol" == '10xv2' ]  [ "\$protocol" == 'drop-seq' ] || [ "\$protocol" == 'smart-seq' ]; then
-        echo droplet
+        echo -n droplet
     else
         echo "Can't currently handle \$protocol experiments" 1>&2
         exit 1
