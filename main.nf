@@ -1,6 +1,7 @@
 #!/usr/bin/env nextflow
 
 sdrfDir = params.sdrfDir
+tertiaryWorkflow = params.tertiaryWorkflow
 
 enaSshUser = 'null'
 
@@ -362,73 +363,104 @@ KALLISTO_COUNT_MATRIX.into{
     KALLISTO_COUNT_MATRIX_FOR_BUNDLE
 }
 
+// Make a bundle from the outputs
+
+KALLISTO_COUNT_MATRIX_FOR_BUNDLE
+    .join(KALLISTO_ABUNDANCE_MATRIX, by: [0,1])
+    .set { BASE_BUNDLE_INPUTS } 
+
+// Set the inputs for tertiary analysis
+
+KALLISTO_COUNT_MATRIX_FOR_SCANPY
+    .join(COMBINED_CONFIG_FOR_SCANPY, by: [0,1])
+    .join(REFERENCE_GTF_FOR_SCANPY, by: [0,1])
+    .set { TERTIARY_INPUTS }
+
+
 // Run Scanpy with https://github.com/ebi-gene-expression-group/scanpy-workflow
 
-process scanpy {
-    
-    conda "${baseDir}/envs/nextflow.yml"
+if ( tertiaryWorkflow == 'scanpy-workflow'){
 
-    publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
-    
-    memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
-    maxRetries 20
-    
-    input:
-        set val(expName), val(species), file(countMatrix), file (confFile), file(sdrfFile), file(referenceGtf) from KALLISTO_COUNT_MATRIX_FOR_SCANPY.join(COMBINED_CONFIG_FOR_SCANPY, by: [0,1]).join(REFERENCE_GTF_FOR_SCANPY, by: [0,1])
-
-    output:
-        set val(expName), val(species), file("matrices/*_filter_cells_genes.zip") into FILTERED_MATRIX
-        set val(expName), val(species), file("matrices/*_normalised.zip") into NORMALISED_MATRIX
-        set val(expName), val(species), file("pca") into PCA
-        set val(expName), val(species), file("clustering/clusters.txt") into CLUSTERS
-        set val(expName), val(species), file("umap") into UMAP
-        set val(expName), val(species), file("tsne") into TSNE
-        set val(expName), val(species), file("markers") into MARKERS
-        file('scanpy.log')
-
-    """
-        rm -rf $SCXA_RESULTS/$expName/$species/bundle
+    process scanpy {
         
-        RESULTS_ROOT=\$PWD
-        SUBDIR="$expName/$species/scanpy"     
+        conda "${baseDir}/envs/nextflow.yml"
 
-        mkdir -p $SCXA_WORK/\$SUBDIR
-        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
-        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+        publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
+        
+        memory { 4.GB * task.attempt }
+        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+        maxRetries 20
+          
+        input:
+            set val(expName), val(species), file(countMatrix), file (confFile), file(sdrfFile), file(referenceGtf) from TERTIARY_INPUTS
+
+        output:
+            set val(expName), val(species), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            file('scanpy.log')
+
+        """
+            rm -rf $SCXA_RESULTS/$expName/$species/bundle
             
-        BRANCH=''
-        if [ -n "$SCXA_BRANCH" ]; then
-            BRANCH="-r $SCXA_BRANCH"
-        fi
+            RESULTS_ROOT=\$PWD
+            SUBDIR="$expName/$species/scanpy"     
 
-        nextflow run \
-            -config \$RESULTS_ROOT/$confFile \
-            --resultsRoot \$RESULTS_ROOT \
-            --gtf \$RESULTS_ROOT/${referenceGtf} \
-            --matrix \$RESULTS_ROOT/${countMatrix} \
-            -resume \
-            scanpy-workflow \
-            -work-dir $SCXA_WORK/\$SUBDIR \
-            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
-            -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            \$BRANCH
+            mkdir -p $SCXA_WORK/\$SUBDIR
+            mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
+            mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+            pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+                
+            BRANCH=''
+            if [ -n "$SCXA_BRANCH" ]; then
+                BRANCH="-r $SCXA_BRANCH"
+            fi
 
-        if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
-            exit 1
-        fi
+            nextflow run \
+                -config \$RESULTS_ROOT/$confFile \
+                --resultsRoot \$RESULTS_ROOT \
+                --gtf \$RESULTS_ROOT/${referenceGtf} \
+                --matrix \$RESULTS_ROOT/${countMatrix} \
+                -resume \
+                scanpy-workflow \
+                -work-dir $SCXA_WORK/\$SUBDIR \
+                -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+                -N $SCXA_REPORT_EMAIL \
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+                \$BRANCH
+
+            if [ \$? -ne 0 ]; then
+                echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
+                exit 1
+            fi
+            
+            popd > /dev/null
+
+            cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log scanpy.log
+       """
         
-        popd > /dev/null
-
-        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log scanpy.log
-   """
+    }
     
+}else{
+    
+    process spoof_tertiary {
+        
+        input:
+            set val(expName), val(species), file(countMatrix), file (confFile), file(sdrfFile), file(referenceGtf) from TERTIARY_INPUTS
+
+        output:
+            set val(expName), val(species), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
+            file('scanpy.log')
+
+        """
+            touch NOFILT NONORM NOPCA NOCLUST NOUMAP NOTSNE NOMARKERS
+        """
+    }    
+        
 }
 
-// Make a bundle from the Scanpy outputs
+BASE_BUNDLE_INPUTS.
+    .join(TERTIARY_RESULTS, by: [0,1])
+    .set { BUNDLE_INPUTS } 
+
 
 process bundle {
     
@@ -441,7 +473,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(tpmMatrix), file(clusters), file('*'), file('*') from KALLISTO_COUNT_MATRIX_FOR_BUNDLE.join(FILTERED_MATRIX, by: [0,1]).join(NORMALISED_MATRIX, by: [0,1]).join(KALLISTO_ABUNDANCE_MATRIX, by: [0,1]).join(CLUSTERS, by: [0,1]).join(TSNE, by: [0,1]).join(MARKERS, by: [0,1])
+        set val(expName), val(species), file(rawMatrix), file(tpmMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*') from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -467,17 +499,17 @@ process bundle {
             BRANCH="-r $SCXA_BRANCH"
         fi
 
+        TERTIARY_OPTIONS=''
+        if [ "$tertiaryWorkflow" == 'scanpy_workflow' ]; then
+            TERTIARY_OPTIONS = "--rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
+        fi 
+
         nextflow run \
             --resultsRoot \$RESULTS_ROOT \
             --rawMatrix ${rawMatrix} \
-            --referenceFasta \$cdna_fasta \
-            --referenceGtf \$cdna_gtf \
-            --rawFilteredMatrix ${filteredMatrix} \
-            --normalisedMatrix ${normalisedMatrix} \
             --tpmMatrix ${tpmMatrix} \
-            --clusters ${clusters} \
-            --tsneDir tsne \
-            --markersDir markers \
+            --referenceFasta \$cdna_fasta \
+            --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
             --softwareTemplate ${baseDir}/conf/smartseq.software.tsv \
             -resume \
             scxa-bundle-workflow \
@@ -488,7 +520,7 @@ process bundle {
             \$BRANCH
 
         if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
+            echo "Workflow failed for $expName - $species - scxa-bundle-workflow" 1>&2
             exit 1
         fi
         
