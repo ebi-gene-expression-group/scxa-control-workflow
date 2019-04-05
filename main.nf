@@ -457,7 +457,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         
 }
 
-BASE_BUNDLE_INPUTS.
+BASE_BUNDLE_INPUTS
     .join(TERTIARY_RESULTS, by: [0,1])
     .set { BUNDLE_INPUTS } 
 
