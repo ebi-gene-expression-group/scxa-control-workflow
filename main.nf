@@ -451,7 +451,6 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
         output:
             set val(expName), val(species), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
-            file('scanpy.log')
 
         """
             touch NOFILT NONORM NOPCA NOCLUST NOUMAP NOTSNE NOMARKERS
