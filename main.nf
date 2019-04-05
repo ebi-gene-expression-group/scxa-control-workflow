@@ -308,7 +308,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 --resultsRoot \$RESULTS_ROOT \
                 --enaSshUser $enaSshUser \
                 -resume \
-                \$quantification_workflow \
+                scxa-${wfType}-quantification-workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -317,7 +317,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 \$BRANCH
 
             if [ \$? -ne 0 ]; then
-                echo "Workflow failed for $expName - $species - \$quantification_workflow" 1>&2
+                echo "Workflow failed for $expName - $species - scxa-${wfType}-quantification-workflow" 1>&2
                 exit 1
             fi
             
