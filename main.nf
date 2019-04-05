@@ -176,7 +176,7 @@ REFERENCE_GTF.into{
 COMBINED_CONFIG_FOR_QUANTIFY
     .join( REFERENCE_FASTA, by: [0,1] )
     .join( CONTAMINATION_INDEX, by: [0,1] )
-    QUANTIFICATION_INPUTS
+    .set { QUANTIFICATION_INPUTS }
 
 // Select workflow for each experiment based on protocols
 
