@@ -258,33 +258,6 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             INIT_DONE_DROPLET
         }
 
-    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow
-
-    process droplet_quantify {
-
-        maxForks params.maxConcurrentQuantifications
-    
-        conda "${baseDir}/envs/nextflow.yml"
-
-        publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
-        
-        memory { 40.GB * task.attempt }
-        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
-
-        input:
-            set val(expName), val(species), val(wfType), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from DROPLET
-            val flag from INIT_DONE_DROPLET
-
-        output:
-            set val(expName), val(species), val(wfType), file("matrices/*_counts.zip"), file("NOTPM") into DROPLET_MATRICES
-
-        """
-        Call alevin workflow
-
-        touch NOTPM
-        """
-    }
-
     // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
 
     process smart_quantify {
@@ -351,10 +324,37 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
        """
     }
+    
+    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow
+
+    process droplet_quantify {
+
+        maxForks params.maxConcurrentQuantifications
+    
+        conda "${baseDir}/envs/nextflow.yml"
+
+        publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
+        
+        memory { 40.GB * task.attempt }
+        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+
+        input:
+            set val(expName), val(species), val(wfType), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from DROPLET
+            val flag from INIT_DONE_DROPLET
+
+        output:
+            set val(expName), val(species), val(wfType), file("matrices/*_counts.zip"), file("NOTPM") into DROPLET_MATRICES
+
+        """
+        Call alevin workflow
+
+        touch NOTPM
+        """
+    }
+
 }
 
 // Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
-
 
 COMBINED_CONFIG_FOR_AGGREGATION
     .join(SMART_KALLISTO_DIRS, by: [0,1])
