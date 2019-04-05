@@ -278,6 +278,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 \$quantification_workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+                -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
                 -N $SCXA_REPORT_EMAIL \
                 -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
                 \$BRANCH
@@ -342,6 +343,7 @@ process aggregate {
             scxa-aggregation-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+            -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
             \$BRANCH
@@ -423,6 +425,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 scanpy-workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+                -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
                 -N $SCXA_REPORT_EMAIL \
                 -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
                 \$BRANCH
@@ -515,6 +518,7 @@ process bundle {
             scxa-bundle-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+            -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
             \$BRANCH
