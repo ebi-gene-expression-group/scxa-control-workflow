@@ -184,6 +184,7 @@ protocol.col <- getActualColnames('library construction', sdrf)
 sc.quality.col <- getActualColnames('single cell quality', sdrf)
 libary.layout.col <- getActualColnames('library layout', sdrf)
 spike.in.col <- getActualColnames('spike_in', sdrf)
+fastq.col <- getActualColnames('fastq uri', sdrf)
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
@@ -191,7 +192,8 @@ organism.col <- getActualColnames('organism', sdrf)
 # Define protocols in case of single cell  
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
-supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv1","drop-seq","10xv1a")
+supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","drop-seq")
+#supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv1","drop-seq","10xv1a")
 sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', 'drop-seq')
   
 # Check the protocol and use to determine single-cell
@@ -202,11 +204,10 @@ if ( ! is.null(protocol.col)){
 
     protocol.corrections <- list(
         'smart-like' = 'smart-seq',
-        'Smart-seq2' = 'smart-seq2',
-        '10xv2' = '10xV2'
+        'Smart-seq2' = 'smart-seq2'
     )
 
-    protocols <- sdrf[[protocol.col]]
+    protocols <- tolower(sdrf[[protocol.col]])
 
     for (prot in names(protocol.corrections)){
         protocols[protocols == prot] <- protocol.corrections[[prot]]
@@ -214,14 +215,14 @@ if ( ! is.null(protocol.col)){
 
     sdrf[[protocol.col]] <- protocols 
 
-    if (all(sdrf[[protocol.col]] %in% supported.single.cell.protocols)){
+    if (all(protocols %in% supported.single.cell.protocols)){
         print.info("Found single-cell experiment")
         is.singlecell <- TRUE
-    }else if (any(sdrf[[protocol.col]] %in% supported.single.cell.protocols)){
+    }else if (any(protocols %in% supported.single.cell.protocols)){
         perror("Some but not all rows have single-cell protocols")
         q(status=1)
     }else{
-        pwarning(paste('None of', paste(unique(sdrf[[protocol.col]]), collapse=','), 'indicate single-cell' ))
+        pwarning(paste('None of', paste(unique(protocols), collapse=','), 'indicate single-cell' ))
     }
 }
 
@@ -502,7 +503,7 @@ if ( is.singlecell ) {
   
   # Ignore single-cell identifier for droplet-only experiments
   
-  if (all(protocols %in% sc.droplet.protocols) && sc.identifier.col %in% factors) {
+  if (all(protocols %in% sc.droplet.protocols) && (! is.null(sc.identifier.col)) && sc.identifier.col %in% factors) {
     addWarning("You have supplied 'single cell identifier' for an exclusively droplet-based experiment. This column is meaningless in this context and will be ignored")
     factors <- factors[factors != sc.identifier.col]
     sdrf <- sdrf[, colnames(sdrf) != sc.identifier.col]
@@ -527,8 +528,8 @@ if ( is.singlecell ) {
     '10xv1' = c('read1 file', 'read2 file'),    
     '10xv1a' = c('read1 file', 'read2 file', 'index1 file'),         
     '10xv1i' = c('read1 file', 'read2 file', 'index1 file'),
-    '10xv2' = c('read1 file', 'read2 file'),
-    'drop-seq' = c('read1 file', 'read2 file'), 
+    '10xv2' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    'drop-seq' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
     "smart-seq" = 'fastq uri',
     "smart-seq2" = 'fastq uri',
     "smarter" = 'fastq uri',
@@ -660,116 +661,109 @@ run.fastq.files <- lapply(unique(sdrf[[run.col]]), function(run){
 names(run.fastq.files) <- unique(sdrf[[run.col]])
 
 ################################################################################
-# We'll be making a config per species, and these sub-experiments will then we
-# analysed separately. So checks that with an experimental context (presence of
-# technical replication, consistency of spikeins etc) need to be done within
-# that species.
+# We'll be making a config per species and protocol, and these sub-experiments
+# will then be analysed separately. So checks that with an experimental context
+# (presence of technical replication, consistency of spikeins etc) need to be
+# done within that species.
 ################################################################################
 
-sdrf.by.species <- split(sdrf, sdrf[[organism.col]])
+sdrf.by.species.protocol <- lapply(split(sdrf, sdrf[[organism.col]]), function(x) split(x, x[[protocol.col]]) )
 
 # Run the checks first
 
-species.properties <- list()
+species.protocol.properties <- list()
 
-for (species in names(sdrf.by.species)){
+for (species in names(sdrf.by.species.protocol)){
+
+  for (protocol in names(sdrf.by.species.protocol[[species]])){
+
+    species.protocol.sdrf <- sdrf.by.species.protocol[[species]][[protocol]]
   
-  species.sdrf <- sdrf.by.species[[species]]
+    # Some default propertiesa
+      
+    properties <- list(
+      protocol = tolower(protocol),
+      has.spikes = FALSE,
+      has.techreps = FALSE,
+      has.strandedness = FALSE
+    )
   
-  # Some default propertiesa
+    # Filtering could have removed all rows for a species
   
-  properties <- list(
-    has.spikes = FALSE,
-    has.techreps = FALSE,
-    has.strandedness = FALSE
-  )
-  
-  # Filtering could have removed all rows for a species
-  
-  if (nrow(species.sdrf) == 0){
-    perror(paste0('No rows remaining for ', species, ', check filtering'))
-    q(status=1)
-  }
-  
-  ## Spikes? Assert that there are no spike-ins unless the field is populated with
-  ## non-empty values of a single type.
-  
-  if (! is.null(spike.in.col)){
-    print.info("Found 'spike in' column")
-    spikein <- unique(species.sdrf[[spike.in.col]])
-    if ( length(spikein) > 1 ) {
-      perror("SDRF error: Expected one or no spike ins (found ",length(spikein),").")
+    if (nrow(species.protocol.sdrf) == 0){
+      perror(paste0('No rows remaining for ', species, ', check filtering'))
       q(status=1)
-    }else if (populated(spikein)){
-      properties$has.spikes <- TRUE
     }
-  }
   
-  ## Check for technical replicates . Consider that there are no tech rep groups
-  ## if:
-  ##   1) all values are empty ('' or NA) 
-  ##   or 2) there is a single value
+    ## Spikes? Assert that there are no spike-ins unless the field is populated with
+    ## non-empty values of a single type.
   
-  nruns <- length(unique(species.sdrf[[run.col]]))
+    if (! is.null(spike.in.col)){
+      print.info("Found 'spike in' column")
+      spikein <- unique(species.protocol.sdrf[[spike.in.col]])
+      if ( length(spikein) > 1 ) {
+        perror("SDRF error: Expected one or no spike ins (found ",length(spikein),").")
+        q(status=1)
+      }else if (populated(spikein)){
+        properties$has.spikes <- TRUE
+      }
+    }
+  
+    ## Check for technical replicates . Consider that there are no tech rep groups
+    ## if:
+    ##   1) all values are empty ('' or NA) 
+    ##   or 2) there is a single value
+  
+    nruns <- length(unique(species.protocol.sdrf[[run.col]]))
  
-  if (! is.null(techrep.col)){ 
-    tr <- species.sdrf[[techrep.col]]
-    n.techrep.groups <- length(unique(tr))
+    if (! is.null(techrep.col)){ 
+      tr <- species.protocol.sdrf[[techrep.col]]
+      n.techrep.groups <- length(unique(tr))
     
-    is.empty <- tr == "" | is.na(tr) | tr == 'NA' | tr == 'not applicable'
+      is.empty <- tr == "" | is.na(tr) | tr == 'NA' | tr == 'not applicable'
     
-    if ( (! all(is.empty)) && any(is.empty) ){
-      perror("SDRF: Found ",sum(is.empty)," entries in technical replicate group without values where some values are set")
-      q(status=1)
-    }else if(n.techrep.groups == 1 ||  n.techrep.groups == nruns){
+      if ( (! all(is.empty)) && any(is.empty) ){
+        perror("SDRF: Found ",sum(is.empty)," entries in technical replicate group without values where some values are set")
+        q(status=1)
+      }else if(n.techrep.groups == 1 ||  n.techrep.groups == nruns){
       
-      # If the technica replicate field has been set, but the group numbers don't
-      # indicate technical replication (i.e. every run has its own group, or
-      # there's only only 1), we would normally say that there is in fact no
-      # technical replication. But since droplet protocols have multiple cells per
-      # run we'll give these entries the benefit of the doubt.
+        # If the technica replicate field has been set, but the group numbers don't
+        # indicate technical replication (i.e. every run has its own group, or
+        # there's only only 1), we would normally say that there is in fact no
+        # technical replication. But since droplet protocols have multiple cells per
+        # run we'll give these entries the benefit of the doubt.
       
-      if (is.singlecell && all(is.droplet.protocol(unique(species.sdrf[[protocol.col]])))){
+        if (is.singlecell && all(is.droplet.protocol(unique(species.protocol.sdrf[[protocol.col]])))){
+          properties$has.techrep <- TRUE
+        }
+      }else{
         properties$has.techrep <- TRUE
       }
-    }else{
-      properties$has.techrep <- TRUE
     }
-  }
   
-  # Check for strandedness
+    # Check for strandedness
 
-  if ( ! is.null(strand.col)){
-    strandeness <- species.sdrf[[strand.col]]
+    if ( ! is.null(strand.col)){
+      strandeness <- species.protocol.sdrf[[strand.col]]
 
-    if (any(tolower(strandeness) != 'not applicable')){
-        properties$has.strandedness <- TRUE
-    }  
-  }
-  
-  # ENA sample. Check that the sample names don't suggest we should have technical
-  # replicates when we don't
-  
-  if (! is.null(ena.sample.col)){
-    nsamples <- length(unique(species.sdrf[[ena.sample.col]]))
-    has.techrep.from.samples <- nsamples != nruns
-    if ( has.techrep.from.samples != properties$has.techrep  ) {
-      addWarning(paste("Technical replicate group from", techrep.col, paste0('(',properties$has.techrep,')'), " inconsistent with ena_sample", paste0('(',has.techrep.from.samples,')')))
+      if (any(tolower(strandeness) != 'not applicable')){
+          properties$has.strandedness <- TRUE
+      }  
     }
-  }
   
-  if (is.singlecell){
-    
-    # Need a single protocol
-    
-    species.protocols <- unique(species.sdrf[[protocol.col]])
-    if (length(species.protocols) > 1){
-      perror("multiple library construction values:",paste(species.protocols,sep=","))
-      q(status=1)
+    # ENA sample. Check that the sample names don't suggest we should have technical
+    # replicates when we don't
+  
+    if (! is.null(ena.sample.col)){
+      nsamples <- length(unique(species.protocol.sdrf[[ena.sample.col]]))
+      has.techrep.from.samples <- nsamples != nruns
+      if ( has.techrep.from.samples != properties$has.techrep  ) {
+        addWarning(paste("Technical replicate group from", techrep.col, paste0('(',properties$has.techrep,')'), " inconsistent with ena_sample", paste0('(',has.techrep.from.samples,')')))
+      }
     }
-  }
   
-  species.properties[[species]] <- properties 
+    species.protocol.properties[[species]][[protocol]] <- properties 
+  }
 }
 
 # With all checks done, we can stop if no further output is required
@@ -784,120 +778,176 @@ if ( opt$check_only ) {
 
 # Now generate config and metadata
 
-configs <- lapply(names(sdrf.by.species), function(species){
-  
-  species.sdrf <- sdrf.by.species[[species]]
-  properties <- species.properties[[species]]
-  
-  # layout is the SDRF with the duplicated lanes for paired end removed
-  species.layout <- species.sdrf[!duplicated(species.sdrf[[run.col]]),,drop=FALSE]
-  rownames(species.layout) <- species.layout[[run.col]]
-  
-  # Generate starting config file content
+# Silly device to make sure the list output in the subsetquent step is named correctly
+species_list <- list(names(sdrf.by.species.protocol))
+names(species_list) <- unlist(species_list)
+
+configs <- lapply(species_list, function(species){
+
+  protocol_list <- list(names(sdrf.by.species.protocol[[species]]))
+  names(protocol_list) <- unlist(protocol_list)
  
-  config <- c(
-    "\nparams{",
-    paste0("    name = '", opt$name, "'"),
-    paste0("    organism = '", species, "'"),
-    paste0("\n    fields {"),
-    paste0("        run = '", run.col, "'"),
-    paste0("        layout = '", library.layout.col, "'"),
-    paste0("        fastq = '", paste(fastq.fields, collapse=','), "'")
-  )
-
-  ## Field to use for quality filtering
-
-  if ( ! is.null(sc.quality.col)){
-    config <- c(config, paste0("        quality = '", sc.quality.col, "'"))
-  }
-
-  ## Anything other than ERCC will be ignored
-
-  spikes <- c()
-
-  if (properties$has.spikes){
-    spikein <- tolower(unique(species.sdrf[[spike.in.col]]))
-    if ( grepl("ercc.*",spikein) ) {
-      config <- c( config, paste0("        spike = '", paste(spike.in.col, collapse=','), "'") )
-      spikes <- paste0("    spikes = 'ercc'"  )
-    }else{
-      print(paste("ignoring", spikein))
-    }
-  }
-  
-  ## Set up for technical replication (or not)
-  
-  if(properties$has.techrep) {
-    config <- c( config, paste0("        techrep = '", paste(techrep.col, collapse=','), "'") )
-  }
-
-  # Do any rows need stranded analysis
-
-  if (properties$has.strandedness){
-    config <- c( config, paste0("        strand = '", paste(strand.col, collapse=','), "'") )
-  }
+  lapply( protocol_list, function(protocol){
  
-  # Close out that config section
-
-  config <- c(config, '    }\n')
-
-  # Put spikes in if present
-
-  config <- c (config, spikes)
- 
-  # SC prototol
+    species.protocol.sdrf <- sdrf.by.species.protocol[[species]][[protocol]]
+    properties <- species.protocol.properties[[species]][[protocol]]
   
-  sc.prot.conf = c()
-  sc.clusters.conf = c()
-  platform.config = c() 
+    # layout is the SDRF with the duplicated lanes for paired end removed
+    species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
+    rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
+  
+    # Generate starting config file content
  
-  if (is.singlecell){
-
-    sc.protocol <- species.sdrf[[protocol.col]][1]
-    config <- c(config, paste0("    sc_protocol = '", sc.protocol, "'"  ))
-
-    ## Decide what range of K values to try. Use a window around the provided
-    ## central k
-    
-    # Guess at a central K when not provided
-    
-    if ( opt$nc < 2 ) {
-      opt$nc <- round(log2(nrow(species.layout)))
-    }
-    
-    num.min.c <- max(round(opt$nc - opt$nc_window/2,0),2)
-    num.max.c <- num.min.c + opt$nc_window
-    
-    config <- c(config, 
-        paste0('\n    clusters {'),
-        paste0('        min = ', num.min.c),
-        paste0('        max = ', num.max.c),
-        paste0('    }')
+    config <- c(
+      "\nparams{",
+      paste0("    name = '", opt$name, "'"),
+      paste0("    organism = '", species, "'"),
+      paste0("    protocol = '", protocol, "'"),
+      paste0("\n    fields {"),
+      paste0("        run = '", run.col, "'"),
+      paste0("        layout = '", library.layout.col, "'"),
+      paste0("        fastq = '", paste(fastq.fields, collapse=','), "'")
     )
-  }
-  
-  config <- c(paste("// Generated", date(), "from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
 
-  # Generate metadata file content to save
+    ## Field to use for quality filtering
+
+    if ( ! is.null(sc.quality.col)){
+      config <- c(config, paste0("        quality = '", sc.quality.col, "'"))
+    }
+
+    ## Anything other than ERCC will be ignored
+
+    spikes <- c()
+
+    if (properties$has.spikes){
+      spikein <- tolower(unique(species.protocol.sdrf[[spike.in.col]]))
+      if ( grepl("ercc.*",spikein) ) {
+        config <- c( config, paste0("        spike = '", paste(spike.in.col, collapse=','), "'") )
+        spikes <- paste0("    spikes = 'ercc'"  )
+      }else{
+        print(paste("ignoring", spikein))
+      }
+    }
   
-  metadata <- NULL
-  sdfcols2save2tsv <- getActualColnames(unique(c(
-    factors,
-    idf.factors,
-    idf.attrs,
-    techrep.col
-  )), species.sdrf)
+    ## Set up for technical replication (or not)
   
-  if (length(sdfcols2save2tsv) > 0){
-    metadata <- species.layout[,sdfcols2save2tsv, drop = FALSE]
-    metadata <- cbind(run=rownames(metadata),metadata)
-  }
+    if(properties$has.techrep) {
+      config <- c( config, paste0("        techrep = '", paste(techrep.col, collapse=','), "'") )
+    }
+
+    # Do any rows need stranded analysis
+
+    if (properties$has.strandedness){
+      config <- c( config, paste0("        strand = '", paste(strand.col, collapse=','), "'") )
+    }
+    
+    # For droplet techs, add colums with strighforward statements of the URIs
+    # that contain barcodes and cDNAs, and record which columns to use
+        
+    if ( is.droplet.protocol(protocol)){
+     
+      cdna_field <- getActualColnames('cdna read', sdrf)
+      umi_field <- getActualColnames('umi barcode read', sdrf)
+      cb_field <- getActualColnames('cell barcode read', sdrf)
+      uri_cols <- which(colnames(sdrf) == fastq.col)
+
+      # Right now we need umi and cell barcodes to be in the same file. Might be
+      # different when we start to handle 10xv1
+
+      if ( any(sdrf[[umi_field]] != sdrf[[cb_field]]) ){
+          perror("Cell barcodes and UMIs must be in the same file for currently enabled droplet protocols")
+          q(status=1)
+      }
+
+      # Work out which URI holds the cDNA reads. We have to work out which read
+      # number has the cdna reads, then check the 'readN file' column for the
+      # file. For the full URI we then have to work out which of the FASTQ URI
+      # fields contains that file.
+
+      for (field_type in c('cdna', 'cell barcode', 'umi barcode')){
+          read_field <- getActualColnames(paste(field_type, 'read'), species.protocol.sdrf)
+          uri_field <- gsub(' ', '_', paste(field_type, 'uri'))
+ 
+          file_fields <- getActualColnames(paste(species.protocol.sdrf[[read_field]], 'file'), species.protocol.sdrf)
+          files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
+          uri_fields <- uri_cols[apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, function(x) which(x))]
+          species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
+
+          config <- c(config, paste0("        ", uri_field, " = '", uri_field, "'"))
+      }
+
+      # Record the barcode position and offset fields where present
+      
+      for (field_prefix in c('cdna read', 'cell barcode', 'umi barcode')){
+        for (field_type in c('offset', 'size')){
+          field_name <- getActualColnames(paste(field_prefix, field_type), sdrf)
+          if (! is.null(field_name)){
+            field_label <- gsub(' ', '_', field_name)
+            config <- c(config, paste0("        ", field_label, " = '", field_name, "'"))
+          }
+        }
+      }
+
+      # Re-save the tweaked SDRF for output
+      sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf        
+    }    
+ 
+    # Close out that config section
+
+    config <- c(config, '    }\n')
+
+    # Put spikes in if present
+
+    config <- c (config, spikes)
+ 
+    # SC prototol
   
-  list(config=config, metadata=metadata)
+    sc.prot.conf = c()
+    sc.clusters.conf = c()
+    platform.config = c() 
+ 
+    if (is.singlecell){
+
+      ## Decide what range of K values to try. Use a window around the provided
+      ## central k
+    
+      # Guess at a central K when not provided
+    
+      if ( opt$nc < 2 ) {
+        opt$nc <- round(log2(nrow(species.protocol.layout)))
+      }
+    
+      num.min.c <- max(round(opt$nc - opt$nc_window/2,0),2)
+      num.max.c <- num.min.c + opt$nc_window
+    
+      config <- c(config, 
+          paste0('\n    clusters {'),
+          paste0('        min = ', num.min.c),
+          paste0('        max = ', num.max.c),
+          paste0('    }')
+      )
+    }
+  
+    config <- c(paste("// Generated", date(), "from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
+
+    # Generate metadata file content to save
+  
+    metadata <- NULL
+    sdfcols2save2tsv <- getActualColnames(unique(c(
+      factors,
+      idf.factors,
+      idf.attrs,
+      techrep.col
+    )), species.protocol.sdrf)
+  
+    if (length(sdfcols2save2tsv) > 0){
+      metadata <- species.protocol.layout[,sdfcols2save2tsv, drop = FALSE]
+      metadata <- cbind(run=rownames(metadata),metadata)
+    }
+  
+    list(config=config, metadata=metadata)
+  })
 })
-
-names(configs) <- names(sdrf.by.species)
-
 
 if ( length(configs)==0 ) {
   perror("Unable to create configuration file, see above errors")
@@ -936,26 +986,39 @@ if ( is.null(opt$out_conf) ){
 }
 
 for (species in names(configs)){
-  
-  config <- configs[[species]]$config
-  metadata <- configs[[species]]$metadata
 
-  out.dir <- file.path(opt$out_conf, species)
-  dir.create(out.dir, showWarnings = FALSE)
+  protocol_configs <- configs[[species]]
+
+  for ( protocol in names(protocol_configs)){
+
+    # If there's only one protocol, don't add a protocol suffix to the the outputs
+
+    file_suffix <- species
+
+    if ( length(protocol_configs) > 1 ){
+      file_suffix <- paste(species, protocol, sep='.')
+    }
+
+    conf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".conf"))
+    meta.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".metadata.tsv"))
+    sdrf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".sdrf.txt"))
+  
+    config <- configs[[species]][[protocol]]$config
+    metadata <- configs[[species]][[protocol]]$metadata
+
+    out.dir <- file.path(opt$out_conf, species)
+    dir.create(out.dir, showWarnings = FALSE)
  
-  conf.file <- file.path(opt$out_conf, paste0(opt$name, '.', species, ".conf"))
-  meta.file <- file.path(opt$out_conf, paste0(opt$name, '.', species, ".metadata.tsv"))
-  sdrf.file <- file.path(opt$out_conf, paste0(opt$name, '.', species, ".sdrf.txt"))
+    # If there is metadata then point to it from the config file
   
-  # If there is metadata then point to it from the config file
-  
-  if ( ! is.null(metadata)){
-    write.tsv(metadata, file=meta.file)
-    pinfo("Created ", meta.file)
+    if ( ! is.null(metadata)){
+      write.tsv(metadata, file=meta.file)
+      pinfo("Created ", meta.file)
+    }
+    write.tsv(sdrf.by.species.protocol[[species]][[protocol]], file=sdrf.file)
+    writeLines(config, con = conf.file)
+    pinfo("Created ", conf.file)
   }
-  write.tsv(sdrf.by.species[[species]], file=sdrf.file)
-  writeLines(config, con = conf.file)
-  pinfo("Created ", conf.file)
 }
 
 cat("\n")
