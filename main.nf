@@ -227,42 +227,6 @@ process prepare_reference {
     """
 }
 
-//REFERENCE_GTF.into{
-//   REFERENCE_GTF_FOR_AGGREGATION
-//    REFERENCE_GTF_FOR_SCANPY
-//}
-
-//CONF_BY_META_FOR_QUANTIFY
-//    .join( REFERENCE_FASTA, by: [0,1] )
-//    .join( CONTAMINATION_INDEX, by: [0,1] )
-//    .set { QUANTIFICATION_INPUTS }
-
-// Select workflow for each experiment based on protocols
-
-//process select_workflow{
-
-//    conda 'pyyaml' 
-    
-//    input:
-//        set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from QUANTIFICATION_INPUTS
-
-//    output:
-//        set val(expName), val(species), stdout, file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) into QUANTIFICATION_INPUTS_BY_WF
-
-//    """
-//    protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
-
-//    if [ "\$protocol" == 'smart-seq' ] ||  [ "\$protocol" == 'smart-seq2' ] || [ "\$protocol" == 'smarter' ] || [ "\$protocol" == 'smart-like' ]; then
-//        echo -n smartseq
-//    elif [ "\$protocol" == '10xv2' ]  [ "\$protocol" == 'drop-seq' ] || [ "\$protocol" == 'smart-seq' ]; then
-//        echo -n droplet
-//    else
-//        echo "Can't currently handle \$protocol experiments" 1>&2
-//        exit 1
-//    fi
-//    """
-//}
-
 // Separate droplet and smart-type experiments
 
 DROPLET = Channel.create()
@@ -272,149 +236,124 @@ CONF_WITH_PREPARED_REFERENCE.choice( SMART, DROPLET ) {a ->
     dropletProtocols.contains(a[2]) ? 1 : 0
 }
 
-// Allow a forcible skipping of the quantification phase. Useful if we've
-// modified the workflows in some way that would make NF recompute, but we know
-// that's not necessary
+// Make a configuration for the Fastq provider, and make initial assessment
+// of the available ENA download methods. This establishes a mock
+// dependency with the quantify process, as per
+// http://nextflow-io.github.io/patterns/index.html#_mock_dependency 
 
-if ( params.containsKey('skipQuantification') && params.skipQuantification == 'yes'){
-
-    process spoof_smart_quantify {
-
-        input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART
-            //set val(expName), val(species), file(wfType), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from SMART
-
-        output:
-            set val(expName), val(species), val(protocol), file ("kallisto/*") into SMART_KALLISTO_DIRS 
-            set val(expName), val(species), val(protocol), file ("qc/*") into SMART_QUANT_QC 
-
-        """
-            ln -s $SCXA_RESULTS/$expName/$species/quantification/kallisto .
-            ln -s $SCXA_RESULTS/$expName/$species/quantification/qc .
-        """
-    }
-}else{
-
-    // Make a configuration for the Fastq provider, and make initial assessment
-    // of the available ENA download methods. This establishes a mock
-    // dependency with the quantify process, as per
-    // http://nextflow-io.github.io/patterns/index.html#_mock_dependency 
-
-    process initialise_downloader {
-        
-        conda "${baseDir}/envs/atlas-fastq-provider.yml"
-
-        cache false
-
-        output:
-            val true into INIT_DONE
-
-        """
-        initialiseDownload.sh ${baseDir}/params.config $NXF_TEMP/atlas-fastq-provider/download_config.sh $NXF_TEMP/atlas-fastq-provider/fastq_provider.probe 
-        """
-    }
-
-    INIT_DONE
-        .into{
-            INIT_DONE_SMART
-            INIT_DONE_DROPLET
-        }
-
-    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
-
-    process smart_quantify {
-
-        maxForks params.maxConcurrentQuantifications
-
-        conda "${baseDir}/envs/nextflow.yml"
-
-        publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
-        
-        memory { 40.GB * task.attempt }
-        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
-        
-        input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART
-            val flag from INIT_DONE_SMART
-
-        output:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("kallisto") into SMART_KALLISTO_DIRS 
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("qc") into SMART_QUANT_QC
-            file('quantification.log')    
-
-        """
-            for stage in aggregation scanpy bundle; do
-                rm -rf $SCXA_RESULTS/$expName/$species/\$stage
-            done
-
-            RESULTS_ROOT=\$PWD
-            SUBDIR="$expName/$species/quantification"     
-
-            mkdir -p $SCXA_WORK/\$SUBDIR
-            mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
-            mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-            pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
-
-            BRANCH=''
-            if [ -n "$SCXA_BRANCH" ]; then
-                BRANCH="-r $SCXA_BRANCH"
-            fi
-
-            nextflow run \
-                -config \$RESULTS_ROOT/$confFile \
-                --sdrf \$RESULTS_ROOT/$sdrfFile \
-                --referenceFasta \$RESULTS_ROOT/$referenceFasta \
-                --contaminationIndex $contaminationIndex \
-                --resultsRoot \$RESULTS_ROOT \
-                --enaSshUser $enaSshUser \
-                -resume \
-                scxa-smartseq-quantification-workflow \
-                -work-dir $SCXA_WORK/\$SUBDIR \
-                -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
-                -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
-                -N $SCXA_REPORT_EMAIL \
-                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-                \$BRANCH
-
-            if [ \$? -ne 0 ]; then
-                echo "Workflow failed for $expName - $species - scxa-${protocol}-quantification-workflow" 1>&2
-                exit 1
-            fi
-            
-            popd > /dev/null
-
-            cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
-       """
-    }
+process initialise_downloader {
     
-    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow
+    conda "${baseDir}/envs/atlas-fastq-provider.yml"
 
-    process droplet_quantify {
+    cache false
 
-        maxForks params.maxConcurrentQuantifications
-    
-        conda "${baseDir}/envs/nextflow.yml"
+    output:
+        val true into INIT_DONE
 
-        publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
-        
-        memory { 40.GB * task.attempt }
-        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+    """
+    initialiseDownload.sh ${baseDir}/params.config $NXF_TEMP/atlas-fastq-provider/download_config.sh $NXF_TEMP/atlas-fastq-provider/fastq_provider.probe 
+    """
+}
 
-        input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET
-            val flag from INIT_DONE_DROPLET
-
-        output:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file("alevin") into ALEVIN_DROPLET_DIRS
-
-        """
-        echo DROPLET WORKFLOW NOT READY YET 1>&2
-        exit 1
-        
-        Call alevin workflow
-        """
+INIT_DONE
+    .into{
+        INIT_DONE_SMART
+        INIT_DONE_DROPLET
     }
 
+// Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
+
+process smart_quantify {
+
+    maxForks params.maxConcurrentQuantifications
+
+    conda "${baseDir}/envs/nextflow.yml"
+
+    publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
+    
+    memory { 40.GB * task.attempt }
+    errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+    
+    input:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART
+        val flag from INIT_DONE_SMART
+
+    output:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("kallisto") into SMART_KALLISTO_DIRS 
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("qc") into SMART_QUANT_QC
+        file('quantification.log')    
+
+    """
+        for stage in aggregation scanpy bundle; do
+            rm -rf $SCXA_RESULTS/$expName/$species/\$stage
+        done
+
+        RESULTS_ROOT=\$PWD
+        SUBDIR="$expName/$species/quantification"     
+
+        mkdir -p $SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
+        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+
+        BRANCH=''
+        if [ -n "$SCXA_BRANCH" ]; then
+            BRANCH="-r $SCXA_BRANCH"
+        fi
+
+        nextflow run \
+            -config \$RESULTS_ROOT/$confFile \
+            --sdrf \$RESULTS_ROOT/$sdrfFile \
+            --referenceFasta \$RESULTS_ROOT/$referenceFasta \
+            --contaminationIndex $contaminationIndex \
+            --resultsRoot \$RESULTS_ROOT \
+            --enaSshUser $enaSshUser \
+            -resume \
+            scxa-smartseq-quantification-workflow \
+            -work-dir $SCXA_WORK/\$SUBDIR \
+            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+            -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
+            -N $SCXA_REPORT_EMAIL \
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+            \$BRANCH
+
+        if [ \$? -ne 0 ]; then
+            echo "Workflow failed for $expName - $species - scxa-${protocol}-quantification-workflow" 1>&2
+            exit 1
+        fi
+        
+        popd > /dev/null
+
+        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
+   """
+}
+
+// Run quantification with https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow
+
+process droplet_quantify {
+
+    maxForks params.maxConcurrentQuantifications
+
+    conda "${baseDir}/envs/nextflow.yml"
+
+    publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
+    
+    memory { 40.GB * task.attempt }
+    errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+
+    input:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET
+        val flag from INIT_DONE_DROPLET
+
+    output:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file("alevin") into ALEVIN_DROPLET_DIRS
+
+    """
+    echo DROPLET WORKFLOW NOT READY YET 1>&2
+    exit 1
+    
+    Call alevin workflow
+    """
 }
 
 SMART_KALLISTO_DIRS
@@ -423,11 +362,6 @@ SMART_KALLISTO_DIRS
     .set{ QUANTIFICATION_RESULTS }
 
 // Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
-
-//CONF_BY_META_FOR_AGGREGATION
-//    .join(SMART_KALLISTO_DIRS, by: [0,1])
-//    .join(REFERENCE_GTF_FOR_AGGREGATION, by: [0,1])
-//    .set{SMART_AGGREGATION_INPUTS}
 
 process aggregate {
     
