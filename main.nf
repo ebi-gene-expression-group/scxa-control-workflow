@@ -507,7 +507,7 @@ CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
     .map{ row-> tuple( row[0], row[1], row[3][0], row[6][0]) }
     .unique()
-    .join(COUNT_MATRICES, by: [0,1]
+    .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
 
 if ( tertiaryWorkflow == 'scanpy-workflow'){
