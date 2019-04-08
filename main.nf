@@ -593,7 +593,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 // depending on protocol
 
 TERTIARY_RESULTS
-    .join(TPM_MATRICES, remainder: true)
+    .join(TPM_MATRICES, remainder: true, by: [0,1])
     .set { BUNDLE_INPUTS } 
 
 process bundle {
