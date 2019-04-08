@@ -379,7 +379,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 \$BRANCH
 
             if [ \$? -ne 0 ]; then
-                echo "Workflow failed for $expName - $species - scxa-${wfType}-quantification-workflow" 1>&2
+                echo "Workflow failed for $expName - $species - scxa-${protocol}-quantification-workflow" 1>&2
                 exit 1
             fi
             
@@ -497,10 +497,14 @@ process aggregate {
 // for use in Scanpy as a filter. We only need one of the potentially multiple
 // per experiment (where multiple protocols are present), add we then need to
 // connect to the count matrix outputs- hence the incantations below.
+//
+// Note that we record the worfklow type (smartseq or droplet) for use in the
+// reporting in bundling. We assume that we don't mix SMART and droplet within
+// an experiment
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], row[3][0], row[6][0]) }
+    .map{ row-> tuple( row[0], row[1], dropletProtocols.contains(row[2][0]) ? 'droplet' : 'smartseq', row[3][0], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
@@ -518,10 +522,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), file(wfType), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), file(wfType), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -573,10 +577,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
     process spoof_tertiary {
         
         input:
-            set val(expName), val(species), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(wfType), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
+            set val(expName), val(species), val(wfType), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
 
         """
             mkdir -p matrices
@@ -605,7 +609,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(wfType), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -642,7 +646,7 @@ process bundle {
         fi 
 
         nextflow run \
-            --baseWorkflow scxa-${wfType}-quantification-workflow
+            --baseWorkflow scxa-${wfType}-quantification-workflow \
             --resultsRoot \$RESULTS_ROOT \
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
             --referenceFasta \$cdna_fasta \
