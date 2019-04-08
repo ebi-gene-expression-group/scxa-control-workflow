@@ -2,6 +2,7 @@
 
 sdrfDir = params.sdrfDir
 tertiaryWorkflow = params.tertiaryWorkflow
+dropletProtocols = [ '10xv1', '10xv1a', '10xv1i', '10xv2', 'drop-seq' ]
 
 enaSshUser = 'null'
 
@@ -78,8 +79,10 @@ process generate_config {
         set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF
 
     output:
-        set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
-        
+        //set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
+        file('*.conf') into CONF_FILES
+        file('*.sdrf.txt') into SDRF_FILES        
+
     """
     for stage in quantification aggregation scanpy bundle; do
         rm -rf $SCXA_RESULTS/$expName/*/\$stage
@@ -97,29 +100,97 @@ process generate_config {
     """
 }
 
-// Mark config files with species
+// Flatten configs (each experiment could return mutliple). Sort to make sure
+// the .conf and .sdrf files are matched, and then put them in the same channel
 
-process mark_conf_species {
-   
+CONF_FILES
+    toSortedList()
+    .flatten()
+    .set{FLAT_CONF_FILES}
+
+SDRF_FILES
+    toSortedList()
+    .flatten()
+    .set{FLAT_SDRF_FILES}
+
+FLAT_CONF_FILES
+    .merge( FLAT_SDRF_FILES ) 
+    .set{ CONF_SDRF }
+
+// Mark up files with metadata for grouping
+
+process markup_conf_files {
+
+    executor 'local'
+    
     conda 'pyyaml' 
- 
+    
     input:
-        set val(expName), file(confFile), file(sdrfFile) from CONFIG_FILES
+        set file(confFile), file(sdrfFile) from CONF_SDRF
 
     output:
-        set val(expName), stdout, file(confFile), file(sdrfFile) into CONF_BY_SPECIES
+        set file('expName'), file('species'), file('protocol'), file("out/$confFile"), file("out/$sdrfFile") into MARKUP_CONF_FILES
 
     """
-    parseNfConfig.py --paramFile $confFile --paramKeys params,organism
+        parseNfConfig.py --paramFile $confFile --paramKeys params,name > expName
+        parseNfConfig.py --paramFile $confFile --paramKeys params,organism > species
+        parseNfConfig.py --paramFile $confFile --paramKeys params,protocol > protcol
+
+        mkdir -p out
+        cp -p $confFile out/$confFile    
+        cp -p $sdrfFile out/$sdrfFile    
     """
 }
 
-CONF_BY_SPECIES
+MARKUP_CONF_FILES
+    .map{ row-> tuple( extractValue(row[0]), extractValue(row[1]), extractValue(row[2]), row[3], row[4]) }        
+    .set{ CONF_BY_META }
+
+CONF_BY_META
     .into{
-        COMBINED_CONFIG_FOR_REFERENCE
-        COMBINED_CONFIG_FOR_QUANTIFY
-        COMBINED_CONFIG_FOR_AGGREGATION
-        COMBINED_CONFIG_FOR_SCANPY
+        CONF_BY_META_FOR_REFERENCE
+        CONF_BY_META_FOR_QUANTIFY
+        CONF_BY_META_FOR_AGGREGATION
+        CONF_BY_META_FOR_SCANPY
+    }
+
+// Locate reference fines
+
+process add_reference {
+
+    conda 'pyyaml' 
+    
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
+
+    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
+
+    input:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile) from CONF_BY_META_FOR_REFERENCE
+    
+    output:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("*.fastq.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
+
+    """
+        species_conf=$SCXA_PRE_CONF/reference/${species}.conf
+        cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
+        cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
+
+        ln -s \$cdna_fasta
+        ln -s \$cdna_gtf
+        
+        contamination_index=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
+        if [ \$contamination_index != 'None' ]; then
+            printf $SCXA_DATA/contamination/\$contamination_index
+        else
+            echo None
+        fi
+    """
+}
+
+CONF_WITH_REFERENCE
+    .into{
+        CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
+        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     }
 
 // Prepare a reference depending on spikes
@@ -133,17 +204,13 @@ process prepare_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(expName), val(species), file(confFile), file(sdrfFile) from COMBINED_CONFIG_FOR_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
     
     output:
-        set val(expName), val(species), file("reference.fastq.gz") into REFERENCE_FASTA
-        set val(expName), val(species), file("reference.gtf.gz") into REFERENCE_GTF
-        set val(expName), val(species), stdout into CONTAMINATION_INDEX
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fastq.gz"), file("out/*.gtf.gz"), file("out/$contaminationIndex") into CONF_WITH_REFERENCE
 
     """
-    species_conf=$SCXA_PRE_CONF/reference/${species}.conf
-    cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
-    cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
+    mkdir -p out
     spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
 
     if [ \$spikes != 'None' ]; then
@@ -151,58 +218,51 @@ process prepare_reference {
         spikes_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
         spikes_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
         
-        cat \$cdna_fasta \$spikes_fasta > reference.fastq.gz
-        cat \$cdna_gtf \$spikes_gtf > reference.gtf.gz
+        cat \$cdna_fasta \$spikes_fasta > out/reference_with_spikes.fastq.gz
+        cat \$cdna_gtf \$spikes_gtf > out/reference_with_spikes.gtf.gz
     else
-        ln -s \$cdna_fasta reference.fastq.gz
-        ln -s \$cdna_gtf reference.gtf.gz
+        cp -p $referenceGtf $referenceFasta out
     fi
 
-    contamination_index=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
-    if [ \$contamination_index != 'None' ]; then
-        printf $SCXA_DATA/contamination/\$contamination_index
-    else
-        echo None
-    fi
-
+    cp -p $contaminationIndex out
     """
 }
 
-REFERENCE_GTF.into{
-    REFERENCE_GTF_FOR_AGGREGATION
-    REFERENCE_GTF_FOR_SCANPY
-}
+#REFERENCE_GTF.into{
+#    REFERENCE_GTF_FOR_AGGREGATION
+#    REFERENCE_GTF_FOR_SCANPY
+#}
 
-COMBINED_CONFIG_FOR_QUANTIFY
-    .join( REFERENCE_FASTA, by: [0,1] )
-    .join( CONTAMINATION_INDEX, by: [0,1] )
-    .set { QUANTIFICATION_INPUTS }
+//CONF_BY_META_FOR_QUANTIFY
+//    .join( REFERENCE_FASTA, by: [0,1] )
+//    .join( CONTAMINATION_INDEX, by: [0,1] )
+//    .set { QUANTIFICATION_INPUTS }
 
 // Select workflow for each experiment based on protocols
 
-process select_workflow{
+//process select_workflow{
 
-    conda 'pyyaml' 
+//    conda 'pyyaml' 
     
-    input:
-        set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from QUANTIFICATION_INPUTS
+//    input:
+//        set val(expName), val(species), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from QUANTIFICATION_INPUTS
 
-    output:
-        set val(expName), val(species), stdout, file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) into QUANTIFICATION_INPUTS_BY_WF
+//    output:
+//        set val(expName), val(species), stdout, file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) into QUANTIFICATION_INPUTS_BY_WF
 
-    """
-    protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
+//    """
+//    protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,sc_protocol)
 
-    if [ "\$protocol" == 'smart-seq' ] ||  [ "\$protocol" == 'smart-seq2' ] || [ "\$protocol" == 'smarter' ] || [ "\$protocol" == 'smart-like' ]; then
-        echo -n smartseq
-    elif [ "\$protocol" == '10xv2' ]  [ "\$protocol" == 'drop-seq' ] || [ "\$protocol" == 'smart-seq' ]; then
-        echo -n droplet
-    else
-        echo "Can't currently handle \$protocol experiments" 1>&2
-        exit 1
-    fi
-    """
-}
+//    if [ "\$protocol" == 'smart-seq' ] ||  [ "\$protocol" == 'smart-seq2' ] || [ "\$protocol" == 'smarter' ] || [ "\$protocol" == 'smart-like' ]; then
+//        echo -n smartseq
+//    elif [ "\$protocol" == '10xv2' ]  [ "\$protocol" == 'drop-seq' ] || [ "\$protocol" == 'smart-seq' ]; then
+//        echo -n droplet
+//    else
+//        echo "Can't currently handle \$protocol experiments" 1>&2
+//        exit 1
+//    fi
+//    """
+//}
 
 // Separate droplet and smart-type experiments
 
@@ -210,7 +270,7 @@ DROPLET = Channel.create()
 SMART = Channel.create()
 
 QUANTIFICATION_INPUTS_BY_WF.choice( SMART, DROPLET ) {a -> 
-    a[2] == 'droplet' ? 1 : 0
+    dropletProtocols.contains(a[2]) ? 1 : 0
 }
 
 // Allow a forcible skipping of the quantification phase. Useful if we've
@@ -222,11 +282,12 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
     process spoof_smart_quantify {
 
         input:
-            set val(expName), val(species), file(wfType), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from SMART
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART
+            //set val(expName), val(species), file(wfType), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from SMART
 
         output:
-            set val(expName), val(species), val(wfType), file ("kallisto/*") into SMART_KALLISTO_DIRS 
-            set val(expName), val(species), val(wfType), file ("qc/*") into SMART_QUANT_QC 
+            set val(expName), val(species), val(protocol), file ("kallisto/*") into SMART_KALLISTO_DIRS 
+            set val(expName), val(species), val(protocol, file ("qc/*") into SMART_QUANT_QC 
 
         """
             ln -s $SCXA_RESULTS/$expName/$species/quantification/kallisto .
@@ -268,19 +329,19 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         conda "${baseDir}/envs/nextflow.yml"
 
-        publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
+        publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
         
         memory { 40.GB * task.attempt }
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
         
         input:
-            set val(expName), val(species), val(wfType), file(confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from SMART
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART
             val flag from INIT_DONE_SMART
 
         output:
-            set val(expName), val(species), val(wfType), file ("kallisto") into SMART_KALLISTO_DIRS 
-            set val(expName), val(species), val(wfType), file ("qc") into SMART_QUANT_QC
-            set val(expName), val(species), val(wfType), file('quantification.log')    
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("kallisto") into SMART_KALLISTO_DIRS 
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("qc") into SMART_QUANT_QC
+            file('quantification.log')    
 
         """
             for stage in aggregation scanpy bundle; do
@@ -308,7 +369,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
                 --resultsRoot \$RESULTS_ROOT \
                 --enaSshUser $enaSshUser \
                 -resume \
-                scxa-${wfType}-quantification-workflow \
+                scxa-smartseq-quantification-workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -335,35 +396,41 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
     
         conda "${baseDir}/envs/nextflow.yml"
 
-        publishDir "$SCXA_RESULTS/$expName/$species/quantification", mode: 'copy', overwrite: true
+        publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
         
         memory { 40.GB * task.attempt }
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
         input:
-            set val(expName), val(species), val(wfType), file (confFile), file(sdrfFile), file(referenceFasta), val(contaminationIndex) from DROPLET
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET
             val flag from INIT_DONE_DROPLET
 
         output:
-            set val(expName), val(species), val(wfType), file("matrices/*_counts.zip"), file("NOTPM") into DROPLET_MATRICES
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file("alevin") into ALEVIN_DROPLET_DIRS
 
         """
+        echo DROPLET WORKFLOW NOT READY YET 1>&2
+        exit 1
+        
         Call alevin workflow
-
-        touch NOTPM
         """
     }
 
 }
 
+SMART_KALLISTO_DIRS
+    .concat(ALEVIN_DROPLET_DIRS)
+    .groupTuple( by: [0,1] )
+    .set{ QUANTIFICATION_RESULTS }
+
 // Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
 
-COMBINED_CONFIG_FOR_AGGREGATION
-    .join(SMART_KALLISTO_DIRS, by: [0,1])
-    .join(REFERENCE_GTF_FOR_AGGREGATION, by: [0,1])
-    .set{SMART_AGGREGATION_INPUTS}
+//CONF_BY_META_FOR_AGGREGATION
+//    .join(SMART_KALLISTO_DIRS, by: [0,1])
+//    .join(REFERENCE_GTF_FOR_AGGREGATION, by: [0,1])
+//    .set{SMART_AGGREGATION_INPUTS}
 
-process kallisto_aggregate {
+process aggregate {
     
     conda "${baseDir}/envs/nextflow.yml"
 
@@ -374,12 +441,12 @@ process kallisto_aggregate {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file (confFile), file(sdrfFile), file(wfType), file ('kallisto'), file(referenceGtf) from SMART_AGGREGATION_INPUTS   
+        set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from QUANTIFICATION_RESULTS   
 
     output:
-        set val(expName), val(species), val(wfType), file("matrices/*_counts.zip"), file("matrices/*_tpm.zip") into SMART_MATRICES
-        set val(expName), val(species), val(wfType),  file("matrices/*.stats.tsv") into SMART_KALLISTO_STATS
-        set val(expName), val(species), val(wfType),  file('matrices/aggregation.log')    
+        set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
+        set val(expName), val(species), file("matrices/tpm_mtx.zip") optional true into TPM_MATRICES
+        set val(expName), val(species), file("matrices/stats.tsv") optional true into KALLISTO_STATS
 
     """
         for stage in scanpy bundle; do
@@ -400,10 +467,8 @@ process kallisto_aggregate {
         fi
 
         nextflow run \
-            -config \$RESULTS_ROOT/$confFile \
             --resultsRoot \$RESULTS_ROOT \
-            --quantDir \$RESULTS_ROOT/kallisto \
-            --referenceGtf ${referenceGtf} \
+            --quantDir \$RESULTS_ROOT/quant_results \
             -resume \
             scxa-aggregation-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
@@ -425,21 +490,25 @@ process kallisto_aggregate {
     
 }
 
-SMART_MATRICES
-    .concat(DROPLET_MATRICES)
+COUNT_MATRICES
     .into{
-        MATRICES_FOR_SCANPY
-        MATRICES_FOR_BUNDLE
-    }
-
-// Set the inputs for tertiary analysis
-
-MATRICES_FOR_SCANPY
-    .join(COMBINED_CONFIG_FOR_SCANPY, by: [0,1])
-    .join(REFERENCE_GTF_FOR_SCANPY, by: [0,1])
-    .set { TERTIARY_INPUTS }
+        COUNT_MATRICES_FOR_SCANPY
+        COUNT_MATRICES_FOR_BUNDLE
+   }
 
 // Run Scanpy with https://github.com/ebi-gene-expression-group/scanpy-workflow
+    
+// Take the original reference GTF (before spikes or anything else were added),
+// for use in Scanpy as a filter. We only need one of the potentially multiple
+// per experiment (where multiple protocols are present), add we then need to
+// connect to the count matrix outputs- hence the incantations below.
+
+CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
+    .groupTuple( by: [0,1] )
+    .map{ row-> tuple( row[0], row[1], row[3][0], row[6][0]) }
+    .unique()
+    .join(COUNT_MATRICES, by: [0,1]
+    .set { TERTIARY_INPUTS }         
 
 if ( tertiaryWorkflow == 'scanpy-workflow'){
 
@@ -454,10 +523,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), file(wfType), file(countMatrix), file(tpmMatrix), file (confFile), file(sdrfFile), file(referenceGtf) from TERTIARY_INPUTS
+            set val(expName), val(species), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -497,6 +566,8 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             
             popd > /dev/null
 
+            cp -p ${countMatrix} matrices
+
             cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log scanpy.log
        """
         
@@ -507,22 +578,25 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
     process spoof_tertiary {
         
         input:
-            set val(expName), val(species), val(wfType), file(countMatrix), file(tpmMatrix), file (confFile), file(sdrfFile), file(referenceGtf) from TERTIARY_INPUTS
+            set val(expName), val(species), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
+            set val(expName), val(species), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
 
         """
+            mkdir -p matrices
+            cp -p ${countMatrix} matrices 
             touch NOFILT NONORM NOPCA NOCLUST NOUMAP NOTSNE NOMARKERS
         """
     }    
         
 }
 
-// Make a bundle from the outputs
+// Make a bundle from the outputs. We may or may not have a TPM matrix,
+// depending on protocol
 
-MATRICES_FOR_BUNDLE
-    .join(TERTIARY_RESULTS, by: [0,1])
+TERTIARY_RESULTS
+    .join(TPM_MATRICES, remainder: true)
     .set { BUNDLE_INPUTS } 
 
 process bundle {
@@ -536,7 +610,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(wfType), file(rawMatrix), file(tpmMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*') from BUNDLE_INPUTS
+        set val(expName), val(species), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -563,7 +637,7 @@ process bundle {
         fi
 
         TPM_OPTIONS=''
-        if [ "$wfType" == 'smart' ]; then
+        if [ "$tpmMatrix" != 'null' ]; then
             TPM_OPTIONS="--tpmMatrix ${tpmMatrix}"
         fi
 
