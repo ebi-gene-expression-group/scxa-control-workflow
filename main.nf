@@ -502,7 +502,7 @@ process aggregate {
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], dropletProtocols.contains(row[2][0]) ? 'droplet' : 'smartseq', row[3][0], row[6][0]) }
+    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
@@ -520,10 +520,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), file(wfType), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protcolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), file(wfType), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -575,10 +575,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
     process spoof_tertiary {
         
         input:
-            set val(expName), val(species), val(wfType), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(wfType), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList),  file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
 
         """
             mkdir -p matrices
@@ -607,7 +607,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(wfType), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -644,12 +644,11 @@ process bundle {
         fi 
 
         nextflow run \
-            --baseWorkflow scxa-${wfType}-quantification-workflow \
             --resultsRoot \$RESULTS_ROOT \
+            --protocolList ${protocolList}
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
-            --softwareTemplate ${baseDir}/conf/smartseq.software.tsv \
             -resume \
             scxa-bundle-workflow \
             -work-dir $SCXA_WORK/\$SUBDIR \
