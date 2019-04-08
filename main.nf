@@ -168,7 +168,7 @@ process add_reference {
         set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile) from CONF_BY_META_FOR_REFERENCE
     
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("*.fastq.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("*.fa.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
 
     """
         species_conf=$SCXA_PRE_CONF/reference/${species}.conf
@@ -207,7 +207,7 @@ process prepare_reference {
         set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
     
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fastq.gz"), file("out/*.gtf.gz"), file("out/$contaminationIndex") into CONF_WITH_PREPARED_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fa.gz"), file("out/*.gtf.gz"), file("out/$contaminationIndex") into CONF_WITH_PREPARED_REFERENCE
 
     """
     mkdir -p out
