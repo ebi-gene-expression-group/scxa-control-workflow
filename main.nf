@@ -490,12 +490,6 @@ process aggregate {
     
 }
 
-COUNT_MATRICES
-    .into{
-        COUNT_MATRICES_FOR_SCANPY
-        COUNT_MATRICES_FOR_BUNDLE
-   }
-
 // Run Scanpy with https://github.com/ebi-gene-expression-group/scanpy-workflow
     
 // Take the original reference GTF (before spikes or anything else were added),
