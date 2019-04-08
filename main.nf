@@ -645,7 +645,7 @@ process bundle {
 
         nextflow run \
             --resultsRoot \$RESULTS_ROOT \
-            --protocolList ${protocolList}
+            --protocolList ${protocolList} \
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
