@@ -287,7 +287,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
 
         output:
             set val(expName), val(species), val(protocol), file ("kallisto/*") into SMART_KALLISTO_DIRS 
-            set val(expName), val(species), val(protocol, file ("qc/*") into SMART_QUANT_QC 
+            set val(expName), val(species), val(protocol), file ("qc/*") into SMART_QUANT_QC 
 
         """
             ln -s $SCXA_RESULTS/$expName/$species/quantification/kallisto .
