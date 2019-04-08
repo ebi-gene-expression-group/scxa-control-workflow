@@ -104,12 +104,12 @@ process generate_config {
 // the .conf and .sdrf files are matched, and then put them in the same channel
 
 CONF_FILES
-    toSortedList()
+    .toSortedList()
     .flatten()
     .set{FLAT_CONF_FILES}
 
 SDRF_FILES
-    toSortedList()
+    .toSortedList()
     .flatten()
     .set{FLAT_SDRF_FILES}
 
