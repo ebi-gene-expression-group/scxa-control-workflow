@@ -269,7 +269,7 @@ process prepare_reference {
 DROPLET = Channel.create()
 SMART = Channel.create()
 
-QUANTIFICATION_INPUTS_BY_WF.choice( SMART, DROPLET ) {a -> 
+CONF_WITH_REFERENCE.choice( SMART, DROPLET ) {a -> 
     dropletProtocols.contains(a[2]) ? 1 : 0
 }
 
