@@ -134,7 +134,7 @@ process markup_conf_files {
     """
         parseNfConfig.py --paramFile $confFile --paramKeys params,name > expName
         parseNfConfig.py --paramFile $confFile --paramKeys params,organism > species
-        parseNfConfig.py --paramFile $confFile --paramKeys params,protocol > protcol
+        parseNfConfig.py --paramFile $confFile --paramKeys params,protocol > protocol
 
         mkdir -p out
         cp -p $confFile out/$confFile    
@@ -218,10 +218,11 @@ process prepare_reference {
         spikes_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
         spikes_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
         
-        cat \$cdna_fasta \$spikes_fasta > out/reference_with_spikes.fastq.gz
-        cat \$cdna_gtf \$spikes_gtf > out/reference_with_spikes.gtf.gz
+        cat \$cdna_fasta \$spikes_fasta > out/reference.fa.gz
+        cat \$cdna_gtf \$spikes_gtf > out/reference.gtf.gz
     else
-        cp -p $referenceGtf $referenceFasta out
+        cp -p $referenceGtf out/reference.gtf.gz
+        cp -p $referenceFasta out/reference.fa.gz
     fi
 
     cp -p $contaminationIndex out
