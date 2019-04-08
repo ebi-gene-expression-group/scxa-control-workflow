@@ -204,10 +204,10 @@ process prepare_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
     
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fa.gz"), file("out/*.gtf.gz"), file("out/$contaminationIndex") into CONF_WITH_PREPARED_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fa.gz"), file("out/*.gtf.gz"), val(contaminationIndex) into CONF_WITH_PREPARED_REFERENCE
 
     """
     mkdir -p out
@@ -224,8 +224,6 @@ process prepare_reference {
         cp -p $referenceGtf out/reference.gtf.gz
         cp -p $referenceFasta out/reference.fa.gz
     fi
-
-    cp -p $contaminationIndex out
     """
 }
 
