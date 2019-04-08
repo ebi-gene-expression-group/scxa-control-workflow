@@ -207,7 +207,7 @@ process prepare_reference {
         set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
     
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fastq.gz"), file("out/*.gtf.gz"), file("out/$contaminationIndex") into CONF_WITH_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fastq.gz"), file("out/*.gtf.gz"), file("out/$contaminationIndex") into CONF_WITH_PREPARED_REFERENCE
 
     """
     mkdir -p out
@@ -269,7 +269,7 @@ process prepare_reference {
 DROPLET = Channel.create()
 SMART = Channel.create()
 
-CONF_WITH_REFERENCE.choice( SMART, DROPLET ) {a -> 
+CONF_WITH_PREPARED_REFERENCE.choice( SMART, DROPLET ) {a -> 
     dropletProtocols.contains(a[2]) ? 1 : 0
 }
 
