@@ -143,7 +143,7 @@ process markup_conf_files {
 }
 
 MARKUP_CONF_FILES
-    .map{ row-> tuple( extractValue(row[0]), extractValue(row[1]), extractValue(row[2]), row[3], row[4]) }        
+    .map{ row-> tuple( extractValue(row[0].text), extractValue(row[1].text), extractValue(row[2].text), row[3], row[4]) }        
     .set{ CONF_BY_META }
 
 CONF_BY_META
