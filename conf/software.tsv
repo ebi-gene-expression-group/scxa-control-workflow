@@ -1,0 +1,2 @@
+Analysis	Software	Environment	Package	Citation
+Pipeline    Gene expression group single-cell analysis pipeline (Nextflow)	nextflow	nextflow	https://github.com/ebi-gene-expression-group/scxa_worflows
