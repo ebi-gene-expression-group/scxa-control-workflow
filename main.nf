@@ -81,7 +81,6 @@ process generate_config {
         set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF.take(params.numExpsAtOnce)
 
     output:
-        //set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
         file('*.conf') into CONF_FILES
         file('*.sdrf.txt') into SDRF_FILES        
 
@@ -289,7 +288,6 @@ process smart_quantify {
     output:
         set val(expName), val(species), val(protocol), file ("kallisto") into SMART_KALLISTO_DIRS 
         set val(expName), val(species), val(protocol), file ("qc") into SMART_QUANT_QC
-        //set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("qc") into SMART_QUANT_QC
         file('quantification.log')    
 
     """
