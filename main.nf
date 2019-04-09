@@ -225,8 +225,8 @@ process prepare_reference {
         spikes_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
         spikes_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
         
-        cat \$cdna_fasta \$spikes_fasta > out/reference.fa.gz
-        cat \$cdna_gtf \$spikes_gtf > out/reference.gtf.gz
+        cat $referenceFasta \$spikes_fasta > out/reference.fa.gz
+        cat $referenceGtf \$spikes_gtf > out/reference.gtf.gz
     else
         cp -p $referenceGtf out/reference.gtf.gz
         cp -p $referenceFasta out/reference.fa.gz
