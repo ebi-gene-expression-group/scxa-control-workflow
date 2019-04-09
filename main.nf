@@ -192,16 +192,8 @@ process add_reference {
 CONF_WITH_REFERENCE
     .into{
         CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
-        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
-    }
-
-CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
-    .into {
-        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT
         CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     }
-
-CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT.subscribe { println "value: $it" }
 
 // Prepare a reference depending on spikes
 
@@ -460,11 +452,27 @@ process aggregate {
 // an experiment
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
+    .into{
+        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT
+        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
+    }
+
+CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT.subscribe { println "value: $it" }
+
+COUNT_MATRICES
+    .into{
+        COUNT_MATRICES_FOO
+        COUNT_MATRICES_PRINT
+    }
+COUNT_MATRICES_PRINT.subscribe { println "value: $it" }
+
+CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
     .groupTuple( by: [0,1] )
     .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[6][0]) }
     .unique()
-    .join(COUNT_MATRICES, by: [0,1])
+    .join(COUNT_MATRICES_FOO, by: [0,1])
     .set { TERTIARY_INPUTS }         
+
 
 if ( tertiaryWorkflow == 'scanpy-workflow'){
 
