@@ -880,9 +880,9 @@ configs <- lapply(species_list, function(species){
       
       for (field_prefix in c('cdna read', 'cell barcode', 'umi barcode')){
         for (field_type in c('offset', 'size')){
+          field_label = gsub(' ', '_', paste(field_prefix, field_type))
           field_name <- getActualColnames(paste(field_prefix, field_type), sdrf)
           if (! is.null(field_name)){
-            field_label <- gsub(' ', '_', field_name)
             config <- c(config, paste0("        ", field_label, " = '", field_name, "'"))
           }
         }
