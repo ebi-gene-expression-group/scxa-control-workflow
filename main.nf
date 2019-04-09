@@ -192,8 +192,16 @@ process add_reference {
 CONF_WITH_REFERENCE
     .into{
         CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
+        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
+    }
+
+CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
+    .into {
+        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT
         CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     }
+
+CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT.subscribe { println "value: $it" }
 
 // Prepare a reference depending on spikes
 
