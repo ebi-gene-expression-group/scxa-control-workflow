@@ -76,7 +76,7 @@ process generate_config {
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
     input:
-        set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF
+        set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF.take(params.numExpsAtOnce)
 
     output:
         //set val(expName), file ('*.conf'), file('*.sdrf.txt') into CONFIG_FILES
