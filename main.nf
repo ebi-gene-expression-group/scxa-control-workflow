@@ -588,7 +588,7 @@ process bundle {
         fi
 
         TERTIARY_OPTIONS=''
-        if [ "$tertiaryWorkflow" == 'scanpy_workflow' ]; then
+        if [ "$tertiaryWorkflow" == 'scanpy-workflow' ]; then
             TERTIARY_OPTIONS = "--tertiaryWorkflow scxa-$tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
         fi 
 
