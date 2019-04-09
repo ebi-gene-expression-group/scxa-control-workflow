@@ -589,7 +589,7 @@ process bundle {
 
         TERTIARY_OPTIONS=''
         if [ "$tertiaryWorkflow" == 'scanpy-workflow' ]; then
-            TERTIARY_OPTIONS = "--tertiaryWorkflow scxa-$tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
+            TERTIARY_OPTIONS="--tertiaryWorkflow scxa-$tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
         fi 
 
         nextflow run \
