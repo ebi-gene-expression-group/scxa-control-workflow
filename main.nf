@@ -351,7 +351,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
         val flag from INIT_DONE_DROPLET
 
     output:
