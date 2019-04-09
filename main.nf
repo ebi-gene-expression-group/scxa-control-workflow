@@ -227,12 +227,18 @@ process prepare_reference {
     """
 }
 
+CONF_WITH_PREPARED_REFERENCE
+    .into{
+        CONF_FOR_QUANT
+        CONF_FOR_AGGR
+    }
+
 // Separate droplet and smart-type experiments
 
-DROPLET = Channel.create()
-SMART = Channel.create()
+DROPLET_CONF = Channel.create()
+SMART_CONF = Channel.create()
 
-CONF_WITH_PREPARED_REFERENCE.choice( SMART, DROPLET ) {a -> 
+CONF_FOR_QUANT.choice( SMART_CONF, DROPLET_CONF ) {a -> 
     dropletProtocols.contains(a[2]) ? 1 : 0
 }
 
@@ -269,18 +275,19 @@ process smart_quantify {
 
     conda "${baseDir}/envs/nextflow.yml"
 
-    publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
+    publishDir "$SCXA_RESULTS/$expName/$species/$quantification/protocol", mode: 'copy', overwrite: true
     
     memory { 40.GB * task.attempt }
     errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
     
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
         val flag from INIT_DONE_SMART
 
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("kallisto") into SMART_KALLISTO_DIRS 
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("qc") into SMART_QUANT_QC
+        set val(expName), val(species), val(protocol), file ("kallisto") into SMART_KALLISTO_DIRS 
+        set val(expName), val(species), val(protocol), file ("qc") into SMART_QUANT_QC
+        //set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file ("qc") into SMART_QUANT_QC
         file('quantification.log')    
 
     """
@@ -346,7 +353,7 @@ process droplet_quantify {
         val flag from INIT_DONE_DROPLET
 
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), file("alevin") into ALEVIN_DROPLET_DIRS
+        set val(expName), val(species), val(protocol), file("alevin") into ALEVIN_DROPLET_DIRS
 
     """
     echo DROPLET WORKFLOW NOT READY YET 1>&2
@@ -356,10 +363,18 @@ process droplet_quantify {
     """
 }
 
+// Collect the smart and droplet workflow results
+
 SMART_KALLISTO_DIRS
     .concat(ALEVIN_DROPLET_DIRS)
+    .set { QUANT_RESULTS }
+
+// Fetch the config to use in aggregation
+
+CONF_FOR_AGGR
+    .join ( QUANT_RESULTS, BY: [0,1,2] )
     .groupTuple( by: [0,1] )
-    .set{ QUANTIFICATION_RESULTS }
+    .set{ GROUPED_QUANTIFICATION_RESULTS }
 
 // Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
 
@@ -374,7 +389,7 @@ process aggregate {
     maxRetries 20
     
     input:
-        set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from QUANTIFICATION_RESULTS   
+        set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
     output:
         set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
