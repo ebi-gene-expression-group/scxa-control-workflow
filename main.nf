@@ -124,6 +124,8 @@ process markup_conf_files {
 
     executor 'local'
     
+    cache 'deep'
+    
     conda 'pyyaml' 
     
     input:
@@ -160,6 +162,8 @@ CONF_BY_META
 process add_reference {
 
     conda 'pyyaml' 
+    
+    cache 'deep'
     
     publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
 
@@ -199,6 +203,8 @@ CONF_WITH_REFERENCE
 process prepare_reference {
 
     conda 'pyyaml' 
+    
+    cache 'deep'
     
     publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
 
@@ -275,6 +281,8 @@ process smart_quantify {
     maxForks params.maxConcurrentQuantifications
 
     conda "${baseDir}/envs/nextflow.yml"
+    
+    cache 'deep'
 
     publishDir "$SCXA_RESULTS/$expName/$species/$quantification/protocol", mode: 'copy', overwrite: true
     
