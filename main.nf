@@ -51,7 +51,7 @@ process find_new_updated {
                 if [ $sdrfFile -nt "\$bundleManifest" ]; then
                     newExperiment=1
                 else
-                    species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-1)}' | tr -d \'\\n\')
+                    species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-2)}' | tr -d \'\\n\')
                     echo -e "\$expName\\t\$species\\t$SCXA_RESULTS/\$expName/\$species/bundle" > bundleLines.txt
                 fi
             done <<< "\$(echo -e "\$bundleManifests")"
