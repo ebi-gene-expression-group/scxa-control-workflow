@@ -595,7 +595,7 @@ process bundle {
         fi 
 
         nextflow run \
-            --masterWorkflow scxa-smartseq-workflow \
+            --masterWorkflow scxa-control-workflow \
             --resultsRoot \$RESULTS_ROOT \
             --protocolList ${protocolList} \
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
