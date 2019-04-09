@@ -3,8 +3,10 @@
 This is a Nextflow workflow which:
 
  * Derives configuration from an SDRF file
- * Generates quantifications using Kallisto
- * Runs downstream analysis using [Scanpy](https://scanpy.readthedocs.io/en/latest/), leveraging the [scanpy-scripts](https://github.com/ebi-gene-expression-group/scanpy-scripts) package to run individual steps of the Scanpy workflow.
+ * Determines protocol and associated settings
+ * Runs quantifications appropriate to the protocol 
+ * Aggregates resulting matrices
+ * If specified, Runs downstream analysis using [Scanpy](https://scanpy.readthedocs.io/en/latest/), leveraging the [scanpy-scripts](https://github.com/ebi-gene-expression-group/scanpy-scripts) package to run individual steps of the Scanpy workflow.
 
 It's actually a workflow-of-workflows comprising:
 
@@ -60,7 +62,7 @@ Future executions will use a cached copy of the pipeline, should you wish to upd
 nextflow pull ebi-gene-expression-group/scxa-smartseq-workflow
 ```
 
-#### Watcher mode:
+#### Production mode
 
 If you do not supply an experiment ID:
 
@@ -68,7 +70,7 @@ If you do not supply an experiment ID:
 nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --sdrfDir <sdrf dir> 
 ```
 
-Then the nextflow process will start, but it will 'watch' the SDRF directory for new files to run with.
+Then the nextflow process will start, and will analyse all experiemnts in the SDRF directory, to a limit specified in the configuration.
 
 ### Outputs
 
