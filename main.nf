@@ -20,7 +20,9 @@ if ( params.containsKey('expName')){
 }
 
 // Determine which SDRF files have up-to-date bundles. For new/ updated
-// experiments, output to the channel with the relevant IDF
+// experiments, output to the channel with the relevant IDF.
+// We don't want this process cached, since we need it to return a different
+// thing with the same inputs, depending on whether an existing bunle is found.
 
 process find_new_updated {
 
@@ -28,7 +30,7 @@ process find_new_updated {
     
     executor 'local'
 
-    cache 'lenient'
+    cache false
         
     input:
         file(sdrfFile) from SDRF
@@ -41,18 +43,18 @@ process find_new_updated {
         expName=\$(echo $sdrfFile | awk -F'.' '{print \$1}') 
         
         newExperiment=1
-        bundleLogs=\$(ls \$SCXA_RESULTS/\$expName/*/bundle.log 2>/dev/null || true)
+        bundleManifests=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST 2>/dev/null || true)
         
-        if [ -n "\$bundleLogs" ]; then
+        if [ -n "\$bundleManifests" ]; then
             newExperiment=0
-            while read -r bundleLog; do
-                if [ $sdrfFile -nt "\$bundleLog" ]; then
+            while read -r bundleManifest; do
+                if [ $sdrfFile -nt "\$bundleManifest" ]; then
                     newExperiment=1
                 else
-                    species=\$(echo \$bundleLog | awk -F'/' '{print \$(NF-1)}' | tr -d \'\\n\')
+                    species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-1)}' | tr -d \'\\n\')
                     echo -e "\$expName\\t\$species\\t$SCXA_RESULTS/\$expName/\$species/bundle" > bundleLines.txt
                 fi
-            done <<< "\$(echo -e "\$bundleLogs")"
+            done <<< "\$(echo -e "\$bundleManifests")"
         fi
 
         if [ \$newExperiment -eq 1 ]; then
