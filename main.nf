@@ -64,14 +64,14 @@ process find_new_updated {
     """
 }
 
-// Derive the config files. We cache based on input file size and path
-// ('lenient'). If we do run, we remove the downstream stored results,
-// triggering the sub-workflows (not normally re-run). These will then check
-// their own caches and re-run where required. 
+// Derive the config files. We cache based on content (deeply). If we do run,
+// we remove the downstream stored results, triggering the sub-workflows (not
+// normally re-run). These will then check their own caches and re-run where
+// required. 
 
 process generate_config {
 
-    cache 'lenient'
+    cache 'deep'
     
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
 
