@@ -374,7 +374,7 @@ SMART_KALLISTO_DIRS
 // Fetch the config to use in aggregation
 
 CONF_FOR_AGGR
-    .join ( QUANT_RESULTS, BY: [0,1,2] )
+    .join ( QUANT_RESULTS, by: [0,1,2] )
     .groupTuple( by: [0,1] )
     .set{ GROUPED_QUANTIFICATION_RESULTS }
 
