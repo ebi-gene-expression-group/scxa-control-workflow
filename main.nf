@@ -452,27 +452,11 @@ process aggregate {
 // an experiment
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
-    .into{
-        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT
-        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
-    }
-
-CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_PRINT.subscribe { println "value: $it" }
-
-COUNT_MATRICES
-    .into{
-        COUNT_MATRICES_FOO
-        COUNT_MATRICES_PRINT
-    }
-COUNT_MATRICES_PRINT.subscribe { println "value: $it" }
-
-CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY_FOO
     .groupTuple( by: [0,1] )
     .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[6][0]) }
     .unique()
-    .join(COUNT_MATRICES_FOO, by: [0,1])
+    .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
-
 
 if ( tertiaryWorkflow == 'scanpy-workflow'){
 
@@ -487,7 +471,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), val(protcolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
             set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
