@@ -295,7 +295,7 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
         """
     }
     
-    process droplet_quantify {
+    process spoof_droplet_quantify {
 
         input:
             set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
