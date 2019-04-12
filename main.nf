@@ -284,7 +284,7 @@ process smart_quantify {
     
     cache 'deep'
 
-    publishDir "$SCXA_RESULTS/$expName/$species/$quantification/protocol", mode: 'copy', overwrite: true
+    publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
     
     memory { 40.GB * task.attempt }
     errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
@@ -300,7 +300,7 @@ process smart_quantify {
 
     """
         for stage in aggregation scanpy bundle; do
-            rm -rf $SCXA_RESULTS/$expName/$species/\$stage
+            rm -rf $SCXA_RESULTS/$expName/$species/\$stage/$protocol
         done
 
         RESULTS_ROOT=\$PWD
@@ -351,7 +351,7 @@ process droplet_quantify {
 
     conda "${baseDir}/envs/nextflow.yml"
 
-    publishDir "$SCXA_RESULTS/$expName/$species/$protocol/quantification", mode: 'copy', overwrite: true
+    publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
     
     memory { 40.GB * task.attempt }
     errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
