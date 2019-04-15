@@ -550,6 +550,33 @@ if ( is.singlecell ) {
     "smarter" = c(),
     "smart-like" = c()
   )
+
+  droplet.protocol.defaults = list(
+    '10xv2' = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 10,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    '10xv3' = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 12,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    'drop-seq' = list(
+      'umi_barcode_offset' = 12,  
+      'umi_barcode_size' = 8,  
+      'cell_barcode_size' = 12,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    )
+  )
   
   # Consider any of the optional file fields that occur in the SDRF
  
@@ -879,17 +906,27 @@ configs <- lapply(species_list, function(species){
       }
 
       # Record the barcode position and offset fields
-      
-      for (field_prefix in c('cdna read', 'cell barcode', 'umi barcode')){
-        for (field_type in c('offset', 'size')){
-          field_label = gsub(' ', '_', paste(field_prefix, field_type))
-          field_name <- getActualColnames(paste(field_prefix, field_type), sdrf)
-          if (is.null(field_name)){
-            perror(paste(field_label, 'field not present'))
+     
+      droplet_fields_for_analysis <- c(apply(expand.grid(c('cdna read', 'cell barcode', 'umi barcode'), c('offset', 'size')), 1, function(x) paste(x, collapse=' ')), 'end')
+
+      for (dffa in droplet_fields_for_analysis){
+        field_label = gsub(' ', '_', dffa)
+        field_name = getActualColnames(dffa, sdrf)
+
+        if (is.null(field_name)){
+          if ( protocol %in% names(droplet.protocol.defaults) && field_label %in% names(droplet.protocol.defaults[[protocol]]) ){
+
+              # We can populate a field with the default value for the protocol if necessary
+
+              species.protocol.sdrf[[field_label]] <- droplet.protocol.defaults[[protocol]][[field_label]]
+              config <- c(config, paste0("        ", field_label, " = '", field_label, "'"))
+          }else{
+            perror(paste(field_label, 'field not present, and default not known for protocol', protocol))
             q(status=1)
-          else{
-            config <- c(config, paste0("        ", field_label, " = '", field_name, "'"))
           }
+
+        }else{
+          config <- c(config, paste0("        ", field_label, " = '", field_name, "'"))
         }
       }
 
