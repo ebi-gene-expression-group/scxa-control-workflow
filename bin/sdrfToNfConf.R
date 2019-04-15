@@ -192,9 +192,9 @@ organism.col <- getActualColnames('organism', sdrf)
 # Define protocols in case of single cell  
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
-supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","drop-seq")
+supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq")
 #supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv1","drop-seq","10xv1a")
-sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', 'drop-seq')
+sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq')
   
 # Check the protocol and use to determine single-cell
 
@@ -529,6 +529,7 @@ if ( is.singlecell ) {
     '10xv1a' = c('read1 file', 'read2 file', 'index1 file'),         
     '10xv1i' = c('read1 file', 'read2 file', 'index1 file'),
     '10xv2' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    '10xv3' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     'drop-seq' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
     "smart-seq" = 'fastq uri',
     "smart-seq2" = 'fastq uri',
@@ -543,6 +544,7 @@ if ( is.singlecell ) {
     '10xv1a' = c('index2 file'),         
     '10xv1i' = c('index2 file'),
     '10xv2' = c('index1 file'),
+    '10xv3' = c('index1 file'),
     'drop-seq' = c(),
     "smart-seq2" = c(),
     "smarter" = c(),
@@ -876,13 +878,16 @@ configs <- lapply(species_list, function(species){
           config <- c(config, paste0("        ", uri_field, " = '", uri_field, "'"))
       }
 
-      # Record the barcode position and offset fields where present
+      # Record the barcode position and offset fields
       
       for (field_prefix in c('cdna read', 'cell barcode', 'umi barcode')){
         for (field_type in c('offset', 'size')){
           field_label = gsub(' ', '_', paste(field_prefix, field_type))
           field_name <- getActualColnames(paste(field_prefix, field_type), sdrf)
-          if (! is.null(field_name)){
+          if (is.null(field_name)){
+            perror(paste(field_label, 'field not present'))
+            q(status=1)
+          else{
             config <- c(config, paste0("        ", field_label, " = '", field_name, "'"))
           }
         }
