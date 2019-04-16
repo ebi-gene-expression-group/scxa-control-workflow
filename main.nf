@@ -718,9 +718,13 @@ OLD_BUNDLE_LINES
         BUNDLE_LINES
     }
 
-// For each experiment and species with a completed bundle, remove the work dir
+// For each experiment and species with a completed bundle, remove the work
+// dir. This can take a little while for large experiments, so background the
+// process so future runs are not delayed.
 
 process cleanup {
+    
+    executor 'local'
     
     input:
         file(bundleLines) from BUNDLE_LINES
@@ -733,7 +737,7 @@ process cleanup {
     cat ${bundleLines} | while read -r l; do
         expName=\$(echo "\$l" | awk '{print \$1}')
         species=\$(echo "\$l" | awk '{print \$2}')
-        rm -rf $SCXA_WORK/\$expName/\$species
+        nohup rm -rf $SCXA_WORK/\$expName/\$species
     done
     touch .cleaned
     """
