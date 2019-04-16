@@ -2,7 +2,7 @@
 
 sdrfDir = params.sdrfDir
 tertiaryWorkflow = params.tertiaryWorkflow
-dropletProtocols = [ '10xv1', '10xv1a', '10xv1i', '10xv2', 'drop-seq' ]
+dropletProtocols = [ '10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq' ]
 
 enaSshUser = 'null'
 
