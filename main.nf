@@ -22,7 +22,7 @@ if ( params.containsKey('expName')){
 // Determine which SDRF files have up-to-date bundles. For new/ updated
 // experiments, output to the channel with the relevant IDF.
 // We don't want this process cached, since we need it to return a different
-// thing with the same inputs, depending on whether an existing bunle is found.
+// thing with the same inputs, depending on whether an existing bundle is found.
 
 process find_new_updated {
 
@@ -51,7 +51,7 @@ process find_new_updated {
                 if [ $sdrfFile -nt "\$bundleManifest" ]; then
                     newExperiment=1
                 else
-                    species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-2)}' | tr -d \'\\n\')
+                    species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-1)}' | tr -d \'\\n\')
                     echo -e "\$expName\\t\$species\\t$SCXA_RESULTS/\$expName/\$species/bundle" > bundleLines.txt
                 fi
             done <<< "\$(echo -e "\$bundleManifests")"
@@ -157,7 +157,7 @@ CONF_BY_META
         CONF_BY_META_FOR_SCANPY
     }
 
-// Locate reference fines
+// Locate reference files
 
 process add_reference {
 
@@ -284,7 +284,7 @@ process smart_quantify {
     
     cache 'deep'
 
-    publishDir "$SCXA_RESULTS/$expName/$species/$quantification/protocol", mode: 'copy', overwrite: true
+    publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
     
     memory { 40.GB * task.attempt }
     errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
@@ -457,9 +457,10 @@ process aggregate {
 // reporting in bundling. We assume that we don't mix SMART and droplet within
 // an experiment
 
+//Etienne: I added the sdrf file to TERTIARY_INPUTS (row[4] of CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY) because I use it to add metadata to the anndata matrix produced by Scanpy.
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[6][0]) }
+    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0],row[4][0], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
@@ -477,7 +478,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protocolList), file(confFile),file(sdrfFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
             set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
@@ -504,6 +505,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 --resultsRoot \$RESULTS_ROOT \
                 --gtf \$RESULTS_ROOT/${referenceGtf} \
                 --matrix \$RESULTS_ROOT/${countMatrix} \
+                --sdrf \$RESULTS_ROOT/${sdrfFile} \
                 -resume \
                 scanpy-workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
