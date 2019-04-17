@@ -284,6 +284,8 @@ INIT_DONE
 if ( skipQuantification == 'yes'){
 
     process spoof_quantify {
+        
+        executor 'local'
 
         input:
             set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
@@ -464,9 +466,9 @@ CONF_FOR_AGGR
 
 if (skipAggregation == 'yes' ){
 
-    executor 'local'
-    
     process spoof_aggregate {
+    
+        executor 'local'
         
         input:
             set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
