@@ -654,11 +654,6 @@ process bundle {
         RESULTS_ROOT=\$PWD
         SUBDIR="$expName/$species/bundle"     
 
-        mkdir -p $SCXA_WORK/\$SUBDIR
-        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
-        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
-    
         # Retrieve the original reference file names to report to bundle 
         species_conf=$SCXA_PRE_CONF/reference/${species}.conf
         cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
@@ -677,8 +672,13 @@ process bundle {
 
         TERTIARY_OPTIONS=''
         if [ "$tertiaryWorkflow" == 'scanpy-workflow' ]; then
-            TERTIARY_OPTIONS="--tertiaryWorkflow scxa-$tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
+            TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
         fi 
+        
+        mkdir -p $SCXA_WORK/\$SUBDIR
+        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
+        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
             --masterWorkflow scxa-control-workflow \
