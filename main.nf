@@ -106,10 +106,6 @@ process generate_config {
         --idf=$idfFile \
         --name=$expName \
         --verbose
-
-    for f in *.conf; do
-        echo "includeConfig '${baseDir}/params.config'" | cat - \$f > \$f.tmp && mv \$f.tmp \$f
-    done
     """
 }
 
@@ -149,11 +145,20 @@ process markup_conf_files {
     """
         parseNfConfig.py --paramFile $confFile --paramKeys params,name > expName
         parseNfConfig.py --paramFile $confFile --paramKeys params,organism > species
-        parseNfConfig.py --paramFile $confFile --paramKeys params,protocol > protocol
+        protocol=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,protocol)
+        echo -n \$protocol > protocol
 
         mkdir -p out
         cp -p $confFile out/$confFile    
         cp -p $sdrfFile out/$sdrfFile    
+        
+        protocolConfig=${baseDir}/conf/protocol/${protocol}.config
+        if [ ! -e \$protocolConfig ]; then
+            echo "\$protocolConfig does not exist" 1>&2
+            exit 1
+        fi 
+
+        echo "includeConfig '\$protocolConfig'" | cat - $confFile > out/${confFile}.tmp && mv out/${confFile}.tmp out/${confFile}
     """
 }
 
