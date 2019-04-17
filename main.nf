@@ -12,6 +12,16 @@ if ( params.containsKey('enaSshUser') ){
     enaSshUser = params.enaSshUser
 }
 
+skipQuantification = 'no'
+if ( params.containsKey('skipQuantification') && params.skipQuantification == 'yes'){
+    skipQuantification = 'yes'
+}
+
+skipAggregation = 'no'
+if ( params.containsKey('skipAggregation') && params.skipAggregation == 'yes'){
+    skipAggregation = 'yes'
+}
+
 // If user has supplied an experiment ID, then just run for that experiment.
 // Otherwise, watch the SDRF directory for incoming SDRF files
 
@@ -242,15 +252,6 @@ CONF_WITH_PREPARED_REFERENCE
         CONF_FOR_AGGR
     }
 
-// Separate droplet and smart-type experiments
-
-DROPLET_CONF = Channel.create()
-SMART_CONF = Channel.create()
-
-CONF_FOR_QUANT.choice( SMART_CONF, DROPLET_CONF ) {a -> 
-    dropletProtocols.contains(a[2]) ? 1 : 0
-}
-
 // Make a configuration for the Fastq provider, and make initial assessment
 // of the available ENA download methods. This establishes a mock
 // dependency with the quantify process, as per
@@ -280,41 +281,36 @@ INIT_DONE
 // If we just want to run tertiary using our published quantification results
 // from previous runs, we can do that
 
-if ( params.containsKey('skipQuantification') && params.skipQuantification == 'yes'){
+if ( skipQuantification == 'yes'){
 
-    process spoof_smart_quantify {
-
-        input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
-
-        output:
-            set val(expName), val(species), val(protocol), file ("kallisto/*") into SMART_KALLISTO_DIRS 
-            set val(expName), val(species), val(protocol), file ("qc/*") into SMART_QUANT_QC 
-
-        """
-            ln -s $SCXA_RESULTS/$expName/$species/quantification/kallisto .
-            ln -s $SCXA_RESULTS/$expName/$species/quantification/qc .
-        """
-    }
-    
-    process spoof_droplet_quantify {
+    process spoof_quantify {
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
 
         output:
-            set val(expName), val(species), val(protocol), file("alevin") into ALEVIN_DROPLET_DIRS
-            file('quantification.log')    
+            set val(expName), val(species), val(protocol), file("results/*") into QUANT_RESULTS
 
         """
-            ln -s $SCXA_RESULTS/$expName/$species/quantification/alevin .
-            ln -s $SCXA_RESULTS/$expName/$species/quantification/qc .
-
+            mkdir -p results
+            for PROG in alevin kallisto; do
+                if [ -e $SCXA_RESULTS/$expName/$species/quantification/$protocol/\$PROG ]; then
+                    ln -s $SCXA_RESULTS/$expName/$species/quantification/$protocol/\$PROG results/\$PROG
+                fi
+            done
         """
     }
 
 }else{
 
+    // Separate droplet and smart-type experiments
+
+    DROPLET_CONF = Channel.create()
+    SMART_CONF = Channel.create()
+
+    CONF_FOR_QUANT.choice( SMART_CONF, DROPLET_CONF ) {a -> 
+        dropletProtocols.contains(a[2]) ? 1 : 0
+    }
 
     // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
 
@@ -450,13 +446,14 @@ if ( params.containsKey('skipQuantification') && params.skipQuantification == 'y
             cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log quantification.log
         """
     }
+
+    // Collect the smart and droplet workflow results
+
+    SMART_KALLISTO_DIRS
+        .concat(ALEVIN_DROPLET_DIRS)
+        .set { QUANT_RESULTS }
 }
 
-// Collect the smart and droplet workflow results
-
-SMART_KALLISTO_DIRS
-    .concat(ALEVIN_DROPLET_DIRS)
-    .set { QUANT_RESULTS }
 
 // Fetch the config to use in aggregation
 
@@ -465,66 +462,87 @@ CONF_FOR_AGGR
     .groupTuple( by: [0,1] )
     .set{ GROUPED_QUANTIFICATION_RESULTS }
 
-// Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
+if (skipAggregation == 'yes' ){
 
-process aggregate {
+    executor 'local'
     
-    conda "${baseDir}/envs/nextflow.yml"
-
-    publishDir "$SCXA_RESULTS/$expName/$species/aggregation", mode: 'copy', overwrite: true
-    
-    memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
-    maxRetries 20
-    
-    input:
-        set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
-
-    output:
-        set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
-        set val(expName), val(species), file("matrices/tpm_mtx.zip") optional true into TPM_MATRICES
-        set val(expName), val(species), file("matrices/stats.tsv") optional true into KALLISTO_STATS
-
-    """
-        for stage in scanpy bundle; do
-            rm -rf $SCXA_RESULTS/$expName/$species/\$stage
-        done
+    process spoof_aggregate {
         
-        RESULTS_ROOT=\$PWD
-        SUBDIR="$expName/$species/aggregation"     
+        input:
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
-        mkdir -p $SCXA_WORK/\$SUBDIR
-        mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
-        mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
-        pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
-
-        BRANCH=''
-        if [ -n "$SCXA_BRANCH" ]; then
-            BRANCH="-r $SCXA_BRANCH"
-        fi
-
-        nextflow run \
-            --resultsRoot \$RESULTS_ROOT \
-            --quantDir \$RESULTS_ROOT/quant_results \
-            -resume \
-            scxa-aggregation-workflow \
-            -work-dir $SCXA_WORK/\$SUBDIR \
-            -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
-            -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
-            -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            \$BRANCH
-
-        if [ \$? -ne 0 ]; then
-            echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
-            exit 1
-        fi
-        
-        popd > /dev/null
-
-        cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log matrices/aggregation.log
-   """
+        output:
+            set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
+            set val(expName), val(species), file("matrices/tpm_mtx.zip") optional true into TPM_MATRICES
+            set val(expName), val(species), file("matrices/stats.tsv") optional true into KALLISTO_STATS
     
+        """
+            ln -s $SCXA_RESULTS/$expName/$species/aggregation/matrices 
+        """
+    }
+
+}else{
+
+    // Run aggregation with https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow
+
+    process aggregate {
+        
+        conda "${baseDir}/envs/nextflow.yml"
+
+        publishDir "$SCXA_RESULTS/$expName/$species/aggregation", mode: 'copy', overwrite: true
+        
+        memory { 4.GB * task.attempt }
+        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+        maxRetries 20
+        
+        input:
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+
+        output:
+            set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
+            set val(expName), val(species), file("matrices/tpm_mtx.zip") optional true into TPM_MATRICES
+            set val(expName), val(species), file("matrices/stats.tsv") optional true into KALLISTO_STATS
+
+        """
+            for stage in scanpy bundle; do
+                rm -rf $SCXA_RESULTS/$expName/$species/\$stage
+            done
+            
+            RESULTS_ROOT=\$PWD
+            SUBDIR="$expName/$species/aggregation"     
+
+            mkdir -p $SCXA_WORK/\$SUBDIR
+            mkdir -p $SCXA_NEXTFLOW/\$SUBDIR
+            mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
+            pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
+
+            BRANCH=''
+            if [ -n "$SCXA_BRANCH" ]; then
+                BRANCH="-r $SCXA_BRANCH"
+            fi
+
+            nextflow run \
+                --resultsRoot \$RESULTS_ROOT \
+                --quantDir \$RESULTS_ROOT/quant_results \
+                -resume \
+                scxa-aggregation-workflow \
+                -work-dir $SCXA_WORK/\$SUBDIR \
+                -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
+                -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
+                -N $SCXA_REPORT_EMAIL \
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
+                \$BRANCH
+
+            if [ \$? -ne 0 ]; then
+                echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
+                exit 1
+            fi
+            
+            popd > /dev/null
+
+            cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log matrices/aggregation.log
+       """
+    }
 }
 
 // Run Scanpy with https://github.com/ebi-gene-expression-group/scanpy-workflow
