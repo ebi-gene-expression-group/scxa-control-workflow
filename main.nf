@@ -483,6 +483,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         output:
             set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
+	    file("anndata_merged.h5ad")
 
         """
             rm -rf $SCXA_RESULTS/$expName/$species/bundle
