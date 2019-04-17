@@ -671,7 +671,7 @@ process bundle {
 
         TPM_OPTIONS=''
         tpm_filesize=\$(stat --printf="%s" \$(readlink ${tpmMatrix}))
-        if [ "$tpmMatrix" != 'null' ] && [ $tpm_filesize -gt 0 ]; then
+        if [ "$tpmMatrix" != 'null' ] && [ \$tpm_filesize -gt 0 ]; then
             TPM_OPTIONS="--tpmMatrix ${tpmMatrix}"
         fi
 
