@@ -2,6 +2,8 @@
 
 sdrfDir = params.sdrfDir
 tertiaryWorkflow = params.tertiaryWorkflow
+overwrite = params.overwrite
+
 dropletProtocols = [ '10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq' ]
 
 enaSshUser = 'null'
@@ -44,8 +46,8 @@ process find_new_updated {
         
         newExperiment=1
         bundleManifests=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST 2>/dev/null || true)
-        
-        if [ -n "\$bundleManifests" ]; then
+       
+        if [ -n "\$bundleManifests" ] && [ "$overwrite" -ne 'yes' ]; then
             newExperiment=0
             while read -r bundleManifest; do
                 if [ $sdrfFile -nt "\$bundleManifest" ]; then
