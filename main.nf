@@ -616,7 +616,6 @@ process bundle {
             -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
             -N $SCXA_REPORT_EMAIL \
             -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            \$BRANCH
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scxa-bundle-workflow" 1>&2
