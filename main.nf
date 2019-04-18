@@ -106,6 +106,11 @@ process generate_config {
         --idf=$idfFile \
         --name=$expName \
         --verbose
+
+    for f in *.conf; do
+        echo "includeConfig '${baseDir}/params.config'" | cat - \$f > \$f.tmp && mv \$f.tmp \$f
+    done
+
     """
 }
 
