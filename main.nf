@@ -342,7 +342,7 @@ if ( skipQuantification == 'yes'){
 
         publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
         
-        memory { 40.GB * task.attempt }
+        memory { 20.GB * task.attempt }
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
         
         input:
