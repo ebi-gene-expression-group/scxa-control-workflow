@@ -97,7 +97,15 @@ process generate_config {
         file('*.sdrf.txt') into SDRF_FILES        
 
     """
-    for stage in quantification aggregation scanpy bundle; do
+    # Only remove downstream results where we're not re-using them
+    reset_stages=scanpy bundle
+    if [ "$skipQuantification" == 'no' ]; then
+        reset_stages="quantification \$reset_stages"
+    elif [ "$skipAggregation" = 'no' ]; then 
+        reset_stages="aggregation \$reset_stages"
+    fi
+
+    for stage in \$reset_stages; do
         rm -rf $SCXA_RESULTS/$expName/*/\$stage
     done
 
@@ -106,11 +114,6 @@ process generate_config {
         --idf=$idfFile \
         --name=$expName \
         --verbose
-
-    for f in *.conf; do
-        echo "includeConfig '${baseDir}/params.config'" | cat - \$f > \$f.tmp && mv \$f.tmp \$f
-    done
-
     """
 }
 
@@ -163,7 +166,10 @@ process markup_conf_files {
             exit 1
         fi 
 
-        echo "includeConfig '\$protocolConfig'" | cat - $confFile > out/${confFile}.tmp && mv out/${confFile}.tmp out/${confFile}
+        echo "includeConfig '${baseDir}/params.config'" >> out/${confFile}.tmp
+        echo "includeConfig '\$protocolConfig'" >> out/${confFile}.tmp
+        cat $confFile >> out/${confFile}.tmp
+        mv out/${confFile}.tmp out/${confFile}
     """
 }
 
