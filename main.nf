@@ -98,7 +98,7 @@ process generate_config {
 
     """
     # Only remove downstream results where we're not re-using them
-    reset_stages=scanpy bundle
+    reset_stages='scanpy bundle'
     if [ "$skipQuantification" == 'no' ]; then
         reset_stages="quantification \$reset_stages"
     elif [ "$skipAggregation" = 'no' ]; then 
