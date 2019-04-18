@@ -157,7 +157,7 @@ process markup_conf_files {
         cp -p $confFile out/$confFile    
         cp -p $sdrfFile out/$sdrfFile    
         
-        protocolConfig=${baseDir}/conf/protocol/\${protocol}.config
+        protocolConfig=${baseDir}/conf/protocol/\${protocol}.conf
         if [ ! -e \$protocolConfig ]; then
             echo "\$protocolConfig does not exist" 1>&2
             exit 1
