@@ -379,6 +379,7 @@ if ( skipQuantification == 'yes'){
                 --contaminationIndex $contaminationIndex \
                 --resultsRoot \$RESULTS_ROOT \
                 --enaSshUser $enaSshUser \
+                --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
                 scxa-smartseq-quantification-workflow \
                 -work-dir $SCXA_WORK/\$SUBDIR \
