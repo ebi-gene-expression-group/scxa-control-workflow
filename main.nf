@@ -753,7 +753,7 @@ process bundle {
 
 OLD_BUNDLE_LINES
     .concat ( NEW_BUNDLE_LINES )
-    .collectFile(name: 'all.done.txt', sort: true, storeDir: "$SCXA_RESULTS")
+    .collectFile(name: 'these.all.done.txt', sort: true)
     .set{
         BUNDLE_LINES
     }
@@ -766,11 +766,13 @@ process cleanup {
     
     executor 'local'
     
+    publishDir "$SCXA_RESULTS", mode: 'copy', overwrite: true
+    
     input:
         file(bundleLines) from BUNDLE_LINES
     
     output:
-        file('.cleaned')
+        file('all.done.txt')
 
     """
     touch $SCXA_WORK/.success
@@ -779,7 +781,7 @@ process cleanup {
         species=\$(echo "\$l" | awk '{print \$2}')
         nohup rm -rf $SCXA_WORK/\$expName/\$species
     done
-    touch .cleaned
+    cp $bundleLines all.done.txt
     """
 }
 
