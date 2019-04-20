@@ -71,9 +71,12 @@ process find_new_updated {
             done <<< "\$(echo -e "\$bundleManifests")"
         fi
 
+        set +e
         grep -P "\$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
+        excludeStatus=$?
+        set -e
 
-        if [ \$? -ne 0 ] && [ \$newExperiment -eq 1 ]; then
+        if [ \$excludeStatus -ne 0 ] && [ \$newExperiment -eq 1 ]; then
             cp $sdrfDir/\${expName}.idf.txt .
             echo \$expName | tr -d \'\\n\'
         fi
