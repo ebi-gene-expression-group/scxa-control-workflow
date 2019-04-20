@@ -93,6 +93,8 @@ process generate_config {
     cache 'deep'
     
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
+    
+    errorStrategy 'ignore'
 
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
