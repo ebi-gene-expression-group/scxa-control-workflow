@@ -35,6 +35,8 @@ if ( params.containsKey('expName')){
 // experiments, output to the channel with the relevant IDF.
 // We don't want this process cached, since we need it to return a different
 // thing with the same inputs, depending on whether an existing bunle is found.
+// Note that we also exclude any experiments placed manually in the excluded.txt
+// file.
 
 process find_new_updated {
 
@@ -69,7 +71,9 @@ process find_new_updated {
             done <<< "\$(echo -e "\$bundleManifests")"
         fi
 
-        if [ \$newExperiment -eq 1 ]; then
+        grep -P "\$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
+
+        if [ $? -ne 0 ] && [ \$newExperiment -eq 1 ]; then
             cp $sdrfDir/\${expName}.idf.txt .
             echo \$expName | tr -d \'\\n\'
         fi
