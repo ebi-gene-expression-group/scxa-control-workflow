@@ -73,7 +73,7 @@ process find_new_updated {
 
         set +e
         grep -P "\$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
-        excludeStatus=$?
+        excludeStatus=\$?
         set -e
 
         if [ \$excludeStatus -ne 0 ] && [ \$newExperiment -eq 1 ]; then
