@@ -90,6 +90,8 @@ process find_new_updated {
 
 process generate_config {
 
+    executor 'local'
+    
     cache 'deep'
     
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
