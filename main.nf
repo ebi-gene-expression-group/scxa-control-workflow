@@ -518,11 +518,13 @@ if (skipAggregation == 'yes' ){
     process aggregate {
         
         conda "${baseDir}/envs/nextflow.yml"
+        
+        maxForks 3
 
         publishDir "$SCXA_RESULTS/$expName/$species/aggregation", mode: 'copy', overwrite: true
         
         memory { 4.GB * task.attempt }
-        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3 ? 'retry' : 'finish' }
         maxRetries 20
         
         input:
