@@ -517,7 +517,7 @@ if (skipAggregation == 'yes' ){
         
         conda "${baseDir}/envs/nextflow.yml"
         
-        maxForks 3
+        maxForks 6
 
         publishDir "$SCXA_RESULTS/$expName/$species/aggregation", mode: 'copy', overwrite: true
         
