@@ -550,8 +550,11 @@ if (skipAggregation == 'yes' ){
             if [ -n "$SCXA_BRANCH" ]; then
                 BRANCH="-r $SCXA_BRANCH"
             fi
-
+        
+            species_conf=$SCXA_PRE_CONF/reference/${species}.conf
+            
             nextflow run \
+                -config \$species_conf \
                 --resultsRoot \$RESULTS_ROOT \
                 --quantDir \$RESULTS_ROOT/quant_results \
                 -resume \
