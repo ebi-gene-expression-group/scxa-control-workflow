@@ -883,6 +883,11 @@ configs <- lapply(species_list, function(species){
       # Right now we need umi and cell barcodes to be in the same file. Might be
       # different when we start to handle 10xv1
 
+      if ( length(umi_field) == 0 || length(cb_field) == 0 ){
+        perror('UMI barcode read or cell barcode read fields not supplied')
+        q(status=1)
+      }
+
       if ( any(sdrf[[umi_field]] != sdrf[[cb_field]]) ){
           perror("Cell barcodes and UMIs must be in the same file for currently enabled droplet protocols")
           q(status=1)
