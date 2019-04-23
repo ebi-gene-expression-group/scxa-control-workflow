@@ -47,7 +47,7 @@ process find_new_updated {
     cache false
         
     input:
-        file(sdrfFile) from SDRF.take(params.numExpsConsidered)
+        file(sdrfFile) from SDRF
 
     output:
         set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
