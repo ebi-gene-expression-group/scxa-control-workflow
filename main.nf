@@ -47,7 +47,7 @@ process find_new_updated {
     cache false
         
     input:
-        file(sdrfFile) from SDRF
+        file(sdrfFile) from SDRF.take(params.numExpsConsidered)
 
     output:
         set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
@@ -99,7 +99,7 @@ process generate_config {
     conda 'r-optparse r-data.table r-workflowscriptscommon'
 
     input:
-        set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF.take(params.numExpsAtOnce)
+        set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF.take(params.numExpsProcessedAtOnce)
 
     output:
         file('*.conf') into CONF_FILES
