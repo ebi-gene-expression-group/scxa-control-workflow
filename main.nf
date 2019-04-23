@@ -662,6 +662,8 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 }else{
     
     process spoof_tertiary {
+    
+        executor 'local'
         
         input:
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
