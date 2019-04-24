@@ -383,9 +383,12 @@ if ( !is.null(opt$idf_file) ) {
   }
     
   ## and match the sdrf. Ignore single cell identifier when validating against SDRF- it's not a real factor 
-    
-  if (any(sort(setdiff(idf.factors, sc.identifier.col)) != sort(setdiff(factors, sc.identifier.col)))){
-    perror("SDRF/IDF inconsistency: factor values do not match")
+ 
+  idf.factors.comp <- sort(setdiff(idf.factors, c(sc.identifier.col, normalize.cols(sc.identifier.col))))
+  sdrf.factors.comp <- sort(setdiff(factors, c(sc.identifier.col, normalize.cols(sc.identifier.col))))
+ 
+  if ( length(idf.factors.comp) != length(sdrf.factors.comp) || any( idf.factors.comp != sdrf.factors.comp )){
+    perror(paste("SDRF/IDF inconsistency: IDF factors (", paste(idf.factors.comp, collapse=','),") do not match (SDRF factors", paste(sdrf.factors.comp, collapse=','), ')'))
     q(status=1)
   }
   
