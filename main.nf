@@ -224,7 +224,7 @@ process add_reference {
         if [ \$contamination_index != 'None' ]; then
             printf $SCXA_DATA/contamination/\$contamination_index
         else
-            echo None
+            echo -n None
         fi
     """
 }
@@ -381,11 +381,15 @@ if ( skipQuantification == 'yes'){
                 BRANCH="-r $SCXA_BRANCH"
             fi
 
+            CONT_INDEX=''
+            if [ "$contaminationIndex" != 'None' ]; then
+                CONT_INDEX="--contaminationIndex $contaminationIndex"
+            fi 
+
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
-                --referenceFasta \$RESULTS_ROOT/$referenceFasta \
-                --contaminationIndex $contaminationIndex \
+                --referenceFasta \$RESULTS_ROOT/$referenceFasta \$CONT_INDEX \
                 --resultsRoot \$RESULTS_ROOT \
                 --enaSshUser $enaSshUser \
                 --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
