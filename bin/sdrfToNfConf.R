@@ -808,7 +808,7 @@ if ( opt$check_only ) {
 # Now generate config and metadata
 
 # Silly device to make sure the list output in the subsetquent step is named correctly
-species_list <- list(names(sdrf.by.species.protocol))
+species_list <- as.list(names(sdrf.by.species.protocol))
 names(species_list) <- unlist(species_list)
 
 configs <- lapply(species_list, function(species){
