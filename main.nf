@@ -799,8 +799,10 @@ process cleanup {
     cat ${bundleLines} | while read -r l; do
         expName=\$(echo "\$l" | awk '{print \$1}')
         species=\$(echo "\$l" | awk '{print \$2}')
-        nohup rm -rf $SCXA_WORK/\$expName/\$species
+        nohup rm -rf $SCXA_WORK/\$expName/\$species &
     done
+    find $SCXA_WORK/ -maxdepth 2 -type d -empty -delete
+
     cp $bundleLines all.done.txt
     """
 }
