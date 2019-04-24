@@ -273,7 +273,7 @@ if ( !is.null(opt$idf_file) ) {
   
   ## SecondaryAccession and SequenceDataURI may be non-unique
   
-  allowed_dups <- c('comment[RelatedExperiment]', 'comment[additionalfile:txt]', 'comment[sequencedatauri]', 'comment[secondaryaccession]')
+  allowed_dups <- c('comment[relatedexperiment]', 'comment[additionalfile:txt]', 'comment[sequencedatauri]', 'comment[secondaryaccession]')
   idffieldchecks <- gsub(' ','',tolower(idf[,1])) 
 
   for (ad in allowed_dups){
