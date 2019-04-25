@@ -126,21 +126,48 @@ process generate_config {
     """
 }
 
-// Flatten configs (each experiment could return mutliple). Sort to make sure
-// the .conf and .sdrf files are matched, and then put them in the same channel
+// Flatten configs (each experiment could return mutliple). 
 
 CONF_FILES
-    .toSortedList()
     .flatten()
     .set{FLAT_CONF_FILES}
 
 SDRF_FILES
-    .toSortedList()
     .flatten()
     .set{FLAT_SDRF_FILES}
 
-FLAT_CONF_FILES
-    .merge( FLAT_SDRF_FILES ) 
+// Tag SDRF files with file root
+
+process tag_sdrf{
+    
+    input:
+        file(sdrfFile) from FLAT_SDRF_FILES
+
+    output:
+        set stdout, file(sdrfFile) into TAGGED_SDRF_FILES
+
+    """
+        echo -n $sdrfFile | sed 's/.sdrf.txt//'
+    """
+}
+
+// Re-tag conf files with exp name and species
+
+process tag_conf{
+    
+    input:
+        file(confFile) from FLAT_CONF_FILES
+
+    output:
+        set stdout, file(confFile) into TAGGED_CONF_FILES
+
+    """
+        echo -n $confFile | sed 's/.conf//'
+    """
+}
+
+TAGGED_CONF_FILES
+    .join( TAGGED_SDRF_FILES ) 
     .set{ CONF_SDRF }
 
 // Mark up files with metadata for grouping
@@ -154,7 +181,7 @@ process markup_conf_files {
     conda 'pyyaml' 
     
     input:
-        set file(confFile), file(sdrfFile) from CONF_SDRF
+        set val(tag), file(confFile), file(sdrfFile) from CONF_SDRF
 
     output:
         set file('expName'), file('species'), file('protocol'), file("out/$confFile"), file("out/$sdrfFile") into MARKUP_CONF_FILES
