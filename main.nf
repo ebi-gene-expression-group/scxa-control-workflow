@@ -56,6 +56,19 @@ process find_new_updated {
     """
         expName=\$(echo $sdrfFile | awk -F'.' '{print \$1}') 
         
+        # Have we excluded this study?
+
+        set +e
+        grep -P "\$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
+        excludeStatus=\$?
+        set -e
+
+        if [ \$excludeStatus -eq 0 ]; then
+            exit 0
+        fi
+
+        # Start by assuming a new experiment
+        
         newExperiment=1
         bundleManifests=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST 2>/dev/null || true)
        
@@ -71,12 +84,7 @@ process find_new_updated {
             done <<< "\$(echo -e "\$bundleManifests")"
         fi
 
-        set +e
-        grep -P "\$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
-        excludeStatus=\$?
-        set -e
-
-        if [ \$excludeStatus -ne 0 ] && [ \$newExperiment -eq 1 ]; then
+        if [ \$newExperiment -eq 1 ]; then
             cp $sdrfDir/\${expName}.idf.txt .
             echo \$expName | tr -d \'\\n\'
         fi
