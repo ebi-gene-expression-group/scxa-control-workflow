@@ -378,8 +378,9 @@ if ( skipQuantification == 'yes'){
 
         publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
         
-        memory { 20.GB * task.attempt }
-        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+        memory { 10.GB * task.attempt }
+        errorStrategy { task.attempt<=10 ? 'retry' : 'finish' }
+        maxRetries 10
         
         input:
             set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
