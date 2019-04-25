@@ -222,7 +222,7 @@ if ( ! is.null(protocol.col)){
         perror("Some but not all rows have single-cell protocols")
         q(status=1)
     }else{
-        pwarning(paste('None of', paste(unique(protocols), collapse=','), 'indicate a currently supported single-cell protocol' ))
+        pwarning(paste('None of', paste(unique(protocols), collapse=','), 'indicate single-cell' ))
     }
 }
 
@@ -1016,11 +1016,14 @@ cat(paste(colnames(sdrf),collapse=","),"\n")
 ## print the values
 pinfo("Most frequent values per column...")
 for (col in tolower(c(expected.cols,expected.comment.cols,expected.factor.cols,expected.characteristic.cols)) ) {
-  tt <- table(sdrf[,getActualColnames(col, sdrf)])
-  if (length(tt)==nrow(sdrf) ) {
-    pinfo(col,": single value per row")
-  } else {
-    pinfo(col,": ",length(tt)," unique values")
+  actualCol <- getActualColnames(col, sdrf)  
+  if (! is.null(actualCol)){
+    tt <- table(sdrf[,actualCol])
+    if (length(tt)==nrow(sdrf) ) {
+      pinfo(col,": single value per row")
+    } else {
+      pinfo(col,": ",length(tt)," unique values")
+    }
   }
 }
 
