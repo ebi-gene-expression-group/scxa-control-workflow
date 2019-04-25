@@ -222,7 +222,7 @@ if ( ! is.null(protocol.col)){
         perror("Some but not all rows have single-cell protocols")
         q(status=1)
     }else{
-        pwarning(paste('None of', paste(unique(protocols), collapse=','), 'indicate single-cell' ))
+        pwarning(paste('None of', paste(unique(protocols), collapse=','), 'indicate a currently supported single-cell protocol' ))
     }
 }
 
