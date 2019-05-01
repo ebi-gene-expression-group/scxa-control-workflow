@@ -134,10 +134,6 @@ if [ $? -ne 0 ]; then
         rm -rf $successMarker
     fi
 
-    for subworkflow in scxa-droplet-quantification-workflow scxa-smartseq-quantification-workflow scxa-aggregation-workflow scanpy-workflow scxa-bundle-workflow; do
-        nextflow pull $subworkflow  -r $scxaBranch
-    done
-
     echo "Submitting job"
     rm -rf run.out run.err .nextflow.log*  
     bsub \
