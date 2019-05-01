@@ -12,6 +12,11 @@ if ( params.containsKey('enaSshUser') ){
     enaSshUser = params.enaSshUser
 }
 
+galaxyCredentials = ''
+if ( params.containsKey('galaxyCredentials')){
+    galaxyCredentials = params.galaxyCredentials
+}
+
 skipQuantification = 'no'
 if ( params.containsKey('skipQuantification') && params.skipQuantification == 'yes'){
     skipQuantification = 'yes'
@@ -430,7 +435,7 @@ if ( skipQuantification == 'yes'){
                 --enaSshUser $enaSshUser \
                 --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
-                scxa-smartseq-quantification-workflow \
+                scxa-workflows/w_smart-seq_quantification \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -496,7 +501,7 @@ if ( skipQuantification == 'yes'){
                 --referenceGtf \$RESULTS_ROOT/$referenceGtf \
                 --protocol $protocol \
                 -resume \
-                scxa-droplet-quantification-workflow \
+                scxa-workflows/w_droplet_quantification \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -599,7 +604,7 @@ if (skipAggregation == 'yes' ){
                 --resultsRoot \$RESULTS_ROOT \
                 --quantDir \$RESULTS_ROOT/quant_results \
                 -resume \
-                scxa-aggregation-workflow \
+                scxa-workflows/w_aggregation \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -700,7 +705,55 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         
     }
     
-}else{
+}else if ( tertiaryWorkflow == 'scanpy-galaxy' ) {
+
+    process scanpy_galaxy {
+
+        conda "${baseDir}/envs/bioblend.yml"
+
+        publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
+        
+        memory { 4.GB * task.attempt }
+        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+        maxRetries 20
+          
+        input:
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+
+        output:
+            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            file('scanpy.log')
+
+        """
+            rm -rf $SCXA_RESULTS/$expName/$species/bundle
+
+            # Galaxy workflow wants the matrix components separately
+
+            zipdir=\$(unzip -qql ${countMatrix.getBaseName()}.zip | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
+            unzip ${countMatrix.getBaseName()}        
+            gzip \${zipdir}/matrix.mtx
+            gzip \${zipdir}/genes.tsv
+            gzip \${zipdir}/barcodes.tsv
+
+            export species=$species
+            export expName=$expName
+            export gtf_file=$referenceGtf
+
+            export matrix_file=\${zipdir}/matrix.mtx.gz
+            export genes_file=\${zipdir}/genes.tsv.gz
+            export barcodes_file=\${zipdir}/barcodes.tsv
+
+            export create_conda_env=no
+            export GALAXY_CRED_FILE=$galaxyCredentials
+            export GALAXY_INSTANCE=ebi_cluster
+
+            export FLAVOUR=w_smart-seq_clustering
+
+            run_flavour_workflows.sh
+       """
+    }
+
+} else{
     
     process spoof_tertiary {
     
@@ -767,7 +820,7 @@ process bundle {
         fi
 
         TERTIARY_OPTIONS=''
-        if [ "$tertiaryWorkflow" == 'scanpy-workflow' ]; then
+        if [ "$tertiaryWorkflow" == 'scanpy-workflow' ] || [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
             TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
         fi 
         
@@ -784,7 +837,7 @@ process bundle {
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
             -resume \
-            scxa-bundle-workflow \
+            scxa-workflows/w_bundle \
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \

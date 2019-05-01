@@ -1,0 +1,3 @@
+name: bioblend
+dependencies:
+  - bioblend=0.12.0
