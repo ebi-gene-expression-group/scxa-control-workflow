@@ -63,13 +63,14 @@ export SCXA_BRANCH=$scxaBranch
 # Clone or update the scxa-workflows repo containing config files etc
 
 if [ ! -d 'scxa-workflows' ]; then
-    git clone https://github.com/ebi-gene-expression-group/scxa-workflows
+    git clone --recursive https://github.com/ebi-gene-expression-group/scxa-workflows
 fi
 
 pushd scxa-workflows > /dev/null
-git checkout $SCXA_BRANCH
-git pull
-popd
+git checkout $SCXA_BRANCH > /dev/null
+git pull > /dev/null
+git submodule update > /dev/null
+popd > /dev/null
 
 # Build the Nextflow command
 
