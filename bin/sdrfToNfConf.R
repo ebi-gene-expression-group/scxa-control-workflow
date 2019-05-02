@@ -121,6 +121,9 @@ getActualColnames <- function(cols, sdrf){
         }else{
             actual.colnames
         }
+    }else if (length(cols) != length(actual.colnames)){
+        perror(print(paste('Do not have actual cols', paste(actual.colnames, sep=',') ,'of same length as query', paste(cols, collapse=','))))
+        q(status=1)
     }else{
         actual.colnames
     }
@@ -857,7 +860,7 @@ configs <- lapply(species_list, function(species){
         config <- c( config, paste0("        spike = '", paste(spike.in.col, collapse=','), "'") )
         spikes <- paste0("    spikes = 'ercc'"  )
       }else{
-        print(paste("ignoring", spikein))
+        print(paste("ignoring", spikein, 'for spikein'))
       }
     }
   
@@ -904,8 +907,14 @@ configs <- lapply(species_list, function(species){
       for (field_type in c('cdna', 'cell barcode', 'umi barcode')){
           read_field <- getActualColnames(paste(field_type, 'read'), species.protocol.sdrf)
           uri_field <- gsub(' ', '_', paste(field_type, 'uri'))
- 
-          file_fields <- getActualColnames(paste(species.protocol.sdrf[[read_field]], 'file'), species.protocol.sdrf)
+          file_field_name <- paste(sub(' ', '', species.protocol.sdrf[[read_field]]), 'file')
+          file_fields <- getActualColnames(file_field_name, species.protocol.sdrf)
+
+          if (is.null(file_fields)){
+            perror(paste(file_field_name, 'field not found in SDRF'))
+            q(status=1)
+          }
+
           files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
           uri_fields <- uri_cols[apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, function(x) which(x))]
           species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
