@@ -571,8 +571,8 @@ if (skipAggregation == 'yes' ){
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
             set val(expName), val(species), file("matrices/tpm_mtx.zip") optional true into TPM_MATRICES
-            set val(expName), val(species), file("matrices/"kallisto_stats.tsv") optional true into KALLISTO_STATS
-            set val(expName), val(species), file("matrices/"alevin_stats.tsv") optional true into ALEVIN_STATS
+            set val(expName), val(species), file("matrices/kallisto_stats.tsv") optional true into KALLISTO_STATS
+            set val(expName), val(species), file("matrices/alevin_stats.tsv") optional true into ALEVIN_STATS
 
         """
             for stage in scanpy bundle; do
