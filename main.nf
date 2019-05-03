@@ -417,11 +417,6 @@ if ( skipQuantification == 'yes'){
             mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
-            BRANCH=''
-            if [ -n "$SCXA_BRANCH" ]; then
-                BRANCH="-r $SCXA_BRANCH"
-            fi
-
             CONT_INDEX=''
             if [ "$contaminationIndex" != 'None' ]; then
                 CONT_INDEX="--contaminationIndex $contaminationIndex"
@@ -435,13 +430,12 @@ if ( skipQuantification == 'yes'){
                 --enaSshUser $enaSshUser \
                 --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
-                scxa-workflows/w_smart-seq_quantification/main.nf \
+                $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_smart-seq_quantification/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
                 -N $SCXA_REPORT_EMAIL \
-                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-                \$BRANCH
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
             if [ \$? -ne 0 ]; then
                 echo "Workflow failed for $expName - $species - scxa-smartseq-quantification-workflow" 1>&2
@@ -488,11 +482,6 @@ if ( skipQuantification == 'yes'){
             mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
-            BRANCH=''
-            if [ -n "$SCXA_BRANCH" ]; then
-                BRANCH="-r $SCXA_BRANCH"
-            fi
-
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --resultsRoot \$RESULTS_ROOT \
@@ -501,13 +490,12 @@ if ( skipQuantification == 'yes'){
                 --referenceGtf \$RESULTS_ROOT/$referenceGtf \
                 --protocol $protocol \
                 -resume \
-                scxa-workflows/w_droplet_quantification/main.nf \
+                $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_droplet_quantification/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
                 -N $SCXA_REPORT_EMAIL \
-                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-                \$BRANCH
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
             if [ \$? -ne 0 ]; then
                 echo "Workflow failed for $expName - $species - scxa-droplet-quantification-workflow" 1>&2
@@ -592,11 +580,6 @@ if (skipAggregation == 'yes' ){
             mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
-            BRANCH=''
-            if [ -n "$SCXA_BRANCH" ]; then
-                BRANCH="-r $SCXA_BRANCH"
-            fi
-        
             species_conf=$SCXA_PRE_CONF/reference/${species}.conf
             
             nextflow run \
@@ -604,13 +587,12 @@ if (skipAggregation == 'yes' ){
                 --resultsRoot \$RESULTS_ROOT \
                 --quantDir \$RESULTS_ROOT/quant_results \
                 -resume \
-                scxa-workflows/w_aggregation/main.nf \
+                $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_aggregation/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
                 -N $SCXA_REPORT_EMAIL \
-                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-                \$BRANCH
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
             if [ \$? -ne 0 ]; then
                 echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
@@ -672,11 +654,6 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
                 
-            BRANCH=''
-            if [ -n "$SCXA_BRANCH" ]; then
-                BRANCH="-r $SCXA_BRANCH"
-            fi
-
             nextflow run \
                 -config \$RESULTS_ROOT/$confFile \
                 --resultsRoot \$RESULTS_ROOT \
@@ -688,8 +665,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
                 -N $SCXA_REPORT_EMAIL \
-                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-                \$BRANCH
+                -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
             if [ \$? -ne 0 ]; then
                 echo "Workflow failed for $expName - $species - scanpy-workflow" 1>&2
@@ -808,11 +784,6 @@ process bundle {
         cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
         cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
 
-        BRANCH=''
-        if [ -n "$SCXA_BRANCH" ]; then
-            BRANCH="-r $SCXA_BRANCH"
-        fi
-
         TPM_OPTIONS=''
         tpm_filesize=\$(stat --printf="%s" \$(readlink ${tpmMatrix}))
         if [ "$tpmMatrix" != 'null' ] && [ \$tpm_filesize -gt 0 ]; then
@@ -837,13 +808,12 @@ process bundle {
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
             -resume \
-            scxa-workflows/w_bundle/main.nf \
+            $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_bundle/main.nf \
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
             -N $SCXA_REPORT_EMAIL \
-            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf \
-            \$BRANCH
+            -with-dag $SCXA_RESULTS/\$SUBDIR/reports/flowchart.pdf
 
         if [ \$? -ne 0 ]; then
             echo "Workflow failed for $expName - $species - scxa-bundle-workflow" 1>&2
