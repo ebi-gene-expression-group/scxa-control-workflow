@@ -188,6 +188,7 @@ sc.quality.col <- getActualColnames('single cell quality', sdrf)
 libary.layout.col <- getActualColnames('library layout', sdrf)
 spike.in.col <- getActualColnames('spike_in', sdrf)
 fastq.col <- getActualColnames('fastq uri', sdrf)
+cell.count.col <- getActualColnames('cell count', sdrf)
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
@@ -947,9 +948,18 @@ configs <- lapply(species_list, function(species){
         }
       }
 
-      # Re-save the tweaked SDRF for output
-      sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf        
     }    
+
+    # Record field containing cell counts, where present
+    
+    if ( is.null(cell.count.col)){
+      cell.count.col <- 'cell count'
+      species.protocol.sdrf[[cell.count.col]] <- NA
+    }
+    config <- c( config, paste0("        cell_count = '", cell.count.col, "'") )
+
+    # Re-save the tweaked SDRF for output
+    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf        
  
     # Close out that config section
 
