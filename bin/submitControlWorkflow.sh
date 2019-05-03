@@ -114,7 +114,7 @@ if [ -n "$tertiaryWorkflow" ]; then
     tertiaryWorkflowPart="--tertiaryWorkflow $tertiaryWorkflow"
 fi
 
-nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -r $scxaBranch -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $overwritePart --enaSshUser fg_atlas_sc --sdrfDir $SCXA_SDRF_DIR -work-dir $workingDir"
+nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $overwritePart --enaSshUser fg_atlas_sc --sdrfDir $SCXA_SDRF_DIR -work-dir $workingDir"
 
 # Run the LSF submission if it's not already running
 
