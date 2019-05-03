@@ -62,7 +62,7 @@ export SCXA_BRANCH=$scxaBranch
 
 # Clone or update the scxa-workflows repo containing config files etc
 
-if [ ! -d 'scxa-workflows' ]; then
+if [ ! -d 'workflow/scxa-workflows' ]; then
     git clone --recursive https://github.com/ebi-gene-expression-group/scxa-workflows workflow/scxa-workflows
 fi
 
