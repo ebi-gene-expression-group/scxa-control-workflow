@@ -435,7 +435,7 @@ if ( skipQuantification == 'yes'){
                 --enaSshUser $enaSshUser \
                 --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
-                scxa-workflows/w_smart-seq_quantification \
+                scxa-workflows/w_smart-seq_quantification/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -501,7 +501,7 @@ if ( skipQuantification == 'yes'){
                 --referenceGtf \$RESULTS_ROOT/$referenceGtf \
                 --protocol $protocol \
                 -resume \
-                scxa-workflows/w_droplet_quantification \
+                scxa-workflows/w_droplet_quantification/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -604,7 +604,7 @@ if (skipAggregation == 'yes' ){
                 --resultsRoot \$RESULTS_ROOT \
                 --quantDir \$RESULTS_ROOT/quant_results \
                 -resume \
-                scxa-workflows/w_aggregation \
+                scxa-workflows/w_aggregation/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
                 -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
                 -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
@@ -837,7 +837,7 @@ process bundle {
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
             -resume \
-            scxa-workflows/w_bundle \
+            scxa-workflows/w_bundle/main.nf \
             -work-dir $SCXA_WORK/\$SUBDIR \
             -with-report $SCXA_RESULTS/\$SUBDIR/reports/report.html \
             -with-trace  $SCXA_RESULTS/\$SUBDIR/reports/trace.txt \
