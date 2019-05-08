@@ -74,8 +74,7 @@ popd > /dev/null
 
 # Add scripts from the scxa-workflows repo to the PATH
 
-export PATH=$(pwd)/scxa-workflows/bin:$PATH
-echo PATH: $PATH
+export PATH=$(pwd)/workflow/scxa-workflows/bin:$PATH
 
 # Build the Nextflow command
 
