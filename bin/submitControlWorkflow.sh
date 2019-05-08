@@ -114,11 +114,21 @@ if [ -n "$overwrite" ]; then
 fi
 
 tertiaryWorkflowPart=
+galaxyCredentialsPart=
+
 if [ -n "$tertiaryWorkflow" ]; then
     tertiaryWorkflowPart="--tertiaryWorkflow $tertiaryWorkflow"
+
+    if [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
+        if [ -z "$GALAXY_CREDENTIALS" ]; then
+            echo "Please set the GALAXY_CREDENTIALS environment variable"
+            exit 1
+        fi
+        galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
+    fi
 fi
 
-nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $overwritePart --enaSshUser fg_atlas_sc --sdrfDir $SCXA_SDRF_DIR -work-dir $workingDir"
+nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc --sdrfDir $SCXA_SDRF_DIR -work-dir $workingDir"
 
 # Run the LSF submission if it's not already running
 
