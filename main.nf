@@ -717,7 +717,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
             export matrix_file=\${zipdir}/matrix.mtx.gz
             export genes_file=\${zipdir}/genes.tsv.gz
-            export barcodes_file=\${zipdir}/barcodes.tsv
+            export barcodes_file=\${zipdir}/barcodes.tsv.gz
 
             export create_conda_env=no
             export GALAXY_CRED_FILE=$galaxyCredentials
