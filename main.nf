@@ -640,7 +640,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -674,7 +674,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             
             popd > /dev/null
 
-            cp -p ${countMatrix} matrices
+            cp -P ${countMatrix} matrices
 
             cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log scanpy.log
        """
@@ -697,7 +697,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("pca"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -727,6 +727,42 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             export FLAVOUR=w_smart-seq_clustering
 
             run_flavour_workflows.sh
+
+            if [ $? -eq 0]; then
+                mkdir -p matrices
+                cp -P ${countMatrix} matrices
+                
+                # Group associated matrix files
+
+                for matrix_type in raw_filtered filtered_normalised; do
+                    mkdir -p matrices/\${matrix_type} 
+                    
+                    for file in matrix.mtx genes.tsv barcodes.tsv; do
+                        if [ ! -e \${matrix_type}_\${file} ]; then
+                            echo "\${matrix_type}_\${file} does not exist" 1>&2
+                            exit 2
+                        else
+                            mv \${matrix_type}_\${file} matrices/\${file}
+                        fi
+                    done
+
+                    pushd matrices > /dev/null 
+                    zip -r \${matrix_type}.zip matrices/\${matrix_type}
+                    popd > /dev/null 
+                done
+
+                # Organise other outputs
+             
+                mkdir -p tsne && mv tsne* tsne 
+                mkdir -p umap && mv umap* umap
+
+                marker_files=\$(ls markers* | grep -v markers_resolution)
+                if [ $? -ne 0 ]; then
+                    echo "No marker files present"
+                else
+                    mv \$marker_files markers
+                fi
+            fi 
        """
     }
 
