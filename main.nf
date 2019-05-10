@@ -728,7 +728,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
             run_flavour_workflows.sh
 
-            if [ $? -eq 0]; then
+            if [ \$? -eq 0]; then
                 mkdir -p matrices
                 cp -P ${countMatrix} matrices
                 
@@ -757,7 +757,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 mkdir -p umap && mv umap* umap
 
                 marker_files=\$(ls markers* | grep -v markers_resolution)
-                if [ $? -ne 0 ]; then
+                if [ \$? -ne 0 ]; then
                     echo "No marker files present"
                 else
                     mv \$marker_files markers
@@ -776,7 +776,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList),  file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOPCA"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList),  file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
 
         """
             mkdir -p matrices
@@ -805,7 +805,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(pca), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
