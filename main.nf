@@ -742,20 +742,21 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                             echo "\${matrix_type}_\${file} does not exist" 1>&2
                             exit 2
                         else
-                            mv \${matrix_type}_\${file} matrices/\${file}
+                            mv \${matrix_type}_\${file} matrices/\${matrix_type}/\${file}
                         fi
                     done
 
                     pushd matrices > /dev/null 
-                    zip -r \${matrix_type}.zip matrices/\${matrix_type}
+                    zip -r \${matrix_type}.zip \${matrix_type}
                     popd > /dev/null 
                 done
 
                 # Organise other outputs
              
-                mkdir -p tsne && mv tsne* tsne 
-                mkdir -p umap && mv umap* umap
+                mkdir -p tsne && mv tsne_* tsne 
+                mkdir -p umap && mv umap_* umap
 
+                mkdir -p markers
                 marker_files=\$(ls markers* | grep -v markers_resolution)
                 if [ \$? -ne 0 ]; then
                     echo "No marker files present"
