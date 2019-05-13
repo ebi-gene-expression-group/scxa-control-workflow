@@ -702,7 +702,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         script: 
 
             def isDroplet='False'
-            protocol_list=Arrays.asList(protocolList.split(','))
+            protocol_list=protocolList.split(',').toList()
             experiment_droplet_protocols=protocol_list.intersect(dropletProtocols)
             if ( experiment_droplet_protocols.size() > 0){
                 isDroplet='True'
