@@ -818,7 +818,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix), file(softwareReport) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -842,7 +842,7 @@ process bundle {
 
         TERTIARY_OPTIONS=''
         if [ "$tertiaryWorkflow" == 'scanpy-workflow' ] || [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
-            TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers"
+            TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir tsne --markersDir markers --tertiarySoftwareReport ${softwareReport}"
         fi 
         
         mkdir -p $SCXA_WORK/\$SUBDIR
@@ -857,7 +857,6 @@ process bundle {
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
-            --tertiarySoftwareReport ${softwareReport} \
             -resume \
             $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_bundle/main.nf \
             -work-dir $SCXA_WORK/\$SUBDIR \
