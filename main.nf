@@ -728,7 +728,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
             run_flavour_workflows.sh
 
-            if [ \$? -eq 0]; then
+            if [ \$? -eq 0 ]; then
                 mkdir -p matrices
                 cp -P ${countMatrix} matrices
                 
@@ -757,7 +757,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 mkdir -p umap && mv umap_* umap
 
                 mkdir -p markers
-                marker_files=\$(ls markers* | grep -v markers_resolution)
+                marker_files=\$(ls markers_* | grep -v markers_clusters_resolution)
                 if [ \$? -ne 0 ]; then
                     echo "No marker files present"
                 else
