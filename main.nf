@@ -700,6 +700,15 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
+        script: 
+
+            def isDroplet='False'
+            protocol_list=protocolList.split(',')
+            experiment_droplet_procols=protocol_list.intersect(dropletProtocols) 
+            if ( experiment_droplet_procols.size() > 0){
+                isDroplet='True'
+            }           
+
         """
             rm -rf $SCXA_RESULTS/$expName/$species/bundle
 
@@ -723,8 +732,12 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             export create_conda_env=no
             export GALAXY_CRED_FILE=$galaxyCredentials
             export GALAXY_INSTANCE=ebi_cluster
-
-            export FLAVOUR=w_smart-seq_clustering
+   
+            if [ "$isDroplet" = 'True' ]; then
+                export FLAVOUR=w_droplet_clustering
+            else
+                export FLAVOUR=w_smart-seq_clustering
+            fi
 
             run_flavour_workflows.sh
 
