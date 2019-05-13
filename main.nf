@@ -697,7 +697,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
