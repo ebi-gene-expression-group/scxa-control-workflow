@@ -702,11 +702,11 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         script: 
 
             def isDroplet='False'
-            protocol_list=protocolList.split(',')
-            experiment_droplet_procols=protocol_list.intersect(dropletProtocols) 
-            if ( experiment_droplet_procols.size() > 0){
+            protocol_list=Arrays.asList(protocolList.split(','))
+            experiment_droplet_protocols=protocol_list.intersect(dropletProtocols)
+            if ( experiment_droplet_protocols.size() > 0){
                 isDroplet='True'
-            }           
+            }
 
         """
             rm -rf $SCXA_RESULTS/$expName/$species/bundle
