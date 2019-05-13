@@ -697,7 +697,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
 
         script: 
 
@@ -789,12 +789,12 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList),  file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList),  file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS"), file('NOSOFTWARE') into TERTIARY_RESULTS
 
         """
             mkdir -p matrices
             cp -p ${countMatrix} matrices 
-            touch NOFILT NONORM NOPCA NOCLUST NOUMAP NOTSNE NOMARKERS
+            touch NOFILT NONORM NOPCA NOCLUST NOUMAP NOTSNE NOMARKERS NOSOFTWARE
         """
     }    
         
@@ -818,7 +818,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(tpmMatrix), file(softwareReport) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -857,6 +857,7 @@ process bundle {
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
             --referenceFasta \$cdna_fasta \
             --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
+            --tertiarySoftwareReport ${softwareReport} \
             -resume \
             $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_bundle/main.nf \
             -work-dir $SCXA_WORK/\$SUBDIR \
