@@ -27,6 +27,11 @@ if ( params.containsKey('skipAggregation') && params.skipAggregation == 'yes'){
     skipAggregation = 'yes'
 }
 
+skipTertiary = 'no'
+if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
+    skipTertiary = 'yes'
+}
+
 // If user has supplied an experiment ID, then just run for that experiment.
 // Otherwise, watch the SDRF directory for incoming SDRF files
 
@@ -120,11 +125,13 @@ process generate_config {
 
     """
     # Only remove downstream results where we're not re-using them
-    reset_stages='scanpy bundle'
+    reset_stages='bundle'
     if [ "$skipQuantification" == 'no' ]; then
-        reset_stages="quantification \$reset_stages"
+        reset_stages="quantification aggregation scanpy \$reset_stages"
     elif [ "$skipAggregation" = 'no' ]; then 
-        reset_stages="aggregation \$reset_stages"
+        reset_stages="aggregation scanpy \$reset_stages"
+    elif [ "$skipTertiary" = 'no' ]; then 
+        reset_stages="scanpy \$reset_stages"
     fi
 
     for stage in \$reset_stages; do
@@ -683,100 +690,124 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
     
 }else if ( tertiaryWorkflow == 'scanpy-galaxy' ) {
 
-    process scanpy_galaxy {
+    if (skipTertiary == 'yes' ){
 
-        conda "${baseDir}/envs/bioblend.yml"
-
-        publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
+        process spoof_aggregate {
         
-        memory { 4.GB * task.attempt }
-        errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
-        maxRetries 20
-          
-        input:
-            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            executor 'local'
+            input:
+                set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            
+            output:
+                set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+        
+            """
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/matrices 
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/clusters_for_bundle.txt
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/umap 
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/tsne
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/markers
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/clustering_software_versions.txt
+            """
+        }
 
-        output:
-            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+    }else{
 
-        script: 
+        process scanpy_galaxy {
 
-            def isDroplet='False'
-            protocol_list=protocolList.split(',').toList()
-            experiment_droplet_protocols=protocol_list.intersect(dropletProtocols)
-            if ( experiment_droplet_protocols.size() > 0){
-                isDroplet='True'
-            }
+            conda "${baseDir}/envs/bioblend.yml"
 
-        """
-            rm -rf $SCXA_RESULTS/$expName/$species/bundle
+            publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
+            
+            memory { 4.GB * task.attempt }
+            errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+            maxRetries 20
+              
+            input:
+                set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
-            # Galaxy workflow wants the matrix components separately
+            output:
+                set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
 
-            zipdir=\$(unzip -qql ${countMatrix.getBaseName()}.zip | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
-            unzip ${countMatrix.getBaseName()}        
-            gzip \${zipdir}/matrix.mtx
-            gzip \${zipdir}/genes.tsv
-            gzip \${zipdir}/barcodes.tsv
+            script: 
 
-            export species=$species
-            export expName=$expName
-            export gtf_file=$referenceGtf
+                def isDroplet='False'
+                protocol_list=protocolList.split(',').toList()
+                experiment_droplet_protocols=protocol_list.intersect(dropletProtocols)
+                if ( experiment_droplet_protocols.size() > 0){
+                    isDroplet='True'
+                }
 
-            export matrix_file=\${zipdir}/matrix.mtx.gz
-            export genes_file=\${zipdir}/genes.tsv.gz
-            export barcodes_file=\${zipdir}/barcodes.tsv.gz
-            export tpm_filtering='False'
+            """
+                rm -rf $SCXA_RESULTS/$expName/$species/bundle
 
-            export create_conda_env=no
-            export GALAXY_CRED_FILE=$galaxyCredentials
-            export GALAXY_INSTANCE=ebi_cluster
-   
-            if [ "$isDroplet" = 'True' ]; then
-                export FLAVOUR=w_droplet_clustering
-            else
-                export FLAVOUR=w_smart-seq_clustering
-            fi
+                # Galaxy workflow wants the matrix components separately
 
-            run_flavour_workflows.sh
+                zipdir=\$(unzip -qql ${countMatrix.getBaseName()}.zip | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
+                unzip ${countMatrix.getBaseName()}        
+                gzip \${zipdir}/matrix.mtx
+                gzip \${zipdir}/genes.tsv
+                gzip \${zipdir}/barcodes.tsv
 
-            if [ \$? -eq 0 ]; then
-                mkdir -p matrices
-                cp -P ${countMatrix} matrices
-                
-                # Group associated matrix files
+                export species=$species
+                export expName=$expName
+                export gtf_file=$referenceGtf
 
-                for matrix_type in raw_filtered filtered_normalised; do
-                    mkdir -p matrices/\${matrix_type} 
+                export matrix_file=\${zipdir}/matrix.mtx.gz
+                export genes_file=\${zipdir}/genes.tsv.gz
+                export barcodes_file=\${zipdir}/barcodes.tsv.gz
+                export tpm_filtering='False'
+
+                export create_conda_env=no
+                export GALAXY_CRED_FILE=$galaxyCredentials
+                export GALAXY_INSTANCE=ebi_cluster
+       
+                if [ "$isDroplet" = 'True' ]; then
+                    export FLAVOUR=w_droplet_clustering
+                else
+                    export FLAVOUR=w_smart-seq_clustering
+                fi
+
+                run_flavour_workflows.sh
+
+                if [ \$? -eq 0 ]; then
+                    mkdir -p matrices
+                    cp -P ${countMatrix} matrices
                     
-                    for file in matrix.mtx genes.tsv barcodes.tsv; do
-                        if [ ! -e \${matrix_type}_\${file} ]; then
-                            echo "\${matrix_type}_\${file} does not exist" 1>&2
-                            exit 2
-                        else
-                            mv \${matrix_type}_\${file} matrices/\${matrix_type}/\${file}
-                        fi
+                    # Group associated matrix files
+
+                    for matrix_type in raw_filtered filtered_normalised; do
+                        mkdir -p matrices/\${matrix_type} 
+                        
+                        for file in matrix.mtx genes.tsv barcodes.tsv; do
+                            if [ ! -e \${matrix_type}_\${file} ]; then
+                                echo "\${matrix_type}_\${file} does not exist" 1>&2
+                                exit 2
+                            else
+                                mv \${matrix_type}_\${file} matrices/\${matrix_type}/\${file}
+                            fi
+                        done
+
+                        pushd matrices > /dev/null 
+                        zip -r \${matrix_type}.zip \${matrix_type}
+                        popd > /dev/null 
                     done
 
-                    pushd matrices > /dev/null 
-                    zip -r \${matrix_type}.zip \${matrix_type}
-                    popd > /dev/null 
-                done
+                    # Organise other outputs
+                 
+                    mkdir -p tsne && mv tsne_* tsne 
+                    mkdir -p umap && mv umap_* umap
 
-                # Organise other outputs
-             
-                mkdir -p tsne && mv tsne_* tsne 
-                mkdir -p umap && mv umap_* umap
-
-                mkdir -p markers
-                marker_files=\$(ls markers_* | grep -v markers_clusters_resolution)
-                if [ \$? -ne 0 ]; then
-                    echo "No marker files present"
-                else
-                    mv \$marker_files markers
-                fi
-            fi 
-       """
+                    mkdir -p markers
+                    marker_files=\$(ls markers_* | grep -v markers_clusters_resolution)
+                    if [ \$? -ne 0 ]; then
+                        echo "No marker files present"
+                    else
+                        mv \$marker_files markers
+                    fi
+                fi 
+           """
+        }
     }
 
 } else{

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-t <tertiary workflow>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
+usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-t <tertiary workflow>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
 
 e=
 s=no
 t=none
+u=no
 w=no
 
 while getopts ":e:q:a:t:w:" o; do
@@ -20,6 +21,9 @@ while getopts ":e:q:a:t:w:" o; do
             ;;
         t)
             t=${OPTARG}
+            ;;
+        u)
+            u=${OPTARG}
             ;;
         w)
             w=${OPTARG}
@@ -38,6 +42,7 @@ expName=$e
 skipQuantification=$q
 skipAggregation=$a
 tertiaryWorkflow=$t
+skipTertiary=$u
 overwrite=$w
 
 workflow=scxa-control-workflow
@@ -94,6 +99,16 @@ if [ -n "$skipAggregation" ]; then
     skipAggregationPart="--skipAggregation $skipAggregation"
 fi
 
+skipTertiaryPart=
+if [ -n "$skipTertiary" ]; then
+    if [ "$skipTertiary" != 'yes' ] && [ "$skipTertiary" != 'no' ]; then
+        echo "Skip tertiary (-u) must be 'yes' or 'no', $skipTertiary provided." 1>&2
+        exit 1
+    fi
+
+    skipTertiaryPart="--skipTertiary $skipTertiary"
+fi
+
 overwritePart=
 if [ -n "$overwrite" ]; then
     if [ "$overwrite" != 'yes' ] && [ "$overwrite" != 'no' ]; then
@@ -119,7 +134,7 @@ if [ -n "$tertiaryWorkflow" ]; then
     fi
 fi
 
-nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc --sdrfDir $SCXA_SDRF_DIR -work-dir $workingDir"
+nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc --sdrfDir $SCXA_SDRF_DIR -work-dir $workingDir"
 
 # Run the LSF submission if it's not already running
 
