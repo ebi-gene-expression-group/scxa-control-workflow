@@ -692,7 +692,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
     if (skipTertiary == 'yes' ){
 
-        process spoof_aggregate {
+        process spoof_tertiary {
         
             executor 'local'
             input:
