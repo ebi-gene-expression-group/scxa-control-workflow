@@ -8,7 +8,7 @@ t=none
 u=no
 w=no
 
-while getopts ":e:q:a:t:w:" o; do
+while getopts ":e:q:a:t:u:w:" o; do
     case "${o}" in
         e)
             e=${OPTARG}
