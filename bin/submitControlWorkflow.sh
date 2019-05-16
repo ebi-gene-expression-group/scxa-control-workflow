@@ -51,15 +51,6 @@ fi
 
 cd $SCXA_WORKFLOW_ROOT
 
-# Are we prod or test?
-
-scxaBranch='master'
-if [ "$SCXA_ENV" == 'test' ]; then
-    scxaBranch='develop'
-fi
-
-export SCXA_BRANCH=$scxaBranch
-
 # Clone or update the scxa-workflows repo containing config files etc
 
 if [ ! -d 'workflow/scxa-workflows' ]; then
