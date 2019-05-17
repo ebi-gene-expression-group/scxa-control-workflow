@@ -302,7 +302,12 @@ if ( !is.null(opt$idf_file) ) {
   rownames(idf) <- tolower(gsub("\\s*\\]\\s*","",gsub("^\\s*COMMENT\\s*\\[\\s*","",as.character(idf[,1]),ignore.case=TRUE)))
   idf <- idf[,-1,drop=FALSE]
   
-  ## be tolerant about the EA comments
+  ## be tolerant about the EA comments. If both EAExperimentType and ExperimentType are present, remove Experimenttype
+
+  if ( 'experimenttype' %in% rownames(idf) && 'eaexperimenttype' %in% rownames(idf)){
+    idf <- idf[rownames(idf) != 'experimenttype',]
+  }
+
   rownames(idf) <- gsub("^ea","",rownames(idf))
   
   ## initial check
@@ -315,7 +320,7 @@ if ( !is.null(opt$idf_file) ) {
     perror("SDRF file in IDF (",idf["sdrf file",1],") differs from given sdrf file name ",basename(opt$sdrf_file))
     q(status=1)
   }
-  
+ 
   ##expectedclusters
   ##
   ## ExperimentType       differential|baseline (mandatory)
@@ -355,7 +360,7 @@ if ( !is.null(opt$idf_file) ) {
     perror("IDF error in EAExperimentType: Invalid value (",idf["experimenttype",1],") expected baseline or differential")
     q(status=1)
   }
-    
+   
   ## Check the experiment type
     
   exp.type <- tolower(idf["aeexperimenttype",1])
