@@ -385,16 +385,10 @@ if ( !is.null(opt$idf_file) ) {
   
   idf.factors <- idf["experimental factor name",][idf["experimental factor name",] != '' & ! is.na(idf["experimental factor name",]) ]
   
-  ## all factors should be in lower case
-  if ( any(idf.factors != tolower(idf.factors)) ) {
-    perror("IDF error in  Experimental Factor Name: values should be in lower case")
-    q(status)
-  }
-    
   ## and match the sdrf. Ignore single cell identifier when validating against SDRF- it's not a real factor 
  
-  idf.factors.comp <- sort(setdiff(idf.factors, c(sc.identifier.col, normalize.cols(sc.identifier.col))))
-  sdrf.factors.comp <- sort(setdiff(factors, c(sc.identifier.col, normalize.cols(sc.identifier.col))))
+  idf.factors.comp <- sort(setdiff(normalize.cols(idf.factors), c(sc.identifier.col, normalize.cols(sc.identifier.col))))
+  sdrf.factors.comp <- sort(setdiff(normalize.cols(factors), c(sc.identifier.col, normalize.cols(sc.identifier.col))))
  
   if ( length(idf.factors.comp) != length(sdrf.factors.comp) || any( idf.factors.comp != sdrf.factors.comp )){
     perror(paste("SDRF/IDF inconsistency: IDF factors (", paste(idf.factors.comp, collapse=','),") do not match (SDRF factors", paste(sdrf.factors.comp, collapse=','), ')'))
