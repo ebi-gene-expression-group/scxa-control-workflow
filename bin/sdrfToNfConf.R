@@ -385,10 +385,16 @@ if ( !is.null(opt$idf_file) ) {
   
   idf.factors <- idf["experimental factor name",][idf["experimental factor name",] != '' & ! is.na(idf["experimental factor name",]) ]
   
+  ## all factors should be in lower case
+  if ( any(idf.factors != tolower(idf.factors)) ) {
+    perror("IDF error in  Experimental Factor Name: values should be in lower case")
+    q(status)
+  }
+    
   ## and match the sdrf. Ignore single cell identifier when validating against SDRF- it's not a real factor 
  
-  idf.factors.comp <- sort(setdiff(normalize.cols(idf.factors), c(sc.identifier.col, normalize.cols(sc.identifier.col))))
-  sdrf.factors.comp <- sort(setdiff(normalize.cols(factors), c(sc.identifier.col, normalize.cols(sc.identifier.col))))
+  idf.factors.comp <- sort(setdiff(idf.factors, c(sc.identifier.col, normalize.cols(sc.identifier.col))))
+  sdrf.factors.comp <- sort(setdiff(factors, c(sc.identifier.col, normalize.cols(sc.identifier.col))))
  
   if ( length(idf.factors.comp) != length(sdrf.factors.comp) || any( idf.factors.comp != sdrf.factors.comp )){
     perror(paste("SDRF/IDF inconsistency: IDF factors (", paste(idf.factors.comp, collapse=','),") do not match (SDRF factors", paste(sdrf.factors.comp, collapse=','), ')'))
@@ -916,9 +922,17 @@ configs <- lapply(species_list, function(species){
           }
 
           files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
-          uri_fields <- uri_cols[apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, function(x) which(x))]
-          species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
+          nlibs <- nrow(species.protocol.sdrf)
 
+          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
+          
+          if (nlibs > 1){
+            uri_fields <- uri_cols[apply(uri_select, 1, function(x) which(x))]
+          }else{
+            uri_fields <- uri_cols[uri_select]
+          }
+          species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
+          
           config <- c(config, paste0("        ", uri_field, " = '", uri_field, "'"))
       }
 
