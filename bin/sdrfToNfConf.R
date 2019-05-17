@@ -335,10 +335,10 @@ if ( !is.null(opt$idf_file) ) {
   
   # Required fields for single-cell
   
-  if ( is.singlecell ) {
-    expected.in.idf <- c("expectedclusters")
-    names(expected.in.idf) <- c("EAExpectedClusters")
-  }
+  #if ( is.singlecell ) {
+  #  expected.in.idf <- c("expectedclusters")
+  #  names(expected.in.idf) <- c("EAExpectedClusters")
+  #}
   
   # Required fields for Atlas
   
@@ -397,7 +397,7 @@ if ( !is.null(opt$idf_file) ) {
   
   # Check the ExpectedClusters specification
   
-  if ( idf["expectedclusters",1] != "" ) {
+  if ( "expectedclusters" %in% rownames(idf) && idf["expectedclusters",1] != "" ) {
     x <- as.numeric(idf["expectedclusters",1])
     if (is.na(x) || x < 1 ) {
       perror("IDF error in AEExpectedClusters: Invalid value  (",idf["expectedclusters",1],")")
@@ -982,7 +982,7 @@ configs <- lapply(species_list, function(species){
     sc.clusters.conf = c()
     platform.config = c() 
  
-    if (is.singlecell){
+    if (is.singlecell && opt$nc > 0){
 
       ## Decide what range of K values to try. Use a window around the provided
       ## central k
