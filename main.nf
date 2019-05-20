@@ -714,14 +714,16 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
     }else{
 
         process scanpy_galaxy {
+        
+            maxForks params.maxConcurrentScanpyGalaxy
 
             conda "${baseDir}/envs/bioblend.yml"
 
             publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
             
             memory { 4.GB * task.attempt }
-            errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
-            maxRetries 20
+            errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt<=3  ? 'retry' : 'finish' }
+            maxRetries 3
               
             input:
                 set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
