@@ -122,7 +122,7 @@ getActualColnames <- function(cols, sdrf){
             actual.colnames
         }
     }else if (length(cols) != length(actual.colnames)){
-        perror(print(paste('Do not have actual cols', paste(actual.colnames, sep=',') ,'of same length as query', paste(cols, collapse=','))))
+        perror(print(paste('Do not have actual cols', paste(actual.colnames, collapse=',') ,'of same length as query', paste(cols, collapse=','))))
         q(status=1)
     }else{
         actual.colnames
