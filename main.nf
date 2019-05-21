@@ -722,7 +722,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
             
             memory { 4.GB * task.attempt }
-            errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt<=3  ? 'retry' : 'finish' }
+            errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt<=3  ? 'retry' : 'ignore' }
             maxRetries 3
               
             input:
