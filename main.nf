@@ -762,7 +762,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
                 export create_conda_env=no
                 export GALAXY_CRED_FILE=$galaxyCredentials
-                export GALAXY_INSTANCE=ebi_cluster
+                export GALAXY_INSTANCE=ebi_cluster_ge_user
        
                 if [ "$isDroplet" = 'True' ]; then
                     export FLAVOUR=w_droplet_clustering
