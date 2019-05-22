@@ -77,6 +77,14 @@ process find_new_updated {
             exit 0
         fi
 
+        # Check for the existence of Atlas prod lock files indicating loading in progress
+
+        bundleLocks=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
+        if [ -n "\$bundleLocks\" ]; then
+            echo "One or more sub-experiments are locked for loading" 1>&2
+            exit 0
+        fi 
+
         # Start by assuming a new experiment
         
         newExperiment=1
