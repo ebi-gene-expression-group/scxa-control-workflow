@@ -916,6 +916,7 @@ process bundle {
 
         cp $SCXA_NEXTFLOW/\$SUBDIR/.nextflow.log bundle.log
 
+        chmod g+rwx $SCXA_RESULTS/$expName/$species/bundle
         echo -e "$expName\\t$species\\t$SCXA_RESULTS/$expName/$species/bundle" > bundleLines.txt
    """
     
