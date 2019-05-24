@@ -77,24 +77,21 @@ process find_new_updated {
             exit 0
         fi
 
-        # Check for the existence of Atlas prod lock files indicating loading in progress
-
-        bundleLocks=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
-        if [ -n "\$bundleLocks\" ]; then
-            echo "One or more sub-experiments are locked for loading" 1>&2
-            exit 0
-        fi 
-
         # Start by assuming a new experiment
         
         newExperiment=1
         bundleManifests=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST 2>/dev/null || true)
-       
+        
+        # If there are existing bundles for this experiment then just use
+        # those, unless the related SDRFs have been updated
+ 
         if [ -n "\$bundleManifests" ] && [ "$overwrite" != 'yes' ]; then
             newExperiment=0
             while read -r bundleManifest; do
                 if [ $sdrfFile -nt "\$bundleManifest" ]; then
                     newExperiment=1
+                    rm -f bundleLines.txt
+                    break
                 else
                     species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-2)}' | tr -d \'\\n\')
                     echo -e "\$expName\\t\$species\\t$SCXA_RESULTS/\$expName/\$species/bundle" > bundleLines.txt
@@ -102,7 +99,13 @@ process find_new_updated {
             done <<< "\$(echo -e "\$bundleManifests")"
         fi
 
-        if [ \$newExperiment -eq 1 ]; then
+        # Check for the existence of Atlas prod lock files indicating loading
+        # in progress.  Only tag new experiments when there are no loading
+        # locks present
+        
+        bundleLocks=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
+      
+        if [ \$newExperiment -eq 1 ] && [ -z "\$bundleLocks" ]; then
             cp $sdrfDir/\${expName}.idf.txt .
             echo \$expName | tr -d \'\\n\'
         fi
