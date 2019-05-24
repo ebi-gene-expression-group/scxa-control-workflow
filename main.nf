@@ -950,16 +950,23 @@ process cleanup {
     output:
         file('all.done.txt')
 
-    """
-    touch $SCXA_WORK/.success
-    cat ${bundleLines} | while read -r l; do
-        expName=\$(echo "\$l" | awk '{print \$1}')
-        species=\$(echo "\$l" | awk '{print \$2}')
-        nohup rm -rf $SCXA_WORK/\$expName/\$species &
-    done
-    find $SCXA_WORK/ -maxdepth 2 -type d -empty -delete
+    script:
+    
+        def doneSuffix=''
+        if ( params.containsKey('expName')){
+            doneSuffix=".${params.expName}"    
+        }
 
-    cp $bundleLines all.done.txt
-    """
+        """
+        touch $SCXA_WORK/.success
+        cat ${bundleLines} | while read -r l; do
+            expName=\$(echo "\$l" | awk '{print \$1}')
+            species=\$(echo "\$l" | awk '{print \$2}')
+            nohup rm -rf $SCXA_WORK/\$expName/\$species &
+        done
+        find $SCXA_WORK/ -maxdepth 2 -type d -empty -delete
+
+        cp $bundleLines all.done${doneSuffix}.txt
+        """
 }
 
