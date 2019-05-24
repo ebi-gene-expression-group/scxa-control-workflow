@@ -35,8 +35,11 @@ if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
 // If user has supplied an experiment ID, then just run for that experiment.
 // Otherwise, watch the SDRF directory for incoming SDRF files
 
+doneSuffix=''
+
 if ( params.containsKey('expName')){
     SDRF = Channel.fromPath("${sdrfDir}/${params.expName}.sdrf.txt", checkIfExists: true)
+    doneSuffix=".${params.expName}"    
 }else{
     SDRF = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true)
 }
@@ -948,25 +951,18 @@ process cleanup {
         file(bundleLines) from BUNDLE_LINES
     
     output:
-        file('all.done.txt')
+        file("all.done${doneSuffix}.txt")
 
-    script:
-    
-        def doneSuffix=''
-        if ( params.containsKey('expName')){
-            doneSuffix=".${params.expName}"    
-        }
+    """
+    touch $SCXA_WORK/.success
+    cat ${bundleLines} | while read -r l; do
+        expName=\$(echo "\$l" | awk '{print \$1}')
+        species=\$(echo "\$l" | awk '{print \$2}')
+        nohup rm -rf $SCXA_WORK/\$expName/\$species &
+    done
+    find $SCXA_WORK/ -maxdepth 2 -type d -empty -delete
 
-        """
-        touch $SCXA_WORK/.success
-        cat ${bundleLines} | while read -r l; do
-            expName=\$(echo "\$l" | awk '{print \$1}')
-            species=\$(echo "\$l" | awk '{print \$2}')
-            nohup rm -rf $SCXA_WORK/\$expName/\$species &
-        done
-        find $SCXA_WORK/ -maxdepth 2 -type d -empty -delete
-
-        cp $bundleLines all.done${doneSuffix}.txt
-        """
+    cp $bundleLines all.done${doneSuffix}.txt
+    """
 }
 
