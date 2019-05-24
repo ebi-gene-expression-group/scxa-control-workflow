@@ -114,8 +114,8 @@ getActualColnames <- function(cols, sdrf){
     # Deal with possible ambiguities
 
     if ( length(cols) == 1 && is.null(actual.colnames)){
-        if ( cols.norm == 'run' ) {
-            getActualColnames('ena_run', sdrf)
+        if ( cols.norm == 'ena_run' ) {
+            getActualColnames('run', sdrf)
         }else if (cols.norm == 'library construction'){
             getActualColnames('library preparation', sdrf)
         }else{
@@ -171,7 +171,7 @@ print.info("Loading SDRF...done.")
 # Set some variable names we'll be using a lot. getActualColnames() will set
 # things to null when they're not present
 
-run.col <- getActualColnames('Comment [RUN]', sdrf)
+run.col <- getActualColnames('Comment [ENA_RUN]', sdrf)
 if ( is.null(run.col) ) {
   perror("SDRF: expected RUN or ENA_RUN - none found")
   q(status=1)
@@ -253,7 +253,6 @@ expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTIO
 expected.characteristic.cols <- c()
 expected.factor.cols <- c()
 opt.cols <- c("ORGANISM","organism part","sex","spike in","molecule","technical replicate group","ENA_RUN","ENA_SAMPLE","Scan Name")
-layout.cols <- c("run", "library_layout", "ena_sample", "library_layout", "library_strand", "technical replicate group")
 
 ################################################################################
 # Load and check the IDF where provided, and cross-reference with the SDRF
