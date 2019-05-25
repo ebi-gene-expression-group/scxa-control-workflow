@@ -661,7 +661,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -743,7 +743,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
             output:
-                set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+                set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
 
             script: 
 
@@ -836,7 +836,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList),  file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS"), file('NOSOFTWARE') into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS"), file('NOSOFTWARE') into TERTIARY_RESULTS
 
         """
             mkdir -p matrices
@@ -866,7 +866,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(rawMatrix), file(confFile), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -899,6 +899,7 @@ process bundle {
         pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
         nextflow run \
+            -config \$RESULTS_ROOT/$confFile \
             --masterWorkflow scxa-control-workflow \
             --resultsRoot \$RESULTS_ROOT \
             --protocolList ${protocolList} \
