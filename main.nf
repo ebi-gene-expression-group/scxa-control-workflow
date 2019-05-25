@@ -713,7 +713,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
             
             output:
-                set val(expName), val(species), val(protocolList), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+                set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
         
             """
                 ln -s $SCXA_RESULTS/$expName/$species/scanpy/matrices 
@@ -866,7 +866,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(rawMatrix), file(confFile), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
