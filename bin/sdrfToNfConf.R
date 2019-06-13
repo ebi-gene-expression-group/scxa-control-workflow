@@ -114,7 +114,7 @@ getActualColnames <- function(cols, sdrf){
     # Deal with possible ambiguities
 
     if ( length(cols) == 1 && is.null(actual.colnames)){
-        if ( cols.norm == 'ena_run' ) {
+        if ( cols.norm == 'ena run' ) {
             getActualColnames('run', sdrf)
         }else if (cols.norm == 'library construction'){
             getActualColnames('library preparation', sdrf)
