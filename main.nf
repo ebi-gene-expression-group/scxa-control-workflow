@@ -818,6 +818,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                     marker_files=\$(ls markers_* | grep -v markers_clusters_resolution)
                     if [ \$? -ne 0 ]; then
                         echo "No marker files present"
+                        touch markers/NOMARKERS
                     else
                         mv \$marker_files markers
                     fi
