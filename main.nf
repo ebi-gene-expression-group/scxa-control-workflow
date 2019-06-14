@@ -815,7 +815,8 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                     mkdir -p umap && mv umap_* umap
 
                     mkdir -p markers
-                    marker_files=\$(ls markers_* | grep -v markers_clusters_resolution)
+                    set +e
+                    marker_files=\$(ls markers_* 2>/dev/null | grep -v markers_clusters_resolution)
                     if [ \$? -ne 0 ]; then
                         echo "No marker files present"
                         touch markers/NOMARKERS
