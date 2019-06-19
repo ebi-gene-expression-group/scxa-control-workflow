@@ -228,6 +228,8 @@ if ( ! is.null(protocol.col)){
     }else{
         pwarning(paste('None of', paste(unique(protocols), collapse=','), 'indicate single-cell' ))
     }
+}else{
+    stop(paste("No protocol column in ", paste(colnames(sdrf), collapse=',')))
 }
 
 ## Factors should not be simultaneously comments, niether should characteristics 
