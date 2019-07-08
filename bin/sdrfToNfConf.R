@@ -189,6 +189,8 @@ libary.layout.col <- getActualColnames('library layout', sdrf)
 spike.in.col <- getActualColnames('spike_in', sdrf)
 fastq.col <- getActualColnames('fastq uri', sdrf)
 cell.count.col <- getActualColnames('cell count', sdrf)
+hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
+hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
@@ -434,6 +436,17 @@ if( is.singlecell ) {
   expected.cols <- append(expected.cols, c("Material Type","library_construction","single cell isolation"))
   expected.comment.cols <- append(expected.comment.cols, c("LIBRARY_STRAND"))
   opt.cols <- append(opt.cols,sc.opt.cols)
+
+  if ( (! is.null(hca.bundle.uuid.col) ) || ( ! is.null(hca.bundle.version.col) )){
+    print.info('Looks like an HCA experiment')
+    if ( is.null(hca.bundle.uuid.col)){
+      perror("... but no UUID field")
+      q(status=1)
+    }else if ( is.null(hca.bundle.version.col)){
+      perror("... but no version field")
+      q(status=1)
+    }
+  }
 }
 
 # Now do the checks
@@ -845,6 +858,14 @@ configs <- lapply(species_list, function(species){
       paste0("        fastq = '", paste(fastq.fields, collapse=','), "'")
     )
 
+    # Record if we have an HCA experiment
+
+    if( ! is.null(hca.bundle.uuid.col) ){
+      protocol$is.hca <- TRUE
+      config <- c(config, paste0("        hca_uuid = '", hca.bundle.uuid.col, "'"))
+      config <- c(config, paste0("        hca_version = '", hca.bundle.uuid.col, "'"))
+    }   
+    
     ## Field to use for quality filtering
 
     if ( ! is.null(sc.quality.col)){
