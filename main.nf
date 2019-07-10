@@ -190,6 +190,10 @@ process generate_config {
         done
     else
         echo "Config files have not changed, no need to re-run"
+
+        # Update the manifest time stamps to prevent re-config next time
+
+        touch -m \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST
     fi
     rm -rf try_conf 
     """
