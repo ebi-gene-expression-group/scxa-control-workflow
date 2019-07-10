@@ -162,7 +162,7 @@ process generate_config {
                     newExperiment=1
                 fi
             fi
-        done <<< "\$(ls try_conf/*.\$ext)
+        done <<< "\$(ls try_conf/*.\$ext)"
     done
 
     # If either of the files has changes for any of the species in the
