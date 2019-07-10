@@ -205,6 +205,7 @@ sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-s
 # Check the protocol and use to determine single-cell
 
 is.singlecell <- FALSE
+is.hca <- ! is.null(hca.bundle.uuid.col)
 
 if ( ! is.null(protocol.col)){
 
@@ -252,8 +253,9 @@ for (comp in names(compare)){
 
 ## Verify presence of mandatory columns (SDRF) and regularise names
 
+cols.for.download <- ifelse(is.hca, c('hca bundle uuid', 'hca bundle version') , "FASTQ_URI")
 expected.cols <- c("Source Name")
-expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTION","LIBRARY_LAYOUT","FASTQ_URI")
+expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTION","LIBRARY_LAYOUT",cols.for.download)
 expected.characteristic.cols <- c()
 expected.factor.cols <- c()
 opt.cols <- c("ORGANISM","organism part","sex","spike in","molecule","technical replicate group","ENA_RUN","ENA_SAMPLE","Scan Name")
@@ -548,13 +550,13 @@ if ( is.singlecell ) {
     '10xv1' = c('read1 file', 'read2 file'),    
     '10xv1a' = c('read1 file', 'read2 file', 'index1 file'),         
     '10xv1i' = c('read1 file', 'read2 file', 'index1 file'),
-    '10xv2' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    '10xv3' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    'drop-seq' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
-    "smart-seq" = 'fastq uri',
-    "smart-seq2" = 'fastq uri',
-    "smarter" = 'fastq uri',
-    "smart-like = 'fastq uri"
+    '10xv2' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    '10xv3' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    'drop-seq' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    "smart-seq" = cols.for.download,
+    "smart-seq2" = cols.for.download,
+    "smarter" = cols.for.download,
+    "smart-like" = cols.for.download
   )
   
   row.required.fastq.fields <- lapply(sc.required.fastq.fields[match(protocols, tolower(names(sc.required.fastq.fields)))], getActualColnames, sdrf)
