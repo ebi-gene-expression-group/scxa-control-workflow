@@ -159,7 +159,7 @@ process generate_config {
                 set +e
                 diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
 
-                if [ \$? -ne 1 ]; then
+                if [ \$? -ne 0 ]; then
                     newExperiment=1
                 fi
 
