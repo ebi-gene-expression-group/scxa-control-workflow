@@ -854,7 +854,7 @@ configs <- lapply(species_list, function(species){
       paste0("    protocol = '", protocol, "'")
     )
 
-    config_fields <- c(run = run.col, layout = library.layout.col, fastq = paste(fastq.fields, collapse=',')
+    config_fields <- c(run = run.col, layout = library.layout.col, fastq = paste(fastq.fields, collapse=','))
 
     # Record if we have an HCA experiment
 
@@ -987,8 +987,9 @@ configs <- lapply(species_list, function(species){
     # Create the config fields section
 
     config <- c(
+      config,
       paste0("\n    fields {"),
-      unlist(lapply(names(config_fields), function(x) paste0("        ", x," = '", config_fields[x], "'")))
+      unlist(lapply(names(config_fields), function(x) paste0("        ", x," = '", config_fields[x], "'"))),
       '    }\n'
     )
 
@@ -1110,6 +1111,7 @@ for (species in names(configs)){
 
     out.dir <- file.path(opt$out_conf, species)
     dir.create(out.dir, showWarnings = FALSE)
+    dir.create(opt$out_conf, showWarnings = FALSE)
  
     # If there is metadata then point to it from the config file
   
