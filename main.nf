@@ -153,14 +153,17 @@ process generate_config {
     # Check for existing copies the config and derived SDRF. If neither have
     # changed, no need to re-analyse- even if the SDRF has been edited.
 
-    for ext in .sdrf.txt .conf; do
+    for ext in sdrf.txt conf; do
         while read -r tc; do
             if [ -e \$SCXA_CONF/study/\$(basename \$tc) ]; then
+                set +e
                 diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
-                
+
                 if [ \$? -ne 1 ]; then
                     newExperiment=1
                 fi
+
+                set -e
             fi
         done <<< "\$(ls try_conf/*.\$ext)"
     done
@@ -171,7 +174,6 @@ process generate_config {
    if [ \$newExperiment -eq 1 ]; then
 
         mv try_conf/* .
-        rm -rf try_conf 
 
         # Only remove downstream results where we're not re-using them
         reset_stages='bundle'
@@ -186,8 +188,10 @@ process generate_config {
         for stage in \$reset_stages; do
             rm -rf $SCXA_RESULTS/$expName/*/\$stage
         done
-
+    else
+        echo "Config files have not changed, no need to re-run"
     fi
+    rm -rf try_conf 
     """
 }
 
