@@ -28,7 +28,7 @@ option_list <- list(
   make_option(c("-c","--check_only"),action="store_true",dest="check_only",default=FALSE,help="Checks the sdrf/idf but skips the generation of the configuration file."),
   make_option(c("-v","--verbose"),action="store_true",dest="verbose",default=FALSE,help="Produce verbose output."),
   make_option(c("--debug"),action="store_true",dest="debug",default=FALSE,help="Debug mode"),
-  make_option(c("-o", "--out_conf"), type="character",default=NULL,help="Filename of the new iRAP's configuration file.")
+  make_option(c("-o", "--out_conf"), type="character",default=NULL,help="Output directory for configuration files.")
 )
 
 multiple.options = list()
@@ -846,30 +846,27 @@ configs <- lapply(species_list, function(species){
     rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
   
     # Generate starting config file content
- 
+
     config <- c(
       "\nparams{",
       paste0("    name = '", opt$name, "'"),
       paste0("    organism = '", species, "'"),
-      paste0("    protocol = '", protocol, "'"),
-      paste0("\n    fields {"),
-      paste0("        run = '", run.col, "'"),
-      paste0("        layout = '", library.layout.col, "'"),
-      paste0("        fastq = '", paste(fastq.fields, collapse=','), "'")
+      paste0("    protocol = '", protocol, "'")
     )
+
+    config_fields <- c(run = run.col, layout = library.layout.col, fastq = paste(fastq.fields, collapse=','))
 
     # Record if we have an HCA experiment
 
     if( ! is.null(hca.bundle.uuid.col) ){
       protocol$is.hca <- TRUE
-      config <- c(config, paste0("        hca_uuid = '", hca.bundle.uuid.col, "'"))
-      config <- c(config, paste0("        hca_version = '", hca.bundle.uuid.col, "'"))
+      config_fields <- c(config_fields, c(hca_uuid = hca.bundle.uuid.col, hca_version = hca.bundle.uuid.col))    
     }   
     
     ## Field to use for quality filtering
 
     if ( ! is.null(sc.quality.col)){
-      config <- c(config, paste0("        quality = '", sc.quality.col, "'"))
+      config_fields['quality'] <- sc.quality.col 
     }
 
     ## Anything other than ERCC will be ignored
@@ -879,7 +876,7 @@ configs <- lapply(species_list, function(species){
     if (properties$has.spikes){
       spikein <- tolower(unique(species.protocol.sdrf[[spike.in.col]]))
       if ( grepl("ercc.*",spikein) ) {
-        config <- c( config, paste0("        spike = '", paste(spike.in.col, collapse=','), "'") )
+        config_fields['spike'] <- paste(spike.in.col, collapse=',')
         spikes <- paste0("    spikes = 'ercc'"  )
       }else{
         print(paste("ignoring", spikein, 'for spikein'))
@@ -889,13 +886,13 @@ configs <- lapply(species_list, function(species){
     ## Set up for technical replication (or not)
   
     if(properties$has.techrep) {
-      config <- c( config, paste0("        techrep = '", paste(techrep.col, collapse=','), "'") )
+      config_fields['techrep'] <- paste(techrep.col, collapse=',')
     }
 
     # Do any rows need stranded analysis
 
     if (properties$has.strandedness){
-      config <- c( config, paste0("        strand = '", paste(strand.col, collapse=','), "'") )
+      config_fields['strand'] <- paste(strand.col, collapse=',')
     }
     
     # For droplet techs, add colums with strighforward statements of the URIs
@@ -949,7 +946,7 @@ configs <- lapply(species_list, function(species){
           }
           species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
           
-          config <- c(config, paste0("        ", uri_field, " = '", uri_field, "'"))
+          config_fields[uri_field] <- uri_field
       }
 
       # Record the barcode position and offset fields
@@ -966,14 +963,14 @@ configs <- lapply(species_list, function(species){
               # We can populate a field with the default value for the protocol if necessary
 
               species.protocol.sdrf[[field_label]] <- droplet.protocol.defaults[[protocol]][[field_label]]
-              config <- c(config, paste0("        ", field_label, " = '", field_label, "'"))
+              config_fields[field_label] <- field_label
           }else{
             perror(paste(field_label, 'field not present, and default not known for protocol', protocol))
             q(status=1)
           }
 
         }else{
-          config <- c(config, paste0("        ", field_label, " = '", field_name, "'"))
+          config_fields[field_label] <- field_name
         }
       }
 
@@ -985,15 +982,20 @@ configs <- lapply(species_list, function(species){
       cell.count.col <- 'cell count'
       species.protocol.sdrf[[cell.count.col]] <- NA
     }
-    config <- c( config, paste0("        cell_count = '", cell.count.col, "'") )
+    config_fields['cell_count'] <- cell.count.col
+
+    # Create the config fields section
+
+    config <- c(
+      config,
+      paste0("\n    fields {"),
+      unlist(lapply(names(config_fields), function(x) paste0("        ", x," = '", config_fields[x], "'"))),
+      '    }\n'
+    )
 
     # Re-save the tweaked SDRF for output
-    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf        
+    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, config_fields]        
  
-    # Close out that config section
-
-    config <- c(config, '    }\n')
-
     # Put spikes in if present
 
     config <- c (config, spikes)
@@ -1026,7 +1028,7 @@ configs <- lapply(species_list, function(species){
       )
     }
   
-    config <- c(paste("// Generated", date(), "from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
+    config <- c(paste("// Generated from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
 
     # Generate metadata file content to save
   
@@ -1107,8 +1109,7 @@ for (species in names(configs)){
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata
 
-    out.dir <- file.path(opt$out_conf, species)
-    dir.create(out.dir, showWarnings = FALSE)
+    dir.create(opt$out_conf, showWarnings = FALSE)
  
     # If there is metadata then point to it from the config file
   
