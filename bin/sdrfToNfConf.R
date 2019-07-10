@@ -1028,7 +1028,7 @@ configs <- lapply(species_list, function(species){
       )
     }
   
-    config <- c(paste("// Generated", date(), "from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
+    config <- c(paste("// Generated from", opt$sdrf), config, paste0("\n    extra_metadata = '", paste0(opt$name, ".metadata.tsv'")), "}\n")
 
     # Generate metadata file content to save
   
