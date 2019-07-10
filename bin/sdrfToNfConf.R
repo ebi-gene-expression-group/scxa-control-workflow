@@ -1109,8 +1109,6 @@ for (species in names(configs)){
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata
 
-    out.dir <- file.path(opt$out_conf, species)
-    dir.create(out.dir, showWarnings = FALSE)
     dir.create(opt$out_conf, showWarnings = FALSE)
  
     # If there is metadata then point to it from the config file
