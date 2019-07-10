@@ -193,7 +193,7 @@ process generate_config {
 
         # Update the manifest time stamps to prevent re-config next time
 
-        touch -m \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST
+        touch -m $SCXA_RESULTS/$expName/*/bundle/MANIFEST
     fi
     rm -rf try_conf 
     """
