@@ -134,29 +134,60 @@ process generate_config {
         set val(expName), file(sdrfFile), file(idfFile) from SDRF_IDF.take(params.numExpsProcessedAtOnce)
 
     output:
-        file('*.conf') into CONF_FILES
-        file('*.sdrf.txt') into SDRF_FILES        
+        file('*.conf') optional true into CONF_FILES
+        file('*.sdrf.txt') optional true into SDRF_FILES        
 
     """
-    # Only remove downstream results where we're not re-using them
-    reset_stages='bundle'
-    if [ "$skipQuantification" == 'no' ]; then
-        reset_stages="quantification aggregation scanpy \$reset_stages"
-    elif [ "$skipAggregation" = 'no' ]; then 
-        reset_stages="aggregation scanpy \$reset_stages"
-    elif [ "$skipTertiary" = 'no' ]; then 
-        reset_stages="scanpy \$reset_stages"
-    fi
-
-    for stage in \$reset_stages; do
-        rm -rf $SCXA_RESULTS/$expName/*/\$stage
-    done
-
+    
+    # Start by assuming an old experiment
+        
+    newExperiment=0
+    
     sdrfToNfConf.R \
         --sdrf=$sdrfFile \
         --idf=$idfFile \
         --name=$expName \
-        --verbose
+        --verbose \
+        --out_conf try_conf
+
+    # Check for existing copies the config and derived SDRF. If neither have
+    # changed, no need to re-analyse- even if the SDRF has been edited.
+
+    for ext in .sdrf.txt .conf; do
+        while read -r tc; do
+            if [ -e \$SCXA_CONF/study/\$(basename \$tc) ]; then
+                diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
+                
+                if [ $? -ne 1 ]; then
+                    newExperiment=1
+                fi
+            fi
+        done <<< "\$(ls try_conf/*.\$ext)
+    done
+
+    # If either of the files has changes for any of the species in the
+    # experiment, trigger a re-run
+
+   if [ \$newExperiment -eq 1 ]; then
+
+        mv try_conf/* .
+        rm -rf try_conf 
+
+        # Only remove downstream results where we're not re-using them
+        reset_stages='bundle'
+        if [ "$skipQuantification" == 'no' ]; then
+            reset_stages="quantification aggregation scanpy \$reset_stages"
+        elif [ "$skipAggregation" = 'no' ]; then 
+            reset_stages="aggregation scanpy \$reset_stages"
+        elif [ "$skipTertiary" = 'no' ]; then 
+            reset_stages="scanpy \$reset_stages"
+        fi
+
+        for stage in \$reset_stages; do
+            rm -rf $SCXA_RESULTS/$expName/*/\$stage
+        done
+
+    fi
     """
 }
 
