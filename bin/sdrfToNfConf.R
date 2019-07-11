@@ -854,7 +854,15 @@ configs <- lapply(species_list, function(species){
       paste0("    protocol = '", protocol, "'")
     )
 
-    config_fields <- c(run = run.col, layout = library.layout.col, fastq = paste(fastq.fields, collapse=','))
+    config_fields <- c(run = run.col, layout = library.layout.col)
+    if (!  is.droplet.protocol(protocol)){
+        if ( length(fastq.fields) > 1 ){
+            perror('Multiple fastq fields on non-droplet experiment')
+            q(status=1)
+        }
+
+        config_fields['fastq'] <- fastq.fields
+    }
 
     # Record if we have an HCA experiment
 
@@ -876,7 +884,7 @@ configs <- lapply(species_list, function(species){
     if (properties$has.spikes){
       spikein <- tolower(unique(species.protocol.sdrf[[spike.in.col]]))
       if ( grepl("ercc.*",spikein) ) {
-        config_fields['spike'] <- paste(spike.in.col, collapse=',')
+        config_fields['spike'] <- spike.in.col
         spikes <- paste0("    spikes = 'ercc'"  )
       }else{
         print(paste("ignoring", spikein, 'for spikein'))
@@ -886,13 +894,13 @@ configs <- lapply(species_list, function(species){
     ## Set up for technical replication (or not)
   
     if(properties$has.techrep) {
-      config_fields['techrep'] <- paste(techrep.col, collapse=',')
+      config_fields['techrep'] <- techrep.col
     }
 
     # Do any rows need stranded analysis
 
     if (properties$has.strandedness){
-      config_fields['strand'] <- paste(strand.col, collapse=',')
+      config_fields['strand'] <- strand.col
     }
     
     # For droplet techs, add colums with strighforward statements of the URIs
