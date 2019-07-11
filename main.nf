@@ -144,7 +144,7 @@ process generate_config {
     newExperiment=0
     
     sdrfToNfConf.R \
-        --sdrf=$sdrfFile \
+        --sdrf=\$(readlink $sdrfFile) \
         --idf=$idfFile \
         --name=$expName \
         --verbose \
