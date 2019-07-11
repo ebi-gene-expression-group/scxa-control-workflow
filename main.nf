@@ -174,6 +174,9 @@ process generate_config {
 
    if [ \$newExperiment -eq 1 ]; then
 
+        echo "Temporary stop for debugging" 1>&2
+        exit 1
+
         mv try_conf/* .
 
         # Only remove downstream results where we're not re-using them
