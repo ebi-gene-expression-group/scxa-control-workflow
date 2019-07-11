@@ -913,7 +913,7 @@ configs <- lapply(species_list, function(species){
       cb_field <- getActualColnames('cell barcode read', sdrf)
       uri_cols <- which(colnames(sdrf) == fastq.col)
 
-      if (length(uri_cols) < 3 ){
+      if (length(uri_cols) < 2 ){
         perror('Less than 3 FASTQ URI fields supplied for droplet experiment- expect one for each of cDNA, cell barcode and UMI')
         q(status=1)
       }    
