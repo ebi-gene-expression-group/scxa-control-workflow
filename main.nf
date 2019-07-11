@@ -160,6 +160,7 @@ process generate_config {
                 diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
 
                 if [ \$? -ne 0 ]; then
+                    echo \$tc is different to \$SCXA_CONF/study/\$(basename \$tc)
                     newExperiment=1
                 fi
 
