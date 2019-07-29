@@ -162,9 +162,13 @@ process generate_config {
                 if [ \$? -ne 0 ]; then
                     echo \$tc is different to \$SCXA_CONF/study/\$(basename \$tc)
                     newExperiment=1
+                    break
                 fi
 
                 set -e
+            else
+                newExperiment=1
+                break
             fi
         done <<< "\$(ls try_conf/*.\$ext)"
     done
