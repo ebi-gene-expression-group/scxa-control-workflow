@@ -1,4 +1,4 @@
-# IN DEVELOPMENT: Single-cell Expression Atlas SMART-seq workflow
+# Single-cell Expression Atlas control workflow for single-cell expression data analysis
 
 This is a Nextflow workflow which:
 
@@ -12,9 +12,8 @@ It's actually a workflow-of-workflows comprising:
 
  * [scxa-smartseq-quantification-workflow](https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow)
  * [scxa-aggregation-workflow](https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow)
- * [scanpy-workflow](https://github.com/ebi-gene-expression-group/scanpy-workflow)
+ * Clustering using Scanpy, via Galaxy workflows encoded [here](https://github.com/ebi-gene-expression-group/scxa-workflows)
  * [scxa-bundle-workflow](https://github.com/ebi-gene-expression-group/scxa-bundle-workflow)
-
 
 ## Setup
 
@@ -24,7 +23,7 @@ Workflow dependencies are managed via Conda and Bioconda, so you'll need to set 
 
 ### Nextflow
 
-Obviously you'll need Nexflow itself. If you don't have it already you can install via Conda:
+Obviously you'll need Nextflow itself. If you don't have it already you can install via Conda:
 
 ```
 conda install nextflow
@@ -32,45 +31,21 @@ conda install nextflow
 
 You may well want to do this within a Conda environment you create for the purpose.
 
+### Workflows
+
+Clone this repo into a directory called 'workflow' under the directory from where you will execute it, such that you have (RUN DIR)/workflow/scxa-control-workflow.
+
+You will also need to clone [scxa-workflows](https://github.com/ebi-gene-expression-group/scxa-workflows), which contains child workflows as submodules, and acts as a central place to store parameters. Clone it under the same directory, so that you have (RUN DIR)/workflow/scxa-workflows. 
+
 ## Run the workflow
 
-### Inputs
-
-Expected inputs are:
-
- * A path to a directory where SDRF and IDF files are stored
- * An expriment ID for files in that directory. e.g. specifying 'foo' will imply the existence of foo.sdrf.txt and foo.idf.txt in the above directory 
-
-
-### Parameters
-
-Default base configuration is in [nextflow.config](nextflow.config) and [params.config](params.config). Further configuration is derived from the SDRF files and passed to child workflows.
-
-### Execution
-
-The workflow can be run directly from this repository. To do so for a single experiment use a command like the following:
+Routine analysis is triggered (from the above directories) like:
 
 ```
-nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --expName <exp name> --sdrfDir <sdrf dir> 
+./workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -t scanpy-galaxy
 ```
 
-See Nextflow documentation for further command line options. This will download the workflow, create any necessary environments, and run the workflow with the specified inputs. 
-
-Future executions will use a cached copy of the pipeline, should you wish to update the code in future, you can do so like:
-
-```
-nextflow pull ebi-gene-expression-group/scxa-smartseq-workflow
-```
-
-#### Production mode
-
-If you do not supply an experiment ID:
-
-```
-nextflow run -resume ebi-gene-expression-group/scxa-smartseq-workflow --sdrfDir <sdrf dir> 
-```
-
-Then the nextflow process will start, and will analyse all experiemnts in the SDRF directory, to a limit specified in the configuration.
+This will look for SDRF files in the directory specified by the environment variable SCXA_SDRF_DIR, triggering analyses for any new experiments found there, running quantifications via Nextflow child workflows, and tertiary analysis via the API to a Galaxy setup. 
 
 ### Outputs
 
