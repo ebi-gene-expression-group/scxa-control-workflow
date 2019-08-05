@@ -139,10 +139,6 @@ process generate_config {
 
     """
     
-    # Start by assuming an old experiment
-        
-    newExperiment=0
-    
     sdrfToNfConf.R \
         --sdrf=\$(readlink $sdrfFile) \
         --idf=$idfFile \
@@ -150,31 +146,44 @@ process generate_config {
         --verbose \
         --out_conf try_conf
 
-    # Check for existing copies the config and derived SDRF. If neither have
-    # changed, no need to re-analyse- even if the SDRF has been edited.
+    # If there's already a MANIFEST then this is a potential re-run. Only do
+    # this if the config changes impact on analysis. This will be the case if
+    # there's a difference between new derived files and the old ones.
 
-    for ext in sdrf.txt conf; do
-        while read -r tc; do
-            if [ -e \$SCXA_CONF/study/\$(basename \$tc) ]; then
-                set +e
-                diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
+    if [ -e $SCXA_RESULTS/$expName/*/bundle/MANIFEST ]; then
+    
+        # Start by assuming an old experiment
+        
+        newExperiment=0
 
-                if [ \$? -ne 0 ]; then
-                    echo \$tc is different to \$SCXA_CONF/study/\$(basename \$tc)
+        # Check for existing copies the config and derived SDRF. If neither have
+        # changed, no need to re-analyse- even if the SDRF has been edited.
+
+        for ext in sdrf.txt conf; do
+            while read -r tc; do
+                if [ -e \$SCXA_CONF/study/\$(basename \$tc) ]; then
+                    set +e
+                    diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
+
+                    if [ \$? -ne 0 ]; then
+                        echo \$tc is different to \$SCXA_CONF/study/\$(basename \$tc)
+                        newExperiment=1
+                        break
+                    fi
+
+                    set -e
+                else
                     newExperiment=1
                     break
                 fi
+            done <<< "\$(ls try_conf/*.\$ext)"
+        done
+    else
+        newExperiment=1
+    fi
 
-                set -e
-            else
-                newExperiment=1
-                break
-            fi
-        done <<< "\$(ls try_conf/*.\$ext)"
-    done
-
-    # If either of the files has changes for any of the species in the
-    # experiment, trigger a re-run
+    # If this is a new experiment, or one where config changes impact on
+    # analysis, re-run
 
    if [ \$newExperiment -eq 1 ]; then
 
