@@ -563,6 +563,7 @@ if ( skipQuantification == 'yes'){
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
                 --referenceGtf \$RESULTS_ROOT/$referenceGtf \
                 --protocol $protocol \
+                --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
                 $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_droplet_quantification/main.nf \
                 -work-dir $SCXA_WORK/\$SUBDIR \
