@@ -346,7 +346,7 @@ if ( !is.null(opt$idf_file) ) {
   # Required fields for Atlas
   
   expected.in.idf2 <- c("experimenttype","experimental factor name","protocol name")
-  names(expected.in.idf2) <- c("AEExperimentType","Experimental Factor Name","Protocol Name")
+  names(expected.in.idf2) <- c("EAExperimentType","Experimental Factor Name","Protocol Name")
   expected.in.idf <- c(expected.in.idf,expected.in.idf2)
   
   # Error where required IDF fields not present
