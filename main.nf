@@ -150,7 +150,7 @@ process generate_config {
     # this if the config changes impact on analysis. This will be the case if
     # there's a difference between new derived files and the old ones.
 
-    if [ -e $SCXA_RESULTS/$expName/*/bundle/MANIFEST ]; then
+    if [ -e $SCXA_RESULTS/$expName/*/bundle/MANIFEST ] && [ "$overwrite" != 'yes' ];; then
     
         # Start by assuming an old experiment
         
