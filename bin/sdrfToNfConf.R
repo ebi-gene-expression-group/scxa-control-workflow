@@ -866,12 +866,6 @@ configs <- lapply(species_list, function(species){
         config_fields['fastq'] <- fastq.fields
     }
 
-    # Record if we have an HCA experiment
-
-    if( is.hca ){
-      config_fields <- c(config_fields, c(hca_uuid = hca.bundle.uuid.col, hca_version = hca.bundle.version.col))    
-    }   
-    
     ## Field to use for quality filtering
 
     if ( ! is.null(sc.quality.col)){
@@ -954,7 +948,7 @@ configs <- lapply(species_list, function(species){
               }
 
               if (is.hca){
-                config_fields[uri_field] <- file_fields
+                species.protocol.sdrf[[uri_field]] <- paste0('hca://', apply(species.protocol.sdrf[,c(hca.bundle.uuid.col, hca.bundle.version.col, file_fields)], 1, paste, collapse='/' ))
               }else{
 
                 files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
@@ -968,9 +962,8 @@ configs <- lapply(species_list, function(species){
                   uri_fields <- uri_cols[uri_select]
                 }
                 species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
-              
-                config_fields[uri_field] <- uri_field
               }  
+              config_fields[uri_field] <- uri_field
         }
 
       # Record the barcode position and offset fields
