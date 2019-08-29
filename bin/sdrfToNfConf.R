@@ -904,67 +904,67 @@ configs <- lapply(species_list, function(species){
         
     if ( is.droplet.protocol(protocol)){
  
-          cdna_field <- getActualColnames('cdna read', sdrf)
-          umi_field <- getActualColnames('umi barcode read', sdrf)
-          cb_field <- getActualColnames('cell barcode read', sdrf)
-          
-          if (! is.hca){
-            uri_cols <- which(colnames(sdrf) == fastq.col)
-            if (length(uri_cols) < 2 ){
-              perror('Less than 3 FASTQ URI fields supplied for droplet experiment- expect one for each of cDNA, cell barcode and UMI')
-              q(status=1)
-            }    
-          }
+      cdna_field <- getActualColnames('cdna read', sdrf)
+      umi_field <- getActualColnames('umi barcode read', sdrf)
+      cb_field <- getActualColnames('cell barcode read', sdrf)
+      
+      if (! is.hca){
+        uri_cols <- which(colnames(sdrf) == fastq.col)
+        if (length(uri_cols) < 2 ){
+          perror('Less than 3 FASTQ URI fields supplied for droplet experiment- expect one for each of cDNA, cell barcode and UMI')
+          q(status=1)
+        }    
+      }
 
-          # Right now we need umi and cell barcodes to be in the same file. Might be
-          # different when we start to handle 10xv1
+      # Right now we need umi and cell barcodes to be in the same file. Might be
+      # different when we start to handle 10xv1
 
-          if ( length(umi_field) == 0 || length(cb_field) == 0 ){
-            perror('UMI barcode read or cell barcode read fields not supplied')
-            q(status=1)
-          }
+      if ( length(umi_field) == 0 || length(cb_field) == 0 ){
+        perror('UMI barcode read or cell barcode read fields not supplied')
+        q(status=1)
+      }
 
-          if ( any(sdrf[[umi_field]] != sdrf[[cb_field]]) ){
-              perror("Cell barcodes and UMIs must be in the same file for currently enabled droplet protocols")
-              q(status=1)
-          }
+      if ( any(sdrf[[umi_field]] != sdrf[[cb_field]]) ){
+        perror("Cell barcodes and UMIs must be in the same file for currently enabled droplet protocols")
+        q(status=1)
+      }
 
-          # Work out which URI holds the cDNA reads. We have to work out which read
-          # number has the cdna reads, then check the 'readN file' column for the
-          # file. For the full URI we then have to work out which of the FASTQ URI
-          # fields contains that file. Things are simpler for HCA, where we
-          # just use the file field (downstream workflows then use that in
-          # combination with the UUIDs to get the files.
+      # Work out which URI holds the cDNA reads. We have to work out which read
+      # number has the cdna reads, then check the 'readN file' column for the
+      # file. For the full URI we then have to work out which of the FASTQ URI
+      # fields contains that file. Things are simpler for HCA, where we
+      # just use the file field (downstream workflows then use that in
+      # combination with the UUIDs to get the files.
 
-          for (field_type in c('cdna', 'cell barcode', 'umi barcode')){
-              read_field <- getActualColnames(paste(field_type, 'read'), species.protocol.sdrf)
-              uri_field <- gsub(' ', '_', paste(field_type, 'uri'))
-              file_field_name <- paste(sub(' ', '', species.protocol.sdrf[[read_field]]), 'file')
-              file_fields <- getActualColnames(file_field_name, species.protocol.sdrf)
+      for (field_type in c('cdna', 'cell barcode', 'umi barcode')){
+        read_field <- getActualColnames(paste(field_type, 'read'), species.protocol.sdrf)
+        uri_field <- gsub(' ', '_', paste(field_type, 'uri'))
+        file_field_name <- paste(sub(' ', '', species.protocol.sdrf[[read_field]]), 'file')
+        file_fields <- getActualColnames(file_field_name, species.protocol.sdrf)
 
-              if (is.null(file_fields)){
-                perror(paste(file_field_name, 'field not found in SDRF'))
-                q(status=1)
-              }
-
-              if (is.hca){
-                species.protocol.sdrf[[uri_field]] <- paste0('hca://', apply(species.protocol.sdrf[,c(hca.bundle.uuid.col, hca.bundle.version.col, file_fields)], 1, paste, collapse='/' ))
-              }else{
-
-                files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
-                nlibs <- nrow(species.protocol.sdrf)
-
-                uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
-              
-                if (nlibs > 1){
-                  uri_fields <- uri_cols[apply(uri_select, 1, function(x) which(x))]
-                }else{
-                  uri_fields <- uri_cols[uri_select]
-                }
-                species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
-              }  
-              config_fields[uri_field] <- uri_field
+        if (is.null(file_fields)){
+          perror(paste(file_field_name, 'field not found in SDRF'))
+          q(status=1)
         }
+            
+        files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
+
+        if (is.hca){
+          species.protocol.sdrf[[uri_field]] <- paste('hca:/', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], files, sep='/')
+        }else{
+
+          nlibs <- nrow(species.protocol.sdrf)
+          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
+          
+          if (nlibs > 1){
+            uri_fields <- uri_cols[apply(uri_select, 1, function(x) which(x))]
+          }else{
+            uri_fields <- uri_cols[uri_select]
+          }
+          species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
+        }  
+        config_fields[uri_field] <- uri_field
+      }
 
       # Record the barcode position and offset fields
      
@@ -991,7 +991,6 @@ configs <- lapply(species_list, function(species){
           config_fields[field_label] <- field_name
         }
       }
-
     }    
 
     # Record field containing cell counts, where present
