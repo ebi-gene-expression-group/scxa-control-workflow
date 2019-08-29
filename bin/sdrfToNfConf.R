@@ -950,7 +950,7 @@ configs <- lapply(species_list, function(species){
         files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
 
         if (is.hca){
-          species.protocol.sdrf[[uri_field]] <- paste('hca:/', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], files, sep='/')
+          species.protocol.sdrf[[uri_field]] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], files, sep='/')
         }else{
 
           nlibs <- nrow(species.protocol.sdrf)
