@@ -199,12 +199,12 @@ organism.col <- getActualColnames('organism', sdrf)
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
 supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq")
-#supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv1","drop-seq","10xv1a")
 sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq')
   
 # Check the protocol and use to determine single-cell
 
 is.singlecell <- FALSE
+is.hca <- ! is.null(hca.bundle.uuid.col)
 
 if ( ! is.null(protocol.col)){
 
@@ -224,6 +224,7 @@ if ( ! is.null(protocol.col)){
     if (all(protocols %in% supported.single.cell.protocols)){
         print.info("Found single-cell experiment")
         is.singlecell <- TRUE
+
     }else if (any(protocols %in% supported.single.cell.protocols)){
         perror("Some but not all rows have single-cell protocols")
         q(status=1)
@@ -252,8 +253,9 @@ for (comp in names(compare)){
 
 ## Verify presence of mandatory columns (SDRF) and regularise names
 
+cols.for.download <- ifelse(is.hca, c(hca.bundle.uuid.col, hca.bundle.version.col) , fastq.col)
 expected.cols <- c("Source Name")
-expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTION","LIBRARY_LAYOUT","FASTQ_URI")
+expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTION","LIBRARY_LAYOUT",cols.for.download)
 expected.characteristic.cols <- c()
 expected.factor.cols <- c()
 opt.cols <- c("ORGANISM","organism part","sex","spike in","molecule","technical replicate group","ENA_RUN","ENA_SAMPLE","Scan Name")
@@ -548,13 +550,13 @@ if ( is.singlecell ) {
     '10xv1' = c('read1 file', 'read2 file'),    
     '10xv1a' = c('read1 file', 'read2 file', 'index1 file'),         
     '10xv1i' = c('read1 file', 'read2 file', 'index1 file'),
-    '10xv2' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    '10xv3' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    'drop-seq' = c('fastq uri', 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
-    "smart-seq" = 'fastq uri',
-    "smart-seq2" = 'fastq uri',
-    "smarter" = 'fastq uri',
-    "smart-like = 'fastq uri"
+    '10xv2' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    '10xv3' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    'drop-seq' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    "smart-seq" = cols.for.download,
+    "smart-seq2" = cols.for.download,
+    "smarter" = cols.for.download,
+    "smart-like" = cols.for.download
   )
   
   row.required.fastq.fields <- lapply(sc.required.fastq.fields[match(protocols, tolower(names(sc.required.fastq.fields)))], getActualColnames, sdrf)
@@ -613,7 +615,7 @@ if ( is.singlecell ) {
  
   # For bulk, just check rows for fastq_uri
   
-  row.required.fastq.fields <- rep(list(getActualColnames('fastq_uri', sdrf)), nrow(sdrf))
+  row.required.fastq.fields <- rep(list(cols.for.download), nrow(sdrf))
   row.optional.fastq.fields <- rep(list(c()), nrow(sdrf))
 }
 
@@ -856,21 +858,20 @@ configs <- lapply(species_list, function(species){
 
     config_fields <- c(run = run.col, layout = library.layout.col)
     if (!  is.droplet.protocol(protocol)){
-        if ( length(fastq.fields) > 1 ){
-            perror('Multiple fastq fields on non-droplet experiment')
-            q(status=1)
-        }
+      if ( length(fastq.fields) > 1 ){
+        perror('Multiple fastq fields on non-droplet experiment')
+        q(status=1)
+      }
 
+      # For non-droplet HCA experiments...
+      if (is.hca){
+        species.protocol.sdrf[['hca_uri']] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], species.protocol.sdrf[[fastq.fields]], sep='/')
+        config_fields['fastq'] <- 'hca_uri'
+      }else{
         config_fields['fastq'] <- fastq.fields
+      }
     }
 
-    # Record if we have an HCA experiment
-
-    if( ! is.null(hca.bundle.uuid.col) ){
-      protocol$is.hca <- TRUE
-      config_fields <- c(config_fields, c(hca_uuid = hca.bundle.uuid.col, hca_version = hca.bundle.uuid.col))    
-    }   
-    
     ## Field to use for quality filtering
 
     if ( ! is.null(sc.quality.col)){
@@ -904,19 +905,22 @@ configs <- lapply(species_list, function(species){
     }
     
     # For droplet techs, add colums with strighforward statements of the URIs
-    # that contain barcodes and cDNAs, and record which columns to use
+    # that contain barcodes and cDNAs, and record which columns to use (unless
+    # HCA in which case the UUID added above will work
         
     if ( is.droplet.protocol(protocol)){
-     
+ 
       cdna_field <- getActualColnames('cdna read', sdrf)
       umi_field <- getActualColnames('umi barcode read', sdrf)
       cb_field <- getActualColnames('cell barcode read', sdrf)
-      uri_cols <- which(colnames(sdrf) == fastq.col)
-
-      if (length(uri_cols) < 2 ){
-        perror('Less than 3 FASTQ URI fields supplied for droplet experiment- expect one for each of cDNA, cell barcode and UMI')
-        q(status=1)
-      }    
+      
+      if (! is.hca){
+        uri_cols <- which(colnames(sdrf) == fastq.col)
+        if (length(uri_cols) < 2 ){
+          perror('Less than 2 FASTQ URI fields supplied for droplet experiment- expect at least two, probably one for barcode/UMI, one for cDNA.')
+          q(status=1)
+        }    
+      }
 
       # Right now we need umi and cell barcodes to be in the same file. Might be
       # different when we start to handle 10xv1
@@ -927,29 +931,35 @@ configs <- lapply(species_list, function(species){
       }
 
       if ( any(sdrf[[umi_field]] != sdrf[[cb_field]]) ){
-          perror("Cell barcodes and UMIs must be in the same file for currently enabled droplet protocols")
-          q(status=1)
+        perror("Cell barcodes and UMIs must be in the same file for currently enabled droplet protocols")
+        q(status=1)
       }
 
       # Work out which URI holds the cDNA reads. We have to work out which read
       # number has the cdna reads, then check the 'readN file' column for the
       # file. For the full URI we then have to work out which of the FASTQ URI
-      # fields contains that file.
+      # fields contains that file. Things are simpler for HCA, where we
+      # just use the file field (downstream workflows then use that in
+      # combination with the UUIDs to get the files.
 
       for (field_type in c('cdna', 'cell barcode', 'umi barcode')){
-          read_field <- getActualColnames(paste(field_type, 'read'), species.protocol.sdrf)
-          uri_field <- gsub(' ', '_', paste(field_type, 'uri'))
-          file_field_name <- paste(sub(' ', '', species.protocol.sdrf[[read_field]]), 'file')
-          file_fields <- getActualColnames(file_field_name, species.protocol.sdrf)
+        read_field <- getActualColnames(paste(field_type, 'read'), species.protocol.sdrf)
+        uri_field <- gsub(' ', '_', paste(field_type, 'uri'))
+        file_field_name <- paste(sub(' ', '', species.protocol.sdrf[[read_field]]), 'file')
+        file_fields <- getActualColnames(file_field_name, species.protocol.sdrf)
 
-          if (is.null(file_fields)){
-            perror(paste(file_field_name, 'field not found in SDRF'))
-            q(status=1)
-          }
+        if (is.null(file_fields)){
+          perror(paste(file_field_name, 'field not found in SDRF'))
+          q(status=1)
+        }
+            
+        files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
 
-          files <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, file_fields[x]]))
+        if (is.hca){
+          species.protocol.sdrf[[uri_field]] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], files, sep='/')
+        }else{
+
           nlibs <- nrow(species.protocol.sdrf)
-
           uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
           
           if (nlibs > 1){
@@ -958,8 +968,8 @@ configs <- lapply(species_list, function(species){
             uri_fields <- uri_cols[uri_select]
           }
           species.protocol.sdrf[[uri_field]] <- unlist(lapply(1:nrow(species.protocol.sdrf), function(x) species.protocol.sdrf[x, uri_fields[x]]))      
-          
-          config_fields[uri_field] <- uri_field
+        }  
+        config_fields[uri_field] <- uri_field
       }
 
       # Record the barcode position and offset fields
@@ -971,6 +981,7 @@ configs <- lapply(species_list, function(species){
         field_name = getActualColnames(dffa, sdrf)
 
         if (is.null(field_name)){
+
           if ( protocol %in% names(droplet.protocol.defaults) && field_label %in% names(droplet.protocol.defaults[[protocol]]) ){
 
               # We can populate a field with the default value for the protocol if necessary
@@ -986,7 +997,6 @@ configs <- lapply(species_list, function(species){
           config_fields[field_label] <- field_name
         }
       }
-
     }    
 
     # Record field containing cell counts, where present
