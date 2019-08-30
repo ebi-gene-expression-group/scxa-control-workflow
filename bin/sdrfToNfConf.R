@@ -917,7 +917,7 @@ configs <- lapply(species_list, function(species){
       if (! is.hca){
         uri_cols <- which(colnames(sdrf) == fastq.col)
         if (length(uri_cols) < 2 ){
-          perror('Less than 3 FASTQ URI fields supplied for droplet experiment- expect one for each of cDNA, cell barcode and UMI')
+          perror('Less than 2 FASTQ URI fields supplied for droplet experiment- expect at least two, probably one for barcode/UMI, one for cDNA.')
           q(status=1)
         }    
       }
