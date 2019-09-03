@@ -210,7 +210,7 @@ process generate_config {
 
         touch -m $SCXA_RESULTS/$expName/*/bundle/MANIFEST
                     
-        for species in $(ls $SCXA_RESULTS/$expName); do
+        for species in \$(ls $SCXA_RESULTS/$expName); do
             echo -e "$expName\\t\$species\\t$SCXA_RESULTS/$expName/\$species/bundle" > bundleLines.txt
         done
 
