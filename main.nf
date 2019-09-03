@@ -136,6 +136,7 @@ process generate_config {
     output:
         file('*.conf') optional true into CONF_FILES
         file('*.sdrf.txt') optional true into SDRF_FILES        
+        file('bundleLines.txt') optional true into NORERUN_BUNDLE_LINES
 
     """
     
@@ -208,6 +209,11 @@ process generate_config {
         # Update the manifest time stamps to prevent re-config next time
 
         touch -m $SCXA_RESULTS/$expName/*/bundle/MANIFEST
+                    
+        for species in $(ls $SCXA_RESULTS/$expName); do
+            echo -e "$expName\\t\$species\\t$SCXA_RESULTS/$expName/\$species/bundle" > bundleLines.txt
+        done
+
     fi
     rm -rf try_conf 
     """
@@ -988,6 +994,7 @@ process bundle {
 // Record the completed bundles
 
 OLD_BUNDLE_LINES
+    .concat ( NORERUN_BUNDLE_LINES )
     .concat ( NEW_BUNDLE_LINES )
     .collectFile(name: 'these.all.done.txt', sort: true)
     .set{
