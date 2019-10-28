@@ -333,19 +333,31 @@ process add_reference {
         set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("*.fa.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
 
     """
-        species_conf=$SCXA_PRE_CONF/reference/${species}.conf
+    # Use references from an IRAP config
+
+    species_conf=$SCXA_PRE_CONF/reference/${species}.conf
+    if [ -e "\$species_conf ]; then
+
         cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
         cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
-
-        ln -s \$cdna_fasta
-        ln -s \$cdna_gtf
-        
         contamination_index=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
+        
         if [ \$contamination_index != 'None' ]; then
-            printf $SCXA_DATA/contamination/\$contamination_index
-        else
-            echo -n None
+            contamination_index=$SCXA_DATA/contamination/\$contamination_index
         fi
+    
+
+    elif [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
+
+        cdna_fasta=$IRAP_DATA/reference/\$(parseIslConfig.sh ${species} cdna_file)   
+        cdna_gtf=$IRAP_DATA/reference/\$(parseIslConfig.sh ${species} gtf_file)   
+        contamination_index=\$(parseIslConfig.sh ${species} cont_index)  
+        
+    fi
+   
+    echo -n "\$contamination_index"
+    ln -s \$cdna_fasta
+    ln -s \$cdna_gtf
     """
 }
 
@@ -661,10 +673,14 @@ if (skipAggregation == 'yes' ){
             mkdir -p $SCXA_RESULTS/\$SUBDIR/reports
             pushd $SCXA_NEXTFLOW/\$SUBDIR > /dev/null
 
+            # If we have a species-wise config, supply to aggregation
+
             species_conf=$SCXA_PRE_CONF/reference/${species}.conf
-            
-            nextflow run \
-                -config \$species_conf \
+            if  [ -e \$species_conf ]; then
+                opt_conf=" --config \$species_conf"
+            fi            
+
+            nextflow run \$opt_conf \
                 --resultsRoot \$RESULTS_ROOT \
                 --quantDir \$RESULTS_ROOT/quant_results \
                 -resume \
