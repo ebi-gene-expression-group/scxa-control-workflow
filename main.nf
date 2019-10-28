@@ -677,6 +677,7 @@ if (skipAggregation == 'yes' ){
             # If we have a species-wise config, supply to aggregation
 
             species_conf=$SCXA_PRE_CONF/reference/${species}.conf
+            opt_conf=
             if  [ -e \$species_conf ]; then
                 opt_conf=" --config \$species_conf"
             fi            
