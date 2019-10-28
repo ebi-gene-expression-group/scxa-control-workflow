@@ -959,8 +959,16 @@ process bundle {
 
         # Retrieve the original reference file names to report to bundle 
         species_conf=$SCXA_PRE_CONF/reference/${species}.conf
-        cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
-        cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
+        
+        if [ -e "\$species_conf" ]; then
+            cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
+            cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
+        
+        elif [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
+            irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
+            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
+            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+        fi
 
         TPM_OPTIONS=''
         tpm_filesize=\$(stat --printf="%s" \$(readlink ${tpmMatrix}))
