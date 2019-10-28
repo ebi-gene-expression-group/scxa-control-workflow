@@ -349,9 +349,9 @@ process add_reference {
 
     elif [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
 
-        irap_species_conf=$ISL_CONFIG_DIR/$species.conf
-        cdna_fasta=$IRAP_DATA/reference/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-        cdna_gtf=$IRAP_DATA/reference/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+        irap_species_conf=$IRAP_CONFIG_DIR/$species.conf
+        cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
+        cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
         contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
         
     fi
