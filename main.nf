@@ -32,10 +32,7 @@ if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
     skipTertiary = 'yes'
 }
 
-// If user has supplied an experiment ID, then just run for that experiment.
-// Otherwise, watch the SDRF directory for incoming SDRF files
-
-doneSuffix=''
+// Now we pick the SDRFs to use
 
 if ( params.containsKey('expName')){
     SDRF = Channel.fromPath("${sdrfDir}/${params.expName}.sdrf.txt", checkIfExists: true)
@@ -43,6 +40,28 @@ if ( params.containsKey('expName')){
 }else{
     SDRF = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true)
 }
+
+MANUAL_SDRFS = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
+GIT_SDRFS = Channel.fromPath("$SCXA_WORKFLOW_ROOT/metadata/**/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
+
+// If user has supplied an experiment ID, then filter SDRFs to just that
+// experiment. Otherwise set a blank filter to include all results
+
+doneSuffix=''
+sdrfFilter = ''
+if ( params.containsKey('expName')){
+    sdrfFilter="${params.expName}"
+    doneSuffix=".${params.expName}"
+}
+
+// Do a join on the SDRF channels to get single tuple per experiment ID, then
+// pick the first. This will uniquify by experiment ID and prioritise the Git
+// SDRFs
+
+SDRF = GIT_SDRFS
+    .join(MANUAL_SDRFS, remainder: true)
+    .filter( ~/.*\/.*${sdrfFilter}\..*/ )
+    .map{ r -> r[1] }
 
 // Determine which SDRF files have up-to-date bundles. For new/ updated
 // experiments, output to the channel with the relevant IDF.
