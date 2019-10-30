@@ -34,13 +34,6 @@ if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
 
 // Now we pick the SDRFs to use
 
-if ( params.containsKey('expName')){
-    SDRF = Channel.fromPath("${sdrfDir}/${params.expName}.sdrf.txt", checkIfExists: true)
-    doneSuffix=".${params.expName}"    
-}else{
-    SDRF = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true)
-}
-
 MANUAL_SDRFS = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
 GIT_SDRFS = Channel.fromPath("$SCXA_WORKFLOW_ROOT/metadata/**/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
 
