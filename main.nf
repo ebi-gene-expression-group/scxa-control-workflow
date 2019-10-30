@@ -173,7 +173,7 @@ process generate_config {
             while read -r tc; do
                 if [ -e \$SCXA_CONF/study/\$(basename \$tc) ]; then
                     set +e
-                    diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
+                    diff -I '^//' \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
 
                     if [ \$? -ne 0 ]; then
                         echo \$tc is different to \$SCXA_CONF/study/\$(basename \$tc)
