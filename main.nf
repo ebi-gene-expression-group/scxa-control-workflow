@@ -119,7 +119,7 @@ process find_new_updated {
         bundleLocks=\$(ls \$SCXA_RESULTS/$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
       
         if [ \$newExperiment -eq 1 ] && [ -z "\$bundleLocks" ]; then
-            cp \$(dirname \$(readlink $sdrfFile))/\${expName}.idf.txt .
+            cp \$(dirname \$(readlink $sdrfFile))/${expName}.idf.txt .
         fi
     """
 }
