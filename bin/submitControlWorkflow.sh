@@ -72,6 +72,16 @@ popd > /dev/null
 
 export PATH=$(pwd)/workflow/scxa-workflows/bin:$PATH
 
+# Fetch the Git SDRFs
+
+if [ ! -d 'metadata' ]; then
+    git clone git@gitlab.ebi.ac.uk:ebi-gene-expression/scxa-metadata.git metadata
+fi
+
+pushd metadata
+git pull > /dev/null
+popd
+
 # Build the Nextflow command
 
 expNamePart=
