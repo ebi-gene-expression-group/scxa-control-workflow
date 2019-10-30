@@ -78,9 +78,9 @@ if [ ! -d 'metadata' ]; then
     git clone git@gitlab.ebi.ac.uk:ebi-gene-expression/scxa-metadata.git metadata
 fi
 
-pushd metadata
+pushd metadata > /dev/null
 git pull > /dev/null
-popd
+popd > /dev/null
 
 # Build the Nextflow command
 
