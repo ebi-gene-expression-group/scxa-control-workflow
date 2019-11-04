@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-sdrfDir = params.sdrfDir
 tertiaryWorkflow = params.tertiaryWorkflow
 overwrite = params.overwrite
 
@@ -34,7 +33,6 @@ if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
 
 // Now we pick the SDRFs to use
 
-MANUAL_SDRFS = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
 GIT_SDRFS = Channel.fromPath("$SCXA_WORKFLOW_ROOT/metadata/**/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
 
 // If user has supplied an experiment ID, then filter SDRFs to just that
@@ -52,7 +50,6 @@ if ( params.containsKey('expName')){
 // SDRFs
 
 SDRF = GIT_SDRFS
-    .join(MANUAL_SDRFS, remainder: true)
     .filter( ~/.*\/.*${sdrfFilter}\..*/ )
     .map{ r -> tuple(r[0], r[1]) }
 
