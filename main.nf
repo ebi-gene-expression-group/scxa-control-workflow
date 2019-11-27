@@ -813,8 +813,8 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
 
         process scanpy_galaxy {
             
-            # Exit status of 3 is just Galaxy being annoying with history
-            # deletion, no cause to error
+            // Exit status of 3 is just Galaxy being annoying with history
+            // deletion, no cause to error
 
             validExitStatus 0,3
         
