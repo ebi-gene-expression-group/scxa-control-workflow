@@ -1,6 +1,5 @@
 #!/usr/bin/env nextflow
 
-sdrfDir = params.sdrfDir
 tertiaryWorkflow = params.tertiaryWorkflow
 overwrite = params.overwrite
 
@@ -32,17 +31,27 @@ if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
     skipTertiary = 'yes'
 }
 
-// If user has supplied an experiment ID, then just run for that experiment.
-// Otherwise, watch the SDRF directory for incoming SDRF files
+// Now we pick the SDRFs to use
+
+GIT_SDRFS = Channel.fromPath("$SCXA_WORKFLOW_ROOT/metadata/**/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
+
+// If user has supplied an experiment ID, then filter SDRFs to just that
+// experiment. Otherwise set a blank filter to include all results
 
 doneSuffix=''
-
+sdrfFilter = ''
 if ( params.containsKey('expName')){
-    SDRF = Channel.fromPath("${sdrfDir}/${params.expName}.sdrf.txt", checkIfExists: true)
-    doneSuffix=".${params.expName}"    
-}else{
-    SDRF = Channel.fromPath("${sdrfDir}/*.sdrf.txt", checkIfExists: true)
+    sdrfFilter="${params.expName}"
+    doneSuffix=".${params.expName}"
 }
+
+// Do a join on the SDRF channels to get single tuple per experiment ID, then
+// pick the first. This will uniquify by experiment ID and prioritise the Git
+// SDRFs
+
+SDRF = GIT_SDRFS
+    .filter( ~/.*\/.*${sdrfFilter}\..*/ )
+    .map{ r -> tuple(r[0], r[1]) }
 
 // Determine which SDRF files have up-to-date bundles. For new/ updated
 // experiments, output to the channel with the relevant IDF.
@@ -60,19 +69,17 @@ process find_new_updated {
     cache false
         
     input:
-        file(sdrfFile) from SDRF
+        set val(expName), file(sdrfFile) from SDRF
 
     output:
-        set stdout, file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
+        set val(expName), file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
         file('bundleLines.txt') optional true into OLD_BUNDLE_LINES
 
     """
-        expName=\$(echo $sdrfFile | awk -F'.' '{print \$1}') 
-        
         # Have we excluded this study?
 
         set +e
-        grep -P "\$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
+        grep -P "$expName\\t" $SCXA_RESULTS/excluded.txt > /dev/null
         excludeStatus=\$?
         set -e
 
@@ -83,7 +90,7 @@ process find_new_updated {
         # Start by assuming a new experiment
         
         newExperiment=1
-        bundleManifests=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/MANIFEST 2>/dev/null || true)
+        bundleManifests=\$(ls \$SCXA_RESULTS/$expName/*/bundle/MANIFEST 2>/dev/null || true)
         
         # If there are existing bundles for this experiment then just use
         # those, unless the related SDRFs have been updated
@@ -97,7 +104,7 @@ process find_new_updated {
                     break
                 else
                     species=\$(echo \$bundleManifest | awk -F'/' '{print \$(NF-2)}' | tr -d \'\\n\')
-                    echo -e "\$expName\\t\$species\\t$SCXA_RESULTS/\$expName/\$species/bundle" > bundleLines.txt
+                    echo -e "$expName\\t\$species\\t$SCXA_RESULTS/$expName/\$species/bundle" > bundleLines.txt
                 fi
             done <<< "\$(echo -e "\$bundleManifests")"
         fi
@@ -106,11 +113,10 @@ process find_new_updated {
         # in progress.  Only tag new experiments when there are no loading
         # locks present
         
-        bundleLocks=\$(ls \$SCXA_RESULTS/\$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
+        bundleLocks=\$(ls \$SCXA_RESULTS/$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
       
         if [ \$newExperiment -eq 1 ] && [ -z "\$bundleLocks" ]; then
-            cp $sdrfDir/\${expName}.idf.txt .
-            echo \$expName | tr -d \'\\n\'
+            cp \$(dirname \$(readlink $sdrfFile))/${expName}.idf.txt .
         fi
     """
 }
@@ -164,7 +170,7 @@ process generate_config {
             while read -r tc; do
                 if [ -e \$SCXA_CONF/study/\$(basename \$tc) ]; then
                     set +e
-                    diff \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
+                    diff -I '^//' \$tc \$SCXA_CONF/study/\$(basename \$tc) > /dev/null 2>&1
 
                     if [ \$? -ne 0 ]; then
                         echo \$tc is different to \$SCXA_CONF/study/\$(basename \$tc)
