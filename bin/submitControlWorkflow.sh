@@ -75,7 +75,7 @@ export PATH=$(pwd)/workflow/scxa-workflows/bin:$PATH
 # Fetch the Git SDRFs
 
 if [ ! -d 'metadata' ]; then
-    git clone git@gitlab.ebi.ac.uk:ebi-gene-expression/scxa-metadata.git metadata
+    git clone $SCXA_METADATA_REPO metadata
 fi
 
 pushd metadata > /dev/null
