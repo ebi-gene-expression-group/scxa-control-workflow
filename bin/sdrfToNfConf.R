@@ -1056,16 +1056,14 @@ configs <- lapply(species_list, function(species){
     # Generate metadata file content to save
   
     metadata <- NULL
-    sdfcols2save2tsv <- getActualColnames(unique(c(
-      factors,
-      idf.factors,
-      idf.attrs,
-      techrep.col
-    )), species.protocol.sdrf)
+
+    metadata_cols <- unique(c(factors, idf.factors, idf.attrs, techrep.col))
+    sdfcols2save2tsv <- getActualColnames(metadata_cols, species.protocol.sdrf)
   
     if (length(sdfcols2save2tsv) > 0){
       metadata <- species.protocol.layout[,sdfcols2save2tsv, drop = FALSE]
       metadata <- cbind(run=rownames(metadata),metadata)
+      colnames(metadata) <- metadata_cols
     }
   
     list(config=config, metadata=metadata)
