@@ -142,6 +142,7 @@ process generate_config {
     output:
         file('*.conf') optional true into CONF_FILES
         file('*.sdrf.txt') optional true into SDRF_FILES        
+        file('*.metadata.tsv') optional true into METADATA_FILES       
         file('bundleLines.txt') optional true into NORERUN_BUNDLE_LINES
 
     """
@@ -235,6 +236,10 @@ SDRF_FILES
     .flatten()
     .set{FLAT_SDRF_FILES}
 
+METADATA_FILES
+    .flatten()
+    .set{FLAT_METADATA_FILES}
+
 // Tag SDRF files with file root
 
 process tag_sdrf{
@@ -265,8 +270,24 @@ process tag_conf{
     """
 }
 
+// Re-tag metadata files with exp name and species
+
+process tag_meta{
+    
+    input:
+        file(metaFile) from FLAT_METADATA_FILES
+
+    output:
+        set stdout, file(metaFile) into TAGGED_CONF_FILES
+
+    """
+        echo -n $metaFile | sed 's/.metadata.tsv//'
+    """
+}
+
 TAGGED_CONF_FILES
     .join( TAGGED_SDRF_FILES ) 
+    .join( TAGGED_METADATA_FILES ) 
     .set{ CONF_SDRF }
 
 // Mark up files with metadata for grouping
@@ -280,10 +301,10 @@ process markup_conf_files {
     conda 'pyyaml' 
     
     input:
-        set val(tag), file(confFile), file(sdrfFile) from CONF_SDRF
+        set val(tag), file(confFile), file(sdrfFile), file(metaFile) from CONF_SDRF
 
     output:
-        set file('expName'), file('species'), file('protocol'), file("out/$confFile"), file("out/$sdrfFile") into MARKUP_CONF_FILES
+        set file('expName'), file('species'), file('protocol'), file("out/$confFile"), file("out/$sdrfFile"), file("out/$metaFile") into MARKUP_CONF_FILES
 
     """
         parseNfConfig.py --paramFile $confFile --paramKeys params,name > expName
@@ -309,7 +330,7 @@ process markup_conf_files {
 }
 
 MARKUP_CONF_FILES
-    .map{ row-> tuple( row[0].text, row[1].text, row[2].text, row[3], row[4]) }        
+    .map{ row-> tuple( row[0].text, row[1].text, row[2].text, row[3], row[4], row[5]) }        
     .set{ CONF_BY_META }
 
 CONF_BY_META
@@ -333,10 +354,10 @@ process add_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile) from CONF_BY_META_FOR_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile) from CONF_BY_META_FOR_REFERENCE
     
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("*.fa.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), file("*.fa.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
 
     """
     # Use references from an IRAP config
@@ -387,10 +408,10 @@ process prepare_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
     
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("out/*.fa.gz"), file("out/*.gtf.gz"), val(contaminationIndex) into CONF_WITH_PREPARED_REFERENCE
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), file("out/*.fa.gz"), file("out/*.gtf.gz"), val(contaminationIndex) into CONF_WITH_PREPARED_REFERENCE
 
     """
     mkdir -p out
@@ -452,7 +473,7 @@ if ( skipQuantification == 'yes'){
         executor 'local'
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
 
         output:
             set val(expName), val(species), val(protocol), file("results/*") into QUANT_RESULTS
@@ -495,7 +516,7 @@ if ( skipQuantification == 'yes'){
         maxRetries 10
         
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
             val flag from INIT_DONE_SMART
 
         output:
@@ -561,7 +582,7 @@ if ( skipQuantification == 'yes'){
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
             val flag from INIT_DONE_DROPLET
 
         output:
@@ -724,7 +745,7 @@ if (skipAggregation == 'yes' ){
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[6][0]) }
+    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[5][0], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
@@ -742,7 +763,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
             set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
@@ -794,7 +815,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         
             executor 'local'
             input:
-                set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
             
             output:
                 set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
@@ -829,7 +850,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             maxRetries 3
               
             input:
-                set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
             output:
                 set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
