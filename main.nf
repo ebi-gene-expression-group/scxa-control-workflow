@@ -278,7 +278,7 @@ process tag_meta{
         file(metaFile) from FLAT_METADATA_FILES
 
     output:
-        set stdout, file(metaFile) into TAGGED_CONF_FILES
+        set stdout, file(metaFile) into TAGGED_METADATA_FILES
 
     """
         echo -n $metaFile | sed 's/.metadata.tsv//'
