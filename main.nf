@@ -315,6 +315,7 @@ process markup_conf_files {
         mkdir -p out
         cp -p $confFile out/$confFile    
         cp -p $sdrfFile out/$sdrfFile    
+        cp -p $metaFile out/$metaFile    
         
         protocolConfig=${baseDir}/conf/protocol/\${protocol}.conf
         if [ ! -e \$protocolConfig ]; then
