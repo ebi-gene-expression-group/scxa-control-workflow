@@ -843,10 +843,15 @@ configs <- lapply(species_list, function(species){
     species.protocol.sdrf <- sdrf.by.species.protocol[[species]][[protocol]]
     properties <- species.protocol.properties[[species]][[protocol]]
   
-    # layout is the SDRF with the duplicated lanes for paired end removed
-    species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
-    rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
-  
+    # layout is the SDRF with the duplicated lanes for paired end (and possibly technical replication) removed
+    if(properties$has.techrep) {
+      species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[techrep.col]]),,drop=FALSE]
+      rownames(species.protocol.layout) <- species.protocol.layout[[techrep.col]]
+    }else{   
+      species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
+      rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
+    }
+
     # Generate starting config file content
 
     config <- c(
