@@ -842,7 +842,7 @@ configs <- lapply(species_list, function(species){
  
     species.protocol.sdrf <- sdrf.by.species.protocol[[species]][[protocol]]
     properties <- species.protocol.properties[[species]][[protocol]]
-  
+ 
     # layout is the SDRF with the duplicated lanes for paired end (and possibly technical replication) removed
     if(properties$has.techrep) {
       species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[techrep.col]]),,drop=FALSE]
@@ -1068,9 +1068,9 @@ configs <- lapply(species_list, function(species){
     if (length(sdfcols2save2tsv) > 0){
       metadata <- species.protocol.layout[,sdfcols2save2tsv, drop = FALSE]
       metadata <- cbind(run=rownames(metadata),metadata)
-      colnames(metadata) <- metadata_cols
+      colnames(metadata) <- c('run', metadata_cols)
     }
-  
+
     list(config=config, metadata=metadata)
   })
 })
