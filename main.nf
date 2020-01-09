@@ -783,7 +783,48 @@ CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[5][0], row[7][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
-    .set { TERTIARY_INPUTS }         
+    .set { PRE_TERTIARY_INPUTS }         
+
+// Create a table with the available metadata for each cell in the expression
+// matrix
+
+process add_cell_metadata {
+
+    memory { 4.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt<=3  ? 'retry' : 'ignore' }
+    maxRetries 3
+    
+    input:
+        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from PRE_TERTIARY_INPUTS
+
+    output:
+        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), file('cell_metadata.tsv') into TERTIARY_INPUTS
+        
+    script: 
+
+        def isDroplet='False'
+        protocol_list=protocolList.split(',').toList()
+        experiment_droplet_protocols=protocol_list.intersect(dropletProtocols)
+        if ( experiment_droplet_protocols.size() > 0){
+            isDroplet='True'
+        }
+    """
+        zipdir=\$(unzip -qql ${countMatrix.getBaseName()}.zip | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
+        unzip ${countMatrix.getBaseName()}        
+    
+        cellsFileName=
+
+        if [ "$isDroplet" = 'True' ]; then
+            type=\$(echo $expName | awk -F'-' '{print \$2}')
+            cellsFileName="$SCXA_WORKFLOW_ROOT/metadata/$type/${expName}/${expName}.cells.txt"
+        fi
+        
+        # Derive a file of all the metadata we have for cells
+
+        deriveCellMetadata.sh $expName $isDroplet \${zipdir}/barcodes.tsv $metaFile \$cellsFileName
+    """
+}
+
 
 if ( tertiaryWorkflow == 'scanpy-workflow'){
 
@@ -850,7 +891,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         
             executor 'local'
             input:
-                set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), file(cellMeta) from TERTIARY_INPUTS
             
             output:
                 set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
@@ -885,7 +926,7 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             maxRetries 3
               
             input:
-                set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), file(cellMeta) from TERTIARY_INPUTS
 
             output:
                 set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
@@ -917,18 +958,19 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
                 export matrix_file=\${zipdir}/matrix.mtx.gz
                 export genes_file=\${zipdir}/genes.tsv.gz
                 export barcodes_file=\${zipdir}/barcodes.tsv.gz
+                export cells_metadata_file=$cellMeta
                 export tpm_filtering='False'
 
                 export create_conda_env=no
                 export GALAXY_CRED_FILE=$galaxyCredentials
                 export GALAXY_INSTANCE=ebi_cluster_ge_user
-       
+      
                 if [ "$isDroplet" = 'True' ]; then
                     export FLAVOUR=w_droplet_clustering
                 else
                     export FLAVOUR=w_smart-seq_clustering
                 fi
-
+                
                 run_flavour_workflows.sh
 
                 if [ \$? -eq 0 ]; then
