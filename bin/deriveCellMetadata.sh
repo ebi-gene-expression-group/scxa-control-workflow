@@ -19,7 +19,7 @@ if [ "$isDroplet" = 'False' ]; then
             echo "Missing metadata for $l" 1>&2
             exit 1
          fi 
-    done > cell_metadata.tsv.tmp
+    done >> cell_metadata.tsv.tmp
 
 else
 
