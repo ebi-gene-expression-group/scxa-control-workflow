@@ -782,7 +782,7 @@ process add_cell_metadata {
 
         if [ "$isDroplet" = 'True' ]; then
             type=\$(echo $expName | awk -F'-' '{print \$2}')
-            cellsFileName="$SCXA_WORKFLOW_ROOT/metadata/$type/${expName}/${expName}.cells.txt"
+            cellsFileName="$SCXA_WORKFLOW_ROOT/metadata/\$type/${expName}/${expName}.cells.txt"
         fi
         
         # Derive a file of all the metadata we have for cells
