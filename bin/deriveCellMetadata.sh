@@ -45,11 +45,12 @@ else
     # 2. Derive a cell list that will be the first column of the final output,
     # and paste in front of the sample metadata
 
-    echo "cell" > cells.tsv
-    cat $barcodesFile >> cells.tsv
+    echo "cell" > cells.tsv.tmp
+    cat $barcodesFile >> cells.tsv.tmp
 
     if [ "$(cat cells.tsv | wc -l)" = "$(cat sample_metadata.tsv | wc -l)" ]; then 
-        paste -d "\t" cells.tsv sample_metadata.tsv > cells_samples.tsv.tmp
+        paste -d "\t" cells.tsv.tmp sample_metadata.tsv > cells_samples.tsv.tmp
+        rm -f cells.tsv.tmp
     else
         echo "Number of cells not equal to number of lines in cell-expanded sample metadata" 1>&2
         exit 1
@@ -71,16 +72,16 @@ else
 
         emptystring=$(head -n 1 $cells_file_name | sed s/[^\\t]//g)
 
-        head -n 1 $cells_file_name > droplet_cell_metadata.tsv && cat $barcodesFile | while read -r l; do 
+        head -n 1 $cells_file_name > droplet_cell_metadata.tsv.tmp && cat $barcodesFile | while read -r l; do 
             grep -P "^$l\t" $cells_file_name
             if [ $? -ne 0 ]; then  
                 echo -e "$emtpyString"
             fi
-        done >> droplet_cell_metadata.tsv
+        done >> droplet_cell_metadata.tsv.tmp
 
-        if [ "$(cat cell_metadata.tsv.tmp | wc -l)" = "$(cat droplet_cell_metadata.tsv | wc -l)" ]; then 
-            paste -d "\t" cells_samples.tsv.tmp droplet_cell_metadata.tsv > cell_metadata.tsv.tmp  
-            rm droplet_cell_metadata.tsv
+        if [ "$(cat cell_metadata.tsv.tmp | wc -l)" = "$(cat droplet_cell_metadata.tsv.tmp | wc -l)" ]; then 
+            paste -d "\t" cells_samples.tsv.tmp droplet_cell_metadata.tsv.tmp > cell_metadata.tsv.tmp  
+            rm droplet_cell_metadata.tsv.tmp
         else
             echo "Inconsistent number of lines derived from cell metadata" 1>&2
             exit 1
