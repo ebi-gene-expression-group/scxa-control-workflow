@@ -13,13 +13,13 @@ if [ "$isDroplet" = 'False' ]; then
 
     cellMetaFile=$metaFile
 
-    cat $barcodesFile | while read -r l; do 
+     head -n 1 $sampleMetadataFile > cell_metadata.tsv.tmp && cat $barcodesFile | while read -r l; do 
         grep -P "^$l\t" $sampleMetadataFile
          if [ $? -ne 0 ]; then 
             echo "Missing metadata for $l" 1>&2
             exit 1
          fi 
-    done > cell_metadata.tsv
+    done > cell_metadata.tsv.tmp
 
 else
 
@@ -49,7 +49,7 @@ else
     cat $barcodesFile >> cells.tsv
 
     if [ "$(cat cells.tsv | wc -l)" = "$(cat sample_metadata.tsv | wc -l)" ]; then 
-        paste -d "\t" cells.tsv sample_metadata.tsv > cell_metadata.tsv.tmp
+        paste -d "\t" cells.tsv sample_metadata.tsv > cells_samples.tsv.tmp
     else
         echo "Number of cells not equal to number of lines in cell-expanded sample metadata" 1>&2
         exit 1
@@ -79,20 +79,18 @@ else
         done >> droplet_cell_metadata.tsv
 
         if [ "$(cat cell_metadata.tsv.tmp | wc -l)" = "$(cat droplet_cell_metadata.tsv | wc -l)" ]; then 
-            paste -d "\t" cell_metadata.tsv.tmp droplet_cell_metadata.tsv > cell_metadata.tsv    
+            paste -d "\t" cells_samples.tsv.tmp droplet_cell_metadata.tsv > cell_metadata.tsv.tmp  
+            rm droplet_cell_metadata.tsv
         else
             echo "Inconsistent number of lines derived from cell metadata" 1>&2
             exit 1
         fi
 
     else
+        cp cells_samples.tsv.tmp cell_metadata.tsv.tmp
         "No cells file present at $cells_file_name"
-        cp cell_metadata.tsv.tmp cell_metadata.tsv
     fi
+    rm cells_samples.tsv.tmp
 fi
-
-
-
-
-
-
+        
+mv cell_metadata.tsv.tmp cell_metadata.tsv
