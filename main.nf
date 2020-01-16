@@ -33,25 +33,63 @@ if ( params.containsKey('skipTertiary') && params.skipTertiary == 'yes'){
 
 // Now we pick the SDRFs to use
 
-GIT_SDRFS = Channel.fromPath("$SCXA_WORKFLOW_ROOT/metadata/**/*.sdrf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
+GIT_IDFS = Channel.fromPath("$SCXA_WORKFLOW_ROOT/metadata/**/*.idf.txt", checkIfExists: true).map{ f -> tuple("${f.simpleName}", f) }
 
 // If user has supplied an experiment ID, then filter SDRFs to just that
 // experiment. Otherwise set a blank filter to include all results
 
 doneSuffix=''
-sdrfFilter = ''
+idfFilter = ''
 if ( params.containsKey('expName')){
-    sdrfFilter="${params.expName}"
+    idfFilter="${params.expName}"
     doneSuffix=".${params.expName}"
 }
 
 // Do a join on the SDRF channels to get single tuple per experiment ID, then
 // pick the first. This will uniquify by experiment ID and prioritise the Git
-// SDRFs
+// IDFs
 
-SDRF = GIT_SDRFS
-    .filter( ~/.*\/.*${sdrfFilter}\..*/ )
+IDF = GIT_IDFS
+    .filter( ~/.*\/.*${idfFilter}\..*/ )
     .map{ r -> tuple(r[0], r[1]) }
+
+// Working from the IDF location, derive SDRF and related files
+
+process compile_metadata {
+    
+    input:
+        set val(expName), file(sdrfFile) from SDRF
+
+    output:
+        set val(expName), file(idfFile), file("${expName}.sdrf.txt") into SDRF_IDF
+        set val(expName), file("${expName}.cells.txt") into CELLS 
+
+    """
+    sdrfLine=\$(grep -iP "^SDRF File\t" $idfFile)
+    if [ \$? -ne 0 ]; then
+        echo "No SDRF definition found in IDF file" 1>&2
+        exit 1
+    fi
+
+    sdrfFileName=\$(echo -e "\$sdrfLine" | awk -F"\t" '{print \$2}')
+    sdrfFile=\$(dirname $idfFile)/\$sdrfFileName
+
+    # If curators have provided a .cells.txt file...
+
+    cellsFile=\$(dirname $idfFile)/${expname}.cells.txt
+
+    if [ -e "$cellsFile" ]; then
+        cp -p $cellsFile .
+    fi
+    """
+}
+
+SDRF_IDF
+    .join(CELLS, remainder: true)
+    .into{
+        METADATA_FOR_QUANT
+        METADATA_FOR_TERTIARY
+    }
 
 // Determine which SDRF files have up-to-date bundles. For new/ updated
 // experiments, output to the channel with the relevant IDF.
@@ -69,10 +107,10 @@ process find_new_updated {
     cache false
         
     input:
-        set val(expName), file(sdrfFile) from SDRF
+        set val(expName), file(idfFile), file(sdrfFile) from METADATA_FOR_QUANT
 
     output:
-        set val(expName), file(sdrfFile), file("${sdrfFile.getSimpleName()}.idf.txt") optional true into SDRF_IDF
+        set val(expName), file(sdrfFile), file(idfFile), file('.new') optional true into SDRF_IDF
         file('bundleLines.txt') optional true into OLD_BUNDLE_LINES
 
     """
@@ -116,7 +154,7 @@ process find_new_updated {
         bundleLocks=\$(ls \$SCXA_RESULTS/$expName/*/bundle/atlas_prod.loading 2>/dev/null || true)
       
         if [ \$newExperiment -eq 1 ] && [ -z "\$bundleLocks" ]; then
-            cp \$(dirname \$(readlink $sdrfFile))/${expName}.idf.txt .
+            touch .new
         fi
     """
 }
@@ -755,6 +793,8 @@ CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
 // matrix
 
 process add_cell_metadata {
+    
+    conda "${baseDir}/envs/atlas-fastq-provider.yml"
 
     memory { 4.GB * task.attempt }
     errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt<=3  ? 'retry' : 'ignore' }
