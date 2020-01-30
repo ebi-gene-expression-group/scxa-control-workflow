@@ -44,7 +44,7 @@ nextflow run $opt_conf \
     -N $SCXA_REPORT_EMAIL \
     -with-dag $SCXA_RESULTS/$SUBDIR/reports/flowchart.pdf
 
-if [ \$? -ne 0 ]; then
+if [ $? -ne 0 ]; then
     echo "Workflow failed for $expName - $species - scxa_aggregation_workflow" 1>&2
     exit 1
 fi

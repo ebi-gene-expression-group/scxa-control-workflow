@@ -71,9 +71,8 @@ process compile_metadata {
 
 SDRF_IDF
     .join(CELLS, remainder: true)
-    .into{
-        COMPILED_METADATA_FOR_QUANT
-        COMPILED_METADATA_FOR_TERTIARY
+    .set{
+        COMPILED_METADATA
     }
 
 // Check the update status of the experiment
@@ -81,7 +80,7 @@ SDRF_IDF
 process checkExperimentStatus {
 
     input:
-        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA_FOR_QUANT
+        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA
 
     output:
         set val(expName), file(idfFile), file(sdrfFile), file(cellsFile), stdout into COMPILED_METADATA_WITH_STATUS
@@ -117,7 +116,34 @@ process get_not_updated_bundles {
     """
 }
 
-// Generate the configuration file
+// Check the update status of the experiment
+
+process split_by_species {
+
+    input:
+        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile), val(expStatus) from UPDATED_EXPERIMENTS.take(params.numExpsProcessedAtOnce)
+
+    output:
+        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile), file('split_by_species/*') into MULTISPECIES_META
+        
+    """
+    splitSDRFBySpecies.sh ${sdrfFile} split_by_species
+    """
+}
+
+// Extract species from the split SDRF file names
+
+MULTISPECIES_META
+    .transpose()
+    .map{ row-> tuple( row[0], row[4].toString().split('\\.')[1], row[1], row[2], row[3] ) }
+    .into{
+        META_WITH_SPECIES_FOR_QUANT
+        META_WITH_SPECIES_FOR_TERTIARY
+    }        
+
+// Generate the configuration file and parse it to derive protocol. Also derive
+// an SDRF file containing only things relevant for analysis. This can be used
+// to determine if any SDRF changes impact on analysis and necessitate re-run.
 
 process generate_config {
 
@@ -125,79 +151,45 @@ process generate_config {
     
     errorStrategy 'ignore'
 
-    conda 'r-optparse r-data.table r-workflowscriptscommon'
+    conda 'r-optparse r-data.table r-workflowscriptscommon pyyaml'
 
     input:
-        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile), val(expStatus) from UPDATED_EXPERIMENTS.take(params.numExpsProcessedAtOnce)
+        set val(expName), val(species), file(idfFile), file(sdrfFile), file(cellsFile) from META_WITH_SPECIES_FOR_QUANT
 
     output:
-        set val(expName), file('*.conf') into DERIVED_CONF_FILES
-        set val(expName), file('*.sdrf.txt') into DERIVED_SDRF_FILES        
-        set val(expName), file('*.metadata.tsv') into DERIVED_METADATA_FILES       
+        set val(expName), val(species), stdout, file("${expName}.${species}.conf"), file("${expName}.${species}.sdrf.txt") into CONF_BY_EXP_SPECIES
 
     """
+    mkdir -p tmp
     sdrfToNfConf.R \
         --sdrf=\$(readlink $sdrfFile) \
         --idf=$idfFile \
         --name=$expName \
         --verbose \
-        --out_conf \$(pwd)
+        --out_conf \$(pwd)/tmp > sdrfToNfConf.log 2>&1
+        
+    # Add in protocol-specific parameters by 'include'ing external configs
+
+    confFile=${expName}.${species}.conf
+    protocol=\$(parseNfConfig.py --paramFile tmp/\$confFile --paramKeys params,protocol)
+
+    protocolConfig=${baseDir}/conf/protocol/\${protocol}.conf
+    if [ ! -e \$protocolConfig ]; then
+        echo "\$protocolConfig does not exist" 1>&2
+        exit 1
+    fi 
+    
+    echo "includeConfig '${baseDir}/params.config'" > \${confFile}.tmp
+    echo "includeConfig '\$protocolConfig'" >> \${confFile}.tmp
+    cat tmp/\$confFile >> \${confFile}.tmp && rm tmp/\$confFile
+    mv \${confFile}.tmp \${confFile}
+    mv tmp/${expName}.${species}.sdrf.txt .
+
+    # Echo the protocol to include in the output tuple
+
+    echo -n "\$protocol"
     """
 }
-
-// The above will make tuples like [ 'E-MTAB-1234', ['foo.human.conf',
-// 'foo.mouse.conf'] ]. We can use transpose to convert those to experiment/
-// file pairs. 
-
-DERIVED_CONF_FILES
-    .transpose()
-    .map{ row-> tuple( row[0], row[1].toString().split('\\.')[1], row[1] ) }
-    .set{
-        TAGGED_CONF
-    }        
-
-DERIVED_SDRF_FILES
-    .transpose()
-    .map{ row-> tuple( row[0], row[1].toString().split('\\.')[1], row[1] ) }
-    .set{
-        TAGGED_SDRF
-    }        
-
-DERIVED_METADATA_FILES
-    .transpose()
-    .map{ row-> tuple( row[0], row[1].toString().split('\\.')[1], row[1] ) }
-    .set{
-        TAGGED_META
-    }        
-
-// Pull further information from the config file for analysis
-
-process annotate_config {
-
-    executor 'local'
-    
-    cache 'deep'
-    
-    conda 'pyyaml' 
-
-    input:
-        set val(expName), val(species), file(confFile) from TAGGED_CONF
-
-    output:
-        set val(expName), val(species), stdout, file(confFile) into ANNOTATED_CONF
-
-    """
-        parseNfConfig.py --paramFile $confFile --paramKeys params,protocol
-    """
-} 
-
-
-// Combine back to a set of files per experiment/species pair
-
-ANNOTATED_CONF
-    .join( TAGGED_SDRF, by: [0,1] ) 
-    .join( TAGGED_META, by: [0,1] ) 
-    .set{ COMPILED_DERIVED_CONFIG }
 
 // Where analysis is already present, check that the config has actually changed
 // in a way that impacts on analysis. This is distinct from
@@ -207,10 +199,10 @@ ANNOTATED_CONF
 process check_experiment_changed{
 
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile) from COMPILED_DERIVED_CONFIG
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile) from CONF_BY_EXP_SPECIES
 
     output:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(metaFile), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
         
 
     """
@@ -253,10 +245,10 @@ process reset_experiment{
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
 
     input:
-        set val(expName), val(species), val(protocol), file("in/*"), file("in/*"), file("in/*"), val(expStatus) from NEW_OR_CHANGED_EXPERIMENTS
+        set val(expName), val(species), val(protocol), file("in/*"), file("in/*"), val(expStatus) from NEW_OR_CHANGED_EXPERIMENTS
 
     output:
-        set val(expName), val(species), val(protocol), file("*.conf"), file("*.sdrf.txt"), file("*.metadata.tsv") into NEW_OR_RESET_EXPERIMENTS
+        set val(expName), val(species), val(protocol), file("*.conf"), file("*.sdrf.txt") into NEW_OR_RESET_EXPERIMENTS
         
     """
         # Only remove downstream results where we're not re-using them
@@ -276,7 +268,7 @@ process reset_experiment{
 
         # Now we've removed the results, link the results for publishing
 
-        cp -P in/*.sdrf.txt in/*conf in/*.metadata.tsv .
+        cp -P in/*.sdrf.txt in/*conf .
     """
 }
 
@@ -493,8 +485,10 @@ if ( skipQuantification == 'yes'){
     // Collect the smart and droplet workflow results
 
     SMART_KALLISTO_DIRS
-        .concat(ALEVIN_DROPLET_DIRS
-        .set { QUANT_RESULTS }
+        .concat(ALEVIN_DROPLET_DIRS)
+        .set { 
+            QUANT_RESULTS 
+        }
 }
 
 // Fetch the config to use in aggregation
@@ -565,7 +559,7 @@ if (skipAggregation == 'yes' ){
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[7][0]) }
+    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { PRE_TERTIARY_INPUTS }   
@@ -575,10 +569,10 @@ CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
 process mark_droplet {
    
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix) from PRE_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from PRE_TERTIARY_INPUTS
 
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), stdout into MARKED_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), stdout into MARKED_TERTIARY_INPUTS
     
     script: 
 
@@ -592,15 +586,20 @@ process mark_droplet {
         """
         echo -n "$isDroplet"
         """
+}
 
 // Separate Droplet from non-droplet
 
-DROPLET_PRE_TERIARY_INPUTS = Channel.create()
+DROPLET_PRE_TERTIARY_INPUTS = Channel.create()
 SMART_TERTIARY_INPUTS = Channel.create()
 
-MARKED_TERTIARY_INPUTS.map{r -> r.add(file('NO_FILE')}.choice( DROPLET_TERIARY_INPUTS, SMART_TERTIARY_INPUTS ) {a -> 
-    a[7] == 'True' ? 0 : 1
+MARKED_TERTIARY_INPUTS.map{r -> r + [ file('NO_FILE')] }.choice( DROPLET_PRE_TERTIARY_INPUTS, SMART_TERTIARY_INPUTS ) {a -> 
+    a[6] == 'True' ? 0 : 1
 }
+
+//SMART_TERTIARY_INPUTS.view { "smart: $it" }
+//DROPLET_PRE_TERTIARY_INPUTS.view { "droplet: $it" }
+
 
 // Make a cell-run mapping, required by the SDRF condense process to 'explode'
 // the SDRF annotations
@@ -608,10 +607,10 @@ MARKED_TERTIARY_INPUTS.map{r -> r.add(file('NO_FILE')}.choice( DROPLET_TERIARY_I
 process cell_run_mapping {
    
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(emptyFile) from DROPLET_PRE_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(emptyFile) from DROPLET_PRE_TERTIARY_INPUTS
  
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), val(isDroplet), file('cell_to_library.txt') into DROPLET_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file('cell_to_library.txt') into DROPLET_TERTIARY_INPUTS
  
     """
     makeCellLibraryMapping.sh $countMatrix $confFile cell_to_library.txt 
@@ -620,21 +619,26 @@ process cell_run_mapping {
 
 // Now make a condensed SDRF file. For this to operate correctly with droplet data, the cell-library mappings file must be present in the  
 
+//MARKED_TERTIARY_INPUTS.view { "ter: $it" }
+//COMPILED_METADATA_FOR_TERTIARY.view { "met: $it" }
 
+
+//MARKED_TERTIARY_INPUTS
 SMART_TERTIARY_INPUTS
     .concat(DROPLET_TERTIARY_INPUTS)
-    .join(COMPILED_METADATA_FOR_TERTIARY, by: [0,1])
+    .join(META_WITH_SPECIES_FOR_TERTIARY, by: [0,1])
     .set{
-        CONDENSE_INPUTS
-    }
+       CONDENSE_INPUTS
+   }
 
+//CONDENSE_INPUTS.view { "droplet: $it" }
 
 process condense_sdrf {
         
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(metaFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS) 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
 
     output:
        set val(expName), val(species), file("${expName}.${species}.condensed-sdrf.tsv") 
@@ -659,4 +663,3 @@ process condense_sdrf {
 //    echo $expName $species $confFile
 //    """
 //}
-
