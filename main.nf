@@ -135,7 +135,31 @@ process split_by_species {
 
 MULTISPECIES_META
     .transpose()
-    .map{ row-> tuple( row[0], row[4].toString().split('\\.')[1], row[1], row[2], row[3] ) }
+    .map{ row-> tuple( row[0], row[4].toString().split('\\.')[1], row[1], row[4], row[3] ) }
+    .set{
+        META_WITH_SPECIES
+    }    
+
+// Need to adjust the IDF to match the SDRF. This is necessary for when we're
+// doing the SDRF condensation later
+
+process adjust_idf_for_sdrf{
+    
+    input:
+        set val(expName), val(species), file(idfFile), file(sdrfFile), file(cellsFile) from META_WITH_SPECIES
+
+    output:
+        set val(expName), val(species), file("${expName}.${species}.idf.txt"), file(sdrfFile), file(cellsFile) into META_WITH_SPECIES_IDF
+
+    """
+    outFile="${expName}.${species}.idf.txt"
+    cp ${idfFile} \${outFile}.tmp
+    sed -i 's/${expName}.sdrf.txt/${expName}.${species}.sdrf.txt/' \${outFile}.tmp  
+    mv \${outFile}.tmp \${outFile}
+    """
+}
+
+META_WITH_SPECIES_IDF
     .into{
         META_WITH_SPECIES_FOR_QUANT
         META_WITH_SPECIES_FOR_TERTIARY
@@ -597,10 +621,6 @@ MARKED_TERTIARY_INPUTS.map{r -> r + [ file('NO_FILE')] }.choice( DROPLET_PRE_TER
     a[6] == 'True' ? 0 : 1
 }
 
-//SMART_TERTIARY_INPUTS.view { "smart: $it" }
-//DROPLET_PRE_TERTIARY_INPUTS.view { "droplet: $it" }
-
-
 // Make a cell-run mapping, required by the SDRF condense process to 'explode'
 // the SDRF annotations
 
@@ -617,21 +637,15 @@ process cell_run_mapping {
     """
 }
 
-// Now make a condensed SDRF file. For this to operate correctly with droplet data, the cell-library mappings file must be present in the  
+// Now make a condensed SDRF file. For this to operate correctly with droplet
+// data, the cell-library mappings file must be present
 
-//MARKED_TERTIARY_INPUTS.view { "ter: $it" }
-//COMPILED_METADATA_FOR_TERTIARY.view { "met: $it" }
-
-
-//MARKED_TERTIARY_INPUTS
 SMART_TERTIARY_INPUTS
     .concat(DROPLET_TERTIARY_INPUTS)
     .join(META_WITH_SPECIES_FOR_TERTIARY, by: [0,1])
     .set{
        CONDENSE_INPUTS
    }
-
-//CONDENSE_INPUTS.view { "droplet: $it" }
 
 process condense_sdrf {
         
@@ -641,13 +655,31 @@ process condense_sdrf {
         set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
 
     output:
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile),  file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
+
+    """
+    single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS
+    mv ${expName}.condensed-sdrf.tsv "${expName}.${species}.condensed-sdrf.tsv"
+    """        
+
+}
+
+// 'unmelt' the condensed SDRF to get a metadata table to pass for tertiary
+// analysis
+
+process unmelt_condensed_sdrf {
+        
+    conda "${baseDir}/envs/atlas-experiment-metadata.yml"
+
+    input:
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile), file(condensedSdrf) from CONDENSE_INPUTS 
+
+    output:
        set val(expName), val(species), file("${expName}.${species}.condensed-sdrf.tsv") 
         
 
     """
-    single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd)
-
-    # Re-add this: -z \$zoomaExclusions
+    unmelt_condensed.R -i $condensedSDRF -o $t --retain-types --has-ontology
     """        
 
 }
