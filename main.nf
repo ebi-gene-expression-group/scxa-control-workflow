@@ -418,7 +418,33 @@ process prepare_reference {
     """
 }
 
-CONF_WITH_PREPARED_REFERENCE
+// Synchronise the GTF and the FASTA 
+
+process synchronize_ref_files {
+
+    conda "${baseDir}/envs/atlas-gene-annotation-manipulation.yml"
+    
+    cache 'deep'
+
+    memory { 5.GB * task.attempt }
+
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3  ? 'retry' : 'ignore' }
+    maxRetries 3
+        
+    input:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_PREPARED_REFERENCE
+
+    output:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file('cleanedCdna.fa.gz'), file(referenceGtf), val(contaminationIndex), file('transcript_to_gene.txt') into CONF_WITH_SYNCH_REFERENCE
+
+    """
+    gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header --version-transcripts --filter-cdnas ${referenceFasta} \
+        --filter-cdnas-field "transcript_id" --filter-cdnas-output cleanedCdna.fa.gz --feature-type "transcript" \
+        --first-field "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id"    
+    """
+}
+
+CONF_WITH_SYNCH_REFERENCE
     .into{
         CONF_FOR_QUANT
         CONF_FOR_AGGR
@@ -460,7 +486,7 @@ if ( skipQuantification == 'yes'){
         executor 'local'
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from CONF_FOR_QUANT
 
         output:
             set val(expName), val(species), val(protocol), file("results/*") into QUANT_RESULTS
@@ -503,7 +529,7 @@ if ( skipQuantification == 'yes'){
         maxRetries 10
         
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_CONF
             val flag from INIT_DONE_SMART
 
         output:
@@ -569,7 +595,7 @@ if ( skipQuantification == 'yes'){
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_CONF
             val flag from INIT_DONE_DROPLET
 
         output:
@@ -594,7 +620,7 @@ if ( skipQuantification == 'yes'){
                 --resultsRoot \$RESULTS_ROOT \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
-                --referenceGtf \$RESULTS_ROOT/$referenceGtf \
+                --transcriptToGene \$RESULTS_ROOT/$transcriptToGene \
                 --protocol $protocol \
                 --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
@@ -638,7 +664,7 @@ if (skipAggregation == 'yes' ){
         executor 'local'
         
         input:
-            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
@@ -667,7 +693,7 @@ if (skipAggregation == 'yes' ){
         maxRetries 20
         
         input:
-            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
