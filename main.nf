@@ -404,8 +404,8 @@ process prepare_reference {
         cat $referenceFasta \$spikes_fasta > out/reference.fa.gz
         cat $referenceGtf \$spikes_gtf > out/reference.gtf.gz
     else
-        cp -p $referenceGtf out/reference.gtf.gz
-        cp -p $referenceFasta out/reference.fa.gz
+        cp -P $referenceGtf out/reference.gtf.gz
+        cp -P $referenceFasta out/reference.fa.gz
     fi
     """
 }
