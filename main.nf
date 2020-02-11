@@ -346,8 +346,8 @@ process add_reference {
         irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
 
         if [ ${params.islReferenceType} = 'newest' ]; then
-            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print $6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print $5}') | sed 's/RELNO/\\*/')
+            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
+            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/')
 
             cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -r | head -n 1)
             cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -r | head -n 1)
