@@ -1024,8 +1024,8 @@ process bundle {
             --resultsRoot \$RESULTS_ROOT \
             --protocolList ${protocolList} \
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
-            --referenceFasta \$referenceFasta \
-            --referenceGtf \$referenceGtf \$TERTIARY_OPTIONS \
+            --referenceFasta $referenceFasta \
+            --referenceGtf $referenceGtf \$TERTIARY_OPTIONS \
             -resume \
             $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_bundle/main.nf \
             -work-dir $SCXA_WORK/\$SUBDIR \
