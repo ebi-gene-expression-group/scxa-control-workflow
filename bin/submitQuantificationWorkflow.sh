@@ -7,7 +7,7 @@ protocol=$4
 confFile=$5
 sdrfFile=$6
 referenceFasta=$7
-referenceGtf=$8
+transcriptToGene=$8
 contaminationIndex=$9
 enaSshUser=$10
 
@@ -28,8 +28,6 @@ mkdir -p $SCXA_RESULTS/$SUBDIR/reports
 # Workflow-specific parameterisation
 
 contIndex=''
-gtfOption=
-protocolOption=
 enaSshOption=
 
 if [ "$worflow" = 'smart-seq' ]; then
@@ -41,10 +39,6 @@ if [ "$worflow" = 'smart-seq' ]; then
     if [ "$contaminationIndex" != 'None' ]; then
         contIndex="--contaminationIndex $contaminationIndex"
     fi 
-
-elif [ "$workflow" = 'droplet' ]; then
-    protocolOption="--protocol $protocol"
-    gtfOption="--referenceGtf $RESULTS_ROOT/$referenceGtf"
 fi
 
 # Submit from the nextflow dir so that logs etc are collected
@@ -54,10 +48,12 @@ pushd $SCXA_NEXTFLOW/$SUBDIR > /dev/null
 nextflow run \
     -config $RESULTS_ROOT/$confFile \
     --sdrf $RESULTS_ROOT/$sdrfFile \
+    --protocol $protocol \
     --referenceFasta $RESULTS_ROOT/$referenceFasta \
     --resultsRoot $RESULTS_ROOT \
     --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
-    $contIndex $gtfOption $enaSshOption \
+    --transcriptToGene $RESULTS_ROOT/$transcriptToGene \
+    $contIndex $enaSshOption \
     -resume \
     $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_${workflow}_quantification/main.nf \
     -work-dir $SCXA_WORK/$SUBDIR \

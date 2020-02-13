@@ -315,23 +315,29 @@ process add_reference {
         set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file("*.fa.gz"), file("*.gtf.gz"), stdout into CONF_WITH_REFERENCE
 
     """
-    # Use references from an IRAP config
-    species_conf=$SCXA_PRE_CONF/reference/${species}.conf
-    if [ -e "\$species_conf" ]; then
-        cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
-        cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
-        contamination_index=\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,contamination_index)
-        
-        if [ \$contamination_index != 'None' ]; then
-            contamination_index=$SCXA_DATA/contamination/\$contamination_index
-        fi
-    
-    elif [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
+    # Use references from the ISL setup
+    if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
         irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
-        cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-        cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+        if [ ${params.islReferenceType} = 'newest' ]; then
+            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
+            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/.fa.gz/.\\*.fa.gz/') 
+            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -r | head -n 1)
+            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -r | head -n 1)
+        else
+            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
+            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+        fi
+        if [ ! -e "\$cdna_fasta" ]; then
+            echo "Fasta file \$cdna_fasta does not exist" 1>&2
+            exit 1
+        elif [ ! -e "\$cdna_gtf" ]; then
+            echo "GTF file \$cdna_gtf does not exist" 1>&2
+            exit 1
+        fi
         contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
-        
+    else
+        echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
+        exit 1
     fi
    
     echo -n "\$contamination_index"
@@ -375,13 +381,40 @@ process prepare_reference {
         cat $referenceFasta \$spikes_fasta > out/reference.fa.gz
         cat $referenceGtf \$spikes_gtf > out/reference.gtf.gz
     else
-        cp -p $referenceGtf out/reference.gtf.gz
-        cp -p $referenceFasta out/reference.fa.gz
+        cp -P $referenceGtf out/reference.gtf.gz
+        cp -P $referenceFasta out/reference.fa.gz
     fi
     """
 }
 
-CONF_WITH_PREPARED_REFERENCE
+
+// Synchronise the GTF and the FASTA 
+
+process synchronize_ref_files {
+
+    conda "${baseDir}/envs/atlas-gene-annotation-manipulation.yml"
+    
+    cache 'deep'
+
+    memory { 5.GB * task.attempt }
+
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3  ? 'retry' : 'ignore' }
+    maxRetries 3
+        
+    input:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_PREPARED_REFERENCE
+
+    output:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file('cleanedCdna.fa.gz'), file(referenceGtf), val(contaminationIndex), file('transcript_to_gene.txt') into CONF_WITH_SYNCH_REFERENCE
+
+    """
+    gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header --version-transcripts --filter-cdnas ${referenceFasta} \
+        --filter-cdnas-field "transcript_id" --filter-cdnas-output cleanedCdna.fa.gz --feature-type "transcript" \
+        --first-field "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id"    
+    """
+}
+
+CONF_WITH_SYNCH_REFERENCE
     .into{
         CONF_FOR_QUANT
         CONF_FOR_AGGR
@@ -422,7 +455,7 @@ if ( skipQuantification == 'yes'){
         executor 'local'
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from CONF_FOR_QUANT
 
         output:
             set val(expName), val(species), val(protocol), file("results/*") into QUANT_RESULTS
@@ -465,7 +498,7 @@ if ( skipQuantification == 'yes'){
         maxRetries 10
         
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_CONF
             val flag from INIT_DONE_SMART
 
         output:
@@ -474,7 +507,7 @@ if ( skipQuantification == 'yes'){
             file('quantification.log')    
 
         """
-        submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$referenceGtf" "$contaminationIndex" "$enaSshUser"
+        submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
         """
     }
 
@@ -494,7 +527,7 @@ if ( skipQuantification == 'yes'){
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_CONF
             val flag from INIT_DONE_DROPLET
 
         output:
@@ -502,7 +535,7 @@ if ( skipQuantification == 'yes'){
             file('quantification.log')    
 
         """
-        submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$referenceGtf" "$contaminationIndex" "$enaSshUser"
+        submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
         """
     }
 
@@ -531,7 +564,7 @@ if (skipAggregation == 'yes' ){
         executor 'local'
         
         input:
-            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
@@ -558,7 +591,7 @@ if (skipAggregation == 'yes' ){
         maxRetries 20
         
         input:
-            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
@@ -583,7 +616,7 @@ if (skipAggregation == 'yes' ){
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3], row[6][0]) }
+    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3], row[5][0], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { PRE_TERTIARY_INPUTS }   
@@ -593,10 +626,10 @@ CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
 process mark_droplet {
    
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from PRE_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix) from PRE_TERTIARY_INPUTS
 
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), stdout into MARKED_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), stdout into MARKED_TERTIARY_INPUTS
     
     script: 
 
@@ -627,10 +660,10 @@ MARKED_TERTIARY_INPUTS.map{r -> r + [ file('NO_FILE')] }.choice( DROPLET_PRE_TER
 process cell_run_mapping {
    
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(emptyFile) from DROPLET_PRE_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(emptyFile) from DROPLET_PRE_TERTIARY_INPUTS
  
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file('cell_to_library.txt') into DROPLET_TERTIARY_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file('cell_to_library.txt') into DROPLET_TERTIARY_INPUTS
  
     """
     makeCellLibraryMapping.sh $countMatrix $confFile cell_to_library.txt 
@@ -652,10 +685,10 @@ process condense_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
 
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile),  file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile),  file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
 
     """
     single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS
@@ -672,14 +705,14 @@ process unmelt_condensed_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile), file(condensedSdrf) from CONDENSE_INPUTS 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile), file(condensedSdrf) from CONDENSE_INPUTS 
 
     output:
-       set val(expName), val(species), file("${expName}.${species}.condensed-sdrf.tsv") 
+       set val(expName), val(species), file("${expName}.metadata.tsv") 
         
 
     """
-    unmelt_condensed.R -i $condensedSDRF -o $t --retain-types --has-ontology
+    unmelt_condensed.R -i $condensedSDRF -o ${expName}.metadata.tsv --retain-types --has-ontology
     """        
 
 }
