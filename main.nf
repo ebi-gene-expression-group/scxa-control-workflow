@@ -688,9 +688,10 @@ process condense_sdrf {
         set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
 
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile),  file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
 
     """
+    echo -e "exclusions: $ZOOMA_EXCLUSIONS"
     single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS
     mv ${expName}.condensed-sdrf.tsv "${expName}.${species}.condensed-sdrf.tsv"
     """        
@@ -705,7 +706,7 @@ process unmelt_condensed_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile), file(condensedSdrf) from CONDENSED 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(condensedSdrf) from CONDENSED 
 
     output:
        set val(expName), val(species), file("${expName}.metadata.tsv") 
