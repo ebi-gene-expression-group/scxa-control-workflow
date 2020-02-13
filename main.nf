@@ -705,7 +705,7 @@ process unmelt_condensed_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile), file(condensedSdrf) from CONDENSE_INPUTS 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile), file(condensedSdrf) from CONDENSED 
 
     output:
        set val(expName), val(species), file("${expName}.metadata.tsv") 
