@@ -688,7 +688,7 @@ process condense_sdrf {
         set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
 
     output:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(idfFile), file(origSdrfFile), file("${expName}.${species}.condensed-sdrf.tsv"), file(cellsFile) into CONDENSED 
 
     """
     echo -e "exclusions: $ZOOMA_EXCLUSIONS"
@@ -713,7 +713,7 @@ process unmelt_condensed_sdrf {
         
 
     """
-    unmelt_condensed.R -i $condensedSDRF -o ${expName}.metadata.tsv --retain-types --has-ontology
+    unmelt_condensed.R -i $condensedSdrf -o ${expName}.metadata.tsv --retain-types --has-ontology
     """        
 
 }
