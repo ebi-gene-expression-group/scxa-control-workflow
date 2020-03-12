@@ -706,26 +706,38 @@ process unmelt_condensed_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(condensedSdrf) from CONDENSED 
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix), val(isDroplet), file(idfFile), file(origSdrfFile), file(condensedSdrf), file(cellsFile) from CONDENSED 
 
     output:
-       set val(expName), val(species), file("${expName}.metadata.tsv") 
+       set val(expName), val(species), val(protocolList), file(countMatrix), file("${expName}.metadata.tsv") into UNMELTED_META 
         
-
     """
     unmelt_condensed.R -i $condensedSdrf -o ${expName}.metadata.tsv --retain-types --has-ontology
     """        
-
 }
 
-//TAGGED_CONF.subscribe { println "value: $it" }
+// Match the cell metadata to the expression matrix 
 
-//process test{
-    
-//    input:
-//        set val(expName), val(species), val(confFile) from TAGGED_CONF
-//
-//    """
-//    echo $expName $species $confFile
-//    """
-//}
+process match_metadata_to_cells {
+
+    input:
+        set val(expName), val(species), val(protocolList), file(countMatrix), file(cellMeta) from UNMELTED_META
+
+    output:
+       set val(expName), val(species), val(protocolList), file("${expName}.metadata.matched.tsv") into UNMELTED_META 
+
+    """
+
+    zipdir=\$(unzip -qql matrix.zip | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
+    head -n 1 $cellMeta > cell_metadata.tsv.tmp && unzip -p $mtxArchive ${zipdir}/barcodes.tsv| while read -r l; do 
+        grep -P "^$l\t" $cellMeta
+         if [ $? -ne 0 ]; then 
+            echo "Missing metadata for $l" 1>&2
+            exit 1
+         fi 
+    done >> cell_metadata.tsv.tmp
+    mv cell_metadata.tsv.tmp ${expName}.metadata.matched.tsv
+    """
+}
+
+
