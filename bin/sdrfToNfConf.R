@@ -1122,15 +1122,11 @@ for (species in names(configs)){
 
     # If there's only one protocol, don't add a protocol suffix to the the outputs
 
-    file_suffix <- species
+    file_prefix <- paste(protocol, species, sep='.')
 
-    if ( length(protocol_configs) > 1 ){
-      file_suffix <- paste(species, protocol, sep='.')
-    }
-
-    conf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".conf"))
-    meta.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".metadata.tsv"))
-    sdrf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".sdrf.txt"))
+    conf.file <- file.path(opt$out_conf, paste0(file_prefix,'.',  opt$name, ".conf"))
+    meta.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".metadata.tsv"))
+    sdrf.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".sdrf.txt"))
   
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata
