@@ -136,10 +136,65 @@ process split_by_species {
 MULTISPECIES_META
     .transpose()
     .map{ row-> tuple( row[0], row[2].toString().split('\\.')[1], row[1], row[2], row[3] ) }
-    .set{
+    .into{
         META_WITH_SPECIES
+        META_FOR_REF
     }    
 
+// Locate reference files
+
+process add_reference {
+
+    conda 'pyyaml' 
+    
+    cache 'deep'
+    
+    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
+
+    input:
+        set val(expName), val(species) from META_FOR_REF.map{ r -> tuple(r[0], r[1]) }
+    
+    output:
+        set val(expName), val(species), file("*.fa.gz"), file("*.gtf.gz"), stdout into REFERENCES
+
+    """
+    # Use references from the ISL setup
+    if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
+        irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
+        if [ ${params.islReferenceType} = 'newest' ]; then
+            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
+            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
+
+            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -rV | head -n 1)
+            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -rV | head -n 1)
+        else
+            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
+            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+        fi
+        if [ ! -e "\$cdna_fasta" ]; then
+            echo "Fasta file \$cdna_fasta does not exist" 1>&2
+            exit 1
+        elif [ ! -e "\$cdna_gtf" ]; then
+            echo "GTF file \$cdna_gtf does not exist" 1>&2
+            exit 1
+        fi
+        contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
+    else
+        echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
+        exit 1
+    fi
+   
+    echo -n "\$contamination_index"
+    ln -s \$cdna_fasta
+    ln -s \$cdna_gtf
+    """
+}
+
+REFERENCES.into{
+    REFERENCES_FOR_QUANT
+    REFERENCES_FOR_TERTIARY
+    REFERENCES_FOR_BUNDLE
+}
 
 // Need to adjust the IDF to match the SDRF. This is necessary for when we're
 // doing the SDRF condensation later
@@ -170,7 +225,10 @@ META_WITH_SPECIES_IDF
 // an SDRF file containing only things relevant for analysis. This can be used
 // to determine if any SDRF changes impact on analysis and necessitate re-run.
 // The fundamental processing unit is experiment/ species/ protocol, and this
-// is the first process that those combinations are determined.
+// is the first process that those combinations are determined. 
+//
+// NOTE: the references are included in the input just so that they get passed
+// through to the protocol-wise channels, not used in the process itself.
 
 process generate_configs {
 
@@ -181,10 +239,10 @@ process generate_configs {
     conda 'r-optparse r-data.table r-workflowscriptscommon pyyaml'
 
     input:
-        set val(expName), val(species), file(idfFile), file(sdrfFile), file(cellsFile) from META_WITH_SPECIES_FOR_QUANT
+        set val(expName), val(species), file(idfFile), file(sdrfFile), file(cellsFile), file(referenceFasta), file(referenceGtf), file(contIndex) from META_WITH_SPECIES_FOR_QUANT.join(REFERENCES_FOR_QUANT, by: [0,1])
 
     output:
-        set val(expName), val(species), file("*.${species}.${expName}.conf") into CONF_BY_EXP_SPECIES
+        set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file("*.${species}.${expName}.conf") into CONF_REF_BY_EXP_SPECIES
         set val(expName), val(species), file("*.${species}.${expName}.sdrf.txt") into CONFSDRF_BY_EXP_SPECIES
 
     """
@@ -198,14 +256,22 @@ process generate_configs {
     """
 }
 
+CONF_REF_BY_EXP_SPECIES.into{
+    CONF_REF_BY_EXP_SPECIES_FOR_QUANT
+    CONF_REF_BY_EXP_SPECIES_FOR_TERTIARY
+    CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE
+}
+
 // Protocol is first part of '.' - separated file name from sdrfToNfConf, so we
 // can use simpleName to extract it
 
-CONF_BY_EXP_SPECIES
-    .map { r -> tuple(r[0], r[1], r[2].simpleName, r[2]) }
-    .set{ CONF_BY_EXP_SPECIES_PROTOCOL }
+CONF_REF_BY_EXP_SPECIES_FOR_QUANT
+    .transpose()
+    .map { r -> tuple(r[0], r[1], r[5].simpleName, r[2], r[3], r[4], r[5]) }
+    .set{ CONF_REF_BY_EXP_SPECIES_PROTOCOL }
 
 CONFSDRF_BY_EXP_SPECIES
+    .transpose()
     .map { r -> tuple(r[0], r[1], r[2].simpleName, r[2]) }
     .set{ CONFSDRF_BY_EXP_SPECIES_PROTOCOL }
 
@@ -213,11 +279,12 @@ CONFSDRF_BY_EXP_SPECIES
 process extend_config_for_protocol{
 
     input:
-        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile) from CONF_BY_EXP_SPECIES_PROTOCOL.join(CONFSDRF_BY_EXP_SPECIES_PROTOCOL, by: [0,1,2])
+        set val(expName), val(species), val(protocol),  file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(sdrfFile) from CONF_REF_BY_EXP_SPECIES_PROTOCOL.join(CONFSDRF_BY_EXP_SPECIES_PROTOCOL, by: [0,1,2])
 
     output:
         set val("${expName}-${species}-${protocol}"), val(expName), val(species), val(protocol) into TAGS 
         set val("${expName}-${species}-${protocol}"), file("${expName}.${species}.${protocol}.conf"), file(sdrfFile) into TAGGED_CONF 
+        set val("${expName}-${species}-${protocol}"), file(referenceFasta), file(referenceGtf), file(contIndex) into TAGGED_REFERENCES
     
     """
     # Add in protocol-specific parameters by 'include'ing external configs
@@ -246,6 +313,7 @@ TAGS.into{
     TAGS_FOR_AGGR
     TAGS_FOR_IS_DROPLET
     TAGS_FOR_TERTIARY
+    TAGS_FOR_BUNDLE
 }
 
 TAGGED_CONF.into{
@@ -268,7 +336,7 @@ process mark_droplet {
 
         def isDroplet='False'
         if ( dropletProtocols.contains(protocol) ){
-            isDroplet=True
+            isDroplet='True'
         }
         
         """
@@ -312,58 +380,14 @@ process check_droplet_status {
         echo "Experiment $expName has both droplet and non-droplet protocols" 1>&2
         exit 1
     else
-        echo -e "$first"
+        echo -n "$first"
     fi
     """
 }
 
-// Locate reference files
-
-process add_reference {
-
-    conda 'pyyaml' 
-    
-    cache 'deep'
-    
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
-
-    input:
-        set val(tag), val(expName), val(species), val(protocol) from TAGS_FOR_REF
-    
-    output:
-        set val(tag), file("*.fa.gz"), file("*.gtf.gz"), stdout into REFERENCES
-
-    """
-    # Use references from the ISL setup
-    if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
-        irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
-        if [ ${params.islReferenceType} = 'newest' ]; then
-            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
-
-            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -rV | head -n 1)
-            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -rV | head -n 1)
-        else
-            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
-        fi
-        if [ ! -e "\$cdna_fasta" ]; then
-            echo "Fasta file \$cdna_fasta does not exist" 1>&2
-            exit 1
-        elif [ ! -e "\$cdna_gtf" ]; then
-            echo "GTF file \$cdna_gtf does not exist" 1>&2
-            exit 1
-        fi
-        contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
-    else
-        echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
-        exit 1
-    fi
-   
-    echo -n "\$contamination_index"
-    ln -s \$cdna_fasta
-    ln -s \$cdna_gtf
-    """
+IS_DROPLET_EXP_SPECIES.into{
+    IS_DROPLET_EXP_SPECIES_FOR_CELLMETA
+    IS_DROPLET_EXP_SPECIES_FOR_TERTIARY
 }
 
 // Where analysis is already present, check that the config has actually changed
@@ -448,11 +472,6 @@ process reset_experiment{
     """
 }
 
-NEW_OR_RESET_EXPERIMENTS.join(REFERENCES).into{
-        CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
-        CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
-    }
-
 // Prepare a reference depending on spikes
 
 process prepare_reference {
@@ -464,7 +483,7 @@ process prepare_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(tag), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_ORIG_REFERENCE_FOR_PREPARE
+        set val(tag), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from NEW_OR_RESET_EXPERIMENTS.join(TAGGED_REFERENCES)
     
     output:
         set val(tag), file("out/*.fa.gz"), file("out/*.gtf.gz"), val(contaminationIndex) into PREPARED_REFERENCES
@@ -638,7 +657,7 @@ if ( skipQuantification == 'yes'){
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
         input:
-            set val(tag), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
+            set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
             val flag from INIT_DONE_DROPLET
 
         output:
@@ -722,6 +741,8 @@ COUNT_MATRICES
     .into{
         COUNT_MATRICES_FOR_CELL_TO_LIB
         COUNT_MATRICES_FOR_META_MATCHING
+        COUNT_MATRICES_FOR_TERTIARY
+        COUNT_MATRICES_FOR_BUNDLE
     }
 
 
@@ -734,7 +755,7 @@ TAGS_FOR_TERTIARY
     .groupTuple( by: [1,2] )
     .map{ r -> tuple(r[1], r[2], r[4][0], r[5][0]) }
     .join(COUNT_MATRICES_FOR_CELL_TO_LIB, by: [0,1])
-    .join(IS_DROPLET_EXP_SPECIES, by: [0,1])
+    .join(IS_DROPLET_EXP_SPECIES_FOR_CELLMETA, by: [0,1])
     .set{PRE_TERTIARY_INPUTS} 
 
 // Separate Droplet from non-droplet
@@ -837,5 +858,174 @@ process match_metadata_to_cells {
     """
 }
 
+MATCHED_META.into{
+    MATCHED_META_FOR_TERTIARY
+    MATCHED_META_FOR_BUNDLE
+}
 
+// Tertiary analysis requires the count matrix, references, and droplet status
+
+CONF_REF_BY_EXP_SPECIES_FOR_TERTIARY
+    .join(COUNT_MATRICES_FOR_TERTIARY, by: [0,1])
+    .join(MATCHED_META_FOR_TERTIARY, by: [0,1])
+    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY, by: [0,1])
+    .set{TERTIARY_INPUTS}
+
+if ( tertiaryWorkflow == 'scanpy-galaxy' ) {
+
+    // Re-use previous tertiary results
+
+    if (skipTertiary == 'yes' ){
+
+        process spoof_scanpy_galaxy {
+        
+            executor 'local'
+            input:
+                set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(countMatrix), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+            
+            output:
+                set val(expName), val(species), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+        
+            """
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/matrices 
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/clusters_for_bundle.txt
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/umap 
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/tsne
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/markers
+                ln -s $SCXA_RESULTS/$expName/$species/scanpy/clustering_software_versions.txt
+            """
+        }
+
+    }else{
+
+        process scanpy_galaxy {
+            
+            // Exit status of 3 is just Galaxy being annoying with history
+            // deletion, no cause to error
+
+            validExitStatus 0,3
+        
+            maxForks params.maxConcurrentScanpyGalaxy
+
+            conda "${baseDir}/envs/bioblend.yml"
+
+            publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
+            
+            memory { 4.GB * task.attempt }
+            errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt<=3  ? 'retry' : 'ignore' }
+            maxRetries 3
+              
+            input:
+                set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(countMatrix), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+
+            output:
+                set val(expName), val(species), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+
+            script:
+ 
+                """
+                    submitTertiaryWorkflow.sh "$expName" "$species" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials"
+                """
+        }
+    }
+} else{
+
+    // Don't do tertiary analysis
+    
+    process spoof_tertiary {
+    
+        executor 'local'
+        
+        input:
+            set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(countMatrix), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+
+        output:
+            set val(expName), val(species), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS"), file('NOSOFTWARE') into TERTIARY_RESULTS
+
+        """
+            mkdir -p matrices
+            cp -p ${countMatrix} matrices 
+            touch NOFILT NONORM NOPCA NOCLUST NOUMAP NOTSNE NOMARKERS NOSOFTWARE
+        """
+    }    
+}
+
+// Bundling requires pretty much everything, so we need to gather a few channels
+
+TAGS_FOR_BUNDLE
+    .map{r -> tuple(r[1], r[2], r[3])}
+    .groupTuple( by: [0,1] )
+    .map{r -> tuple(r[0], r[1], r[2].join(","))}
+    .set{
+        PROTOCOLS_BY_EXP_SPECIES
+    }
+
+PROTOCOLS_BY_EXP_SPECIES
+    .join(CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE, by: [0,1])
+    .join(MATCHED_META_FOR_BUNDLE, by: [0,1])
+    .join(COUNT_MATRICES_FOR_BUNDLE,  by: [0,1])
+    .join(TPM_MATRICES, remainder: true, by: [0,1])
+    .join(TERTIARY_RESULTS, by: [0, 1])
+    .set { BUNDLE_INPUTS } 
+
+process bundle {
+    
+    conda "${baseDir}/envs/nextflow.yml"
+
+    publishDir "$SCXA_RESULTS/$expName/$species", mode: 'copy', overwrite: true
+    
+    memory { 4.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137  ? 'retry' : 'finish' }
+    maxRetries 20
+    
+    input:
+        set val(expName), val(species), val(protocolList), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(confFile), file(cellMeta), file(rawMatrix), file(tpmMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport) from BUNDLE_INPUTS
+        
+    output:
+        file('bundle/*')
+        file('bundle.log')
+        file('bundleLines.txt') into NEW_BUNDLES
+        
+        """
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$cellMeta" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne $softwareReport
+        """
+}
+
+// Record the completed bundles
+
+NOT_UPDATED_BUNDLES
+    .concat( NOT_CHANGED_BUNDLES )
+    .concat ( NEW_BUNDLES )
+    .collectFile(name: 'these.all.done.txt', sort: true)
+    .set{
+        BUNDLE_LINES
+    }
+
+// For each experiment and species with a completed bundle, remove the work
+// dir. This can take a little while for large experiments, so background the
+// process so future runs are not delayed.
+
+process cleanup {
+    
+    executor 'local'
+    
+    publishDir "$SCXA_RESULTS", mode: 'copy', overwrite: true
+    
+    input:
+        file(bundleLines) from BUNDLE_LINES
+    
+    output:
+        file("all.done${doneSuffix}.txt")
+
+    """
+    touch $SCXA_WORK/.success
+    cat ${bundleLines} | while read -r l; do
+        expName=\$(echo "\$l" | awk '{print \$1}')
+        species=\$(echo "\$l" | awk '{print \$2}')
+        nohup rm -rf $SCXA_WORK/\$expName/\$species &
+    done
+    find $SCXA_WORK/ -maxdepth 2 -type d -empty -delete
+    cp $bundleLines all.done${doneSuffix}.txt
+    """
+}
 
