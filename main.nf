@@ -750,12 +750,12 @@ COUNT_MATRICES
 // we need a config but don't need the protocol-specific bits, for example a
 // process needs to know the column with technical replicates etc.
 
-TAGS_FOR_TERTIARY
-    .join(PRE_CONF_FOR_TERTIARY)
-    .groupTuple( by: [1,2] )
-    .map{ r -> tuple(r[1], r[2], r[4][0], r[5][0]) }
-    .join(COUNT_MATRICES_FOR_CELL_TO_LIB, by: [0,1])
-    .join(IS_DROPLET_EXP_SPECIES_FOR_CELLMETA, by: [0,1])
+TAGS_FOR_TERTIARY                                           // tag, expname, species, protocol
+    .join(PRE_CONF_FOR_TERTIARY)                            // tag, expname, species, protocol, conf, confsdrf
+    .groupTuple( by: [1,2] )                                // [tag], expname, species, [protocol], [conf], [confsdrf]
+    .map{ r -> tuple(r[1], r[2], r[4][0], r[5][0]) }        // expname, species, conf, confsdrf
+    .join(COUNT_MATRICES_FOR_CELL_TO_LIB, by: [0,1])        // expname, species, conf, confsdrf, countmatrix
+    .join(IS_DROPLET_EXP_SPECIES_FOR_CELLMETA, by: [0,1])   // expname, species, conf, confsdrf, countmatrix, isdroplet
     .set{PRE_TERTIARY_INPUTS} 
 
 // Separate Droplet from non-droplet
@@ -763,7 +763,7 @@ TAGS_FOR_TERTIARY
 DROPLET_CELL_TO_LIB_INPUT = Channel.create()
 SMART_CELL_TO_LIB_INPUT = Channel.create()
 
-PRE_TERTIARY_INPUTS.map{r -> tuple(r[0], r[1], r[3], r[5], r[6], file('NO_FILE')) }.choice( DROPLET_CELL_TO_LIB_INPUT, SMART_CELL_TO_LIB_INPUT ) {a -> 
+PRE_TERTIARY_INPUTS.map{r -> tuple(r[0], r[1], r[2], r[4], r[5], file('NO_FILE')) }.choice( DROPLET_CELL_TO_LIB_INPUT, SMART_CELL_TO_LIB_INPUT ) {a -> 
     a[4] == 'True' ? 0 : 1
 }
 
