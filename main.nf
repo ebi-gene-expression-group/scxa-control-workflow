@@ -846,15 +846,7 @@ process match_metadata_to_cells {
        set val(expName), val(species), file("${expName}.metadata.matched.tsv") into MATCHED_META 
 
     """
-    zipdir=\$(unzip -qql ${countMatrix} | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
-    head -n 1 $cellMeta > cell_metadata.tsv.tmp && unzip -p $countMatrix \${zipdir}/barcodes.tsv| while read -r l; do 
-        grep -P "^\$l\t" $cellMeta
-         if [ \$? -ne 0 ]; then 
-            echo "Missing metadata for \$l" 1>&2
-            exit 1
-         fi 
-    done >> cell_metadata.tsv.tmp
-    mv cell_metadata.tsv.tmp ${expName}.metadata.matched.tsv
+    matchMetadataToCells.sh $cellMeta $countMatrix ${expName}.metadata.matched.tsv 
     """
 }
 
