@@ -27,6 +27,7 @@ export gtf_file=$referenceGtf
 export matrix_file=${zipdir}/matrix.mtx.gz
 export genes_file=${zipdir}/genes.tsv.gz
 export barcodes_file=${zipdir}/barcodes.tsv.gz
+export cell_meta_file=$cellMetadata
 export tpm_filtering='False'
 export create_conda_env=no
 export GALAXY_CRED_FILE=$galaxyCredentials
