@@ -76,7 +76,7 @@ if [ $? -eq 0 ]; then
         mv $marker_files markers
     fi
 
-    if [ -e 'celltype_markers.csv' ]; then
-        mv celltype_markers.csv markers
+    if [ -e 'celltype_markers.tsv' ]; then
+        mv celltype_markers.tsv markers
     fi
 fi 
