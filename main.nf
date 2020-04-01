@@ -994,7 +994,7 @@ process bundle {
         file('bundleLines.txt') into NEW_BUNDLES
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$consensedSdrf" "$cellMeta" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne $softwareReport
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMeta" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne $softwareReport
         """
 }
 
