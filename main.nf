@@ -585,10 +585,10 @@ if ( skipQuantification == 'yes'){
         executor 'local'
 
         input:
-            set val(expName), val(species), val(protocol) from QUANT_INPUTS.map{ r -> tuple( r[2], r[3], r[4] ) }
+            set val(tag), val(expName), val(species), val(protocol) from QUANT_INPUTS.map{ r -> tuple( r[0], r[2], r[3], r[4] ) }
 
         output:
-            set val(expName), val(species), val(protocol), file("results/*") into QUANT_RESULTS
+            set val(tag), file("results/*") into QUANT_RESULTS
 
         """
             mkdir -p results
@@ -778,6 +778,8 @@ SMART_CELL_TO_LIB_INPUT
 
 process cell_run_mapping {
    
+    cache 'deep'
+    
     input:
         set val(expName), val(species), file(confFile), file(countMatrix), val(isDroplet), file(emptyFile) from DROPLET_CELL_TO_LIB_INPUT
  
@@ -801,6 +803,8 @@ SMART_CELL_TO_LIB
 
 process condense_sdrf {
         
+    cache 'deep'
+    
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
 
     input:
@@ -823,6 +827,8 @@ process condense_sdrf {
 process unmelt_condensed_sdrf {
         
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
+    
+    cache 'deep'
 
     input:
         set val(expName), val(species), file(condensedSdrf) from CONDENSED 
@@ -838,6 +844,8 @@ process unmelt_condensed_sdrf {
 // Match the cell metadata to the expression matrix 
 
 process match_metadata_to_cells {
+    
+    cache 'deep'
 
     input:
         set val(expName), val(species), file(cellMeta), file(countMatrix) from UNMELTED_META.join(COUNT_MATRICES_FOR_META_MATCHING, by: [0,1])
@@ -891,6 +899,8 @@ if ( tertiaryWorkflow == 'scanpy-galaxy' ) {
     }else{
 
         process scanpy_galaxy {
+            
+            cache 'deep'
             
             // Exit status of 3 is just Galaxy being annoying with history
             // deletion, no cause to error
