@@ -835,7 +835,7 @@ process unmelt_condensed_sdrf {
     cache 'deep'
 
     input:
-        set val(expName), val(species), file(condensedSdrf) from CONDENSED
+        set val(expName), val(species), file(condensedSdrf) from CONDENSED_FOR_META
 
     output:
        set val(expName), val(species), file("${expName}.metadata.tsv") into UNMELTED_META 
