@@ -818,7 +818,11 @@ process condense_sdrf {
     single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS
     mv ${expName}.condensed-sdrf.tsv "${expName}.${species}.condensed-sdrf.tsv"
     """        
+}
 
+CONDENSED.into{
+    CONDENSED_FOR_META
+    CONDENSED_FOR_BUNDLE
 }
 
 // 'unmelt' the condensed SDRF to get a metadata table to pass for tertiary
@@ -831,7 +835,7 @@ process unmelt_condensed_sdrf {
     cache 'deep'
 
     input:
-        set val(expName), val(species), file(condensedSdrf) from CONDENSED 
+        set val(expName), val(species), file(condensedSdrf) from CONDENSED
 
     output:
        set val(expName), val(species), file("${expName}.metadata.tsv") into UNMELTED_META 
@@ -965,6 +969,7 @@ TAGS_FOR_BUNDLE
 PROTOCOLS_BY_EXP_SPECIES
     .join(CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE, by: [0,1])
     .join(MATCHED_META_FOR_BUNDLE, by: [0,1])
+    .join(CONDENSED_FOR_BUNDLE, by: [0,1])
     .join(COUNT_MATRICES_FOR_BUNDLE,  by: [0,1])
     .join(TPM_MATRICES, remainder: true, by: [0,1])
     .join(TERTIARY_RESULTS, by: [0, 1])
@@ -981,7 +986,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(confFile), file(cellMeta), file(rawMatrix), file(tpmMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(confFile), file(condensedSdrf), file(cellMeta), file(rawMatrix), file(tpmMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -989,7 +994,7 @@ process bundle {
         file('bundleLines.txt') into NEW_BUNDLES
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$cellMeta" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne $softwareReport
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$consensedSdrf" "$cellMeta" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne $softwareReport
         """
 }
 
