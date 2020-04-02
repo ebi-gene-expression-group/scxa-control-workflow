@@ -84,9 +84,12 @@ popd > /dev/null
 
 # Build the Nextflow command
 
+controlJobName=${SCXA_ENV}_$workflow
+
 expNamePart=
 if [ -n "$expName" ]; then
     expNamePart="--expName $expName"
+    controlJobName="${expName}_${controlJobName}"
 fi
 
 skipQuantificationPart=
@@ -148,7 +151,7 @@ nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}
 
 # Run the LSF submission if it's not already running
 
-bjobs -w | grep "${SCXA_ENV}_$workflow" > /dev/null 2>&1
+bjobs -w | grep "${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 
@@ -167,7 +170,7 @@ if [ $? -ne 0 ]; then
     echo "Submitting job"
     rm -rf run.out run.err .nextflow.log*  
     bsub \
-        -J ${SCXA_ENV}_$workflow \
+        -J "${controlJobName}" \
         -M 4096 -R "rusage[mem=4096]" \
         -u $SCXA_REPORT_EMAIL \
         -o run.out \
