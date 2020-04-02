@@ -40,6 +40,7 @@ pushd $SCXA_NEXTFLOW/$SUBDIR > /dev/null
 nextflow run \
     -config $RESULTS_ROOT/$confFile \
     --masterWorkflow scxa-control-workflow \
+    --expName $expName \
     --resultsRoot $RESULTS_ROOT \
     --protocolList ${protocolList} \
     --cellMetadata ${cellMeta} \
