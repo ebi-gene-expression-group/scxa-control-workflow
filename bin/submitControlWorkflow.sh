@@ -147,7 +147,7 @@ if [ -n "$tertiaryWorkflow" ]; then
     fi
 fi
 
-nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
+nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
 
 # Run the LSF submission if it's not already running
 
@@ -168,14 +168,16 @@ if [ $? -ne 0 ]; then
     fi
 
     echo "Submitting job"
+    mkdir -p "nextflow/${controlJobName}" && pushd "nextflow/${controlJobName}" > /dev/null
     rm -rf run.out run.err .nextflow.log*  
     bsub \
         -J "${controlJobName}" \
         -M 4096 -R "rusage[mem=4096]" \
         -u $SCXA_REPORT_EMAIL \
-        -o "${controlJobName}.out" \
-        -e "${controlJobName}.err" \
+        -o run.out \
+        -e run.err \
         "$nextflowCommand" 
+    popd > /dev/null
 else
     echo "Workflow process already running" 
 fi   
