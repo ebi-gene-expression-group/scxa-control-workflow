@@ -173,8 +173,8 @@ if [ $? -ne 0 ]; then
         -J "${controlJobName}" \
         -M 4096 -R "rusage[mem=4096]" \
         -u $SCXA_REPORT_EMAIL \
-        -o run.out \
-        -e run.err \
+        -o "${controlJobName}.out" \
+        -e "${controlJobName}.err" \
         "$nextflowCommand" 
 else
     echo "Workflow process already running" 
