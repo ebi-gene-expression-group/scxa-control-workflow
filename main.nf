@@ -968,8 +968,8 @@ TAGS_FOR_BUNDLE
 
 PROTOCOLS_BY_EXP_SPECIES
     .join(CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE, by: [0,1])
-    .join(MATCHED_META_FOR_BUNDLE, by: [0,1])
     .join(CONDENSED_FOR_BUNDLE, by: [0,1])
+    .join(MATCHED_META_FOR_BUNDLE, by: [0,1])
     .join(COUNT_MATRICES_FOR_BUNDLE,  by: [0,1])
     .join(TPM_MATRICES, remainder: true, by: [0,1])
     .join(TERTIARY_RESULTS, by: [0, 1])
