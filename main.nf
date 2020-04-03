@@ -989,7 +989,36 @@ process bundle {
         set val(expName), val(species), val(protocolList), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(confFile), file(condensedSdrf), file(cellMeta), file(rawMatrix), file(tpmMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport) from BUNDLE_INPUTS
         
     output:
-        file('bundle/*')
+        file('bundle/software.tsv')
+        file('bundle/filtered_normalised/genes.tsv.gz')
+        file('bundle/filtered_normalised/barcodes.tsv.gz')
+        file('bundle/filtered_normalised/matrix.mtx.gz')
+        file('bundle/filtered_normalised/filtered_normalised.tsv') optional true
+        file('bundle/raw_filtered/genes.tsv.gz')
+        file('bundle/raw_filtered/barcodes.tsv.gz')
+        file('bundle/raw_filtered/matrix.mtx.gz')
+        file('bundle/raw_filtered/raw_filtered.tsv') optional true
+        file('bundle/tpm/genes.tsv.gz')
+        file('bundle/tpm/barcodes.tsv.gz')
+        file('bundle/tpm/matrix.mtx.gz')
+        file('bundle/tpm/tpm.tsv') optional true
+        file('bundle/raw/genes.tsv.gz')
+        file('bundle/raw/barcodes.tsv.gz')
+        file('bundle/raw/matrix.mtx.gz')
+        file('bundle/raw/raw.tsv') optional true
+        file('bundle/tpm_filtered/genes.tsv.gz') optional true
+        file('bundle/tpm_filtered/barcodes.tsv.gz') optional true
+        file('bundle/tpm_filtered/matrix.mtx.gz') optional true
+        file('bundle/tpm_filtered/tpm_filtered.tsv') optional true
+        file('bundle/E-ENAD-13.cell_metadata.tsv')
+        file('bundle/E-ENAD-13.condensed-sdrf.tsv')
+        file('bundle/reference/Mus_musculus.GRCm38.cdna.all.99.fa.gz')
+        file('bundle/reference/Mus_musculus.GRCm38.99.gtf.gz')
+        file('bundle/tsne_perplexity_*.tsv')
+        file('bundle/markers_*.tsv') optional true
+        file('bundle/celltype_markers.tsv') optional true
+        file('bundle/clusters_for_bundle.txt')
+        file('bundle/MANIFEST')
         file('bundle.log')
         file('bundleLines.txt') into NEW_BUNDLES
         
