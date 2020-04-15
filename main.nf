@@ -61,7 +61,7 @@ process compile_metadata {
         set val(expName), file(idfFile) from IDF
 
     output:
-        set val(expName), file(idfFile), file("*.sdrf.txt") into SDRF_IDF
+        set val(expName), file(idfFile), file("*.sdrf.txt") optional true into SDRF_IDF
         set val(expName), file("${expName}.cells.txt") optional true into CELLS 
 
     """
