@@ -1018,8 +1018,8 @@ process bundle {
         file('bundle/tpm_filtered/tpm_filtered.tsv') optional true
         file("bundle/${expName}.cell_metadata.tsv")
         file("bundle/${expName}.condensed-sdrf.tsv")
-        file('bundle/reference/Mus_musculus.GRCm38.cdna.all.99.fa.gz')
-        file('bundle/reference/Mus_musculus.GRCm38.99.gtf.gz')
+        file("bundle/reference/${referenceFasta}")
+        file("bundle/reference/${referenceGtf}")
         file('bundle/tsne_perplexity_*.tsv')
         file('bundle/markers_*.tsv') optional true
         file('bundle/celltype_markers.tsv') optional true
