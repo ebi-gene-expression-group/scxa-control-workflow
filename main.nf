@@ -1017,7 +1017,7 @@ process bundle {
         file('bundle/tpm_filtered/matrix.mtx.gz') optional true
         file('bundle/tpm_filtered/tpm_filtered.tsv') optional true
         file("bundle/${expName}.cell_metadata.tsv")
-        file("bundle/${expName}.condensed-sdrf.tsv')
+        file("bundle/${expName}.condensed-sdrf.tsv")
         file('bundle/reference/Mus_musculus.GRCm38.cdna.all.99.fa.gz')
         file('bundle/reference/Mus_musculus.GRCm38.99.gtf.gz')
         file('bundle/tsne_perplexity_*.tsv')
