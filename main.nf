@@ -850,6 +850,12 @@ process unmelt_condensed_sdrf {
 process match_metadata_to_cells {
     
     cache 'deep'
+    
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    
+    memory { 4.GB * task.attempt }
+    
+    maxRetries 20
 
     input:
         set val(expName), val(species), file(cellMeta), file(countMatrix) from UNMELTED_META.join(COUNT_MATRICES_FOR_META_MATCHING, by: [0,1])
@@ -998,9 +1004,9 @@ process bundle {
         file('bundle/raw_filtered/barcodes.tsv.gz')
         file('bundle/raw_filtered/matrix.mtx.gz')
         file('bundle/raw_filtered/raw_filtered.tsv') optional true
-        file('bundle/tpm/genes.tsv.gz')
-        file('bundle/tpm/barcodes.tsv.gz')
-        file('bundle/tpm/matrix.mtx.gz')
+        file('bundle/tpm/genes.tsv.gz') optional true
+        file('bundle/tpm/barcodes.tsv.gz') optional true
+        file('bundle/tpm/matrix.mtx.gz') optional true
         file('bundle/tpm/tpm.tsv') optional true
         file('bundle/raw/genes.tsv.gz')
         file('bundle/raw/barcodes.tsv.gz')
