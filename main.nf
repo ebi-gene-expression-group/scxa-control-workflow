@@ -833,7 +833,13 @@ process unmelt_condensed_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
     
     cache 'deep'
-
+    
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 ? 'retry' : 'finish' }
+    
+    memory { 4.GB * task.attempt }
+    
+    maxRetries 20
+    
     input:
         set val(expName), val(species), file(condensedSdrf) from CONDENSED_FOR_META
 
