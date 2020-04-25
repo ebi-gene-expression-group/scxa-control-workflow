@@ -1005,11 +1005,13 @@ process bundle {
         file('bundle/filtered_normalised/genes.tsv.gz')
         file('bundle/filtered_normalised/barcodes.tsv.gz')
         file('bundle/filtered_normalised/matrix.mtx.gz')
+        file('bundle/filtered_normalised/cell_to_library.txt') optional true
         file('bundle/filtered_normalised/filtered_normalised.tsv') optional true
         file('bundle/raw_filtered/genes.tsv.gz')
         file('bundle/raw_filtered/barcodes.tsv.gz')
         file('bundle/raw_filtered/matrix.mtx.gz')
         file('bundle/raw_filtered/raw_filtered.tsv') optional true
+        file('bundle/raw_filtered/cell_to_library.txt') optional true
         file('bundle/tpm/genes.tsv.gz') optional true
         file('bundle/tpm/barcodes.tsv.gz') optional true
         file('bundle/tpm/matrix.mtx.gz') optional true
@@ -1018,6 +1020,7 @@ process bundle {
         file('bundle/raw/barcodes.tsv.gz')
         file('bundle/raw/matrix.mtx.gz')
         file('bundle/raw/raw.tsv') optional true
+        file('bundle/raw/cell_to_library.txt') optional true
         file('bundle/tpm_filtered/genes.tsv.gz') optional true
         file('bundle/tpm_filtered/barcodes.tsv.gz') optional true
         file('bundle/tpm_filtered/matrix.mtx.gz') optional true
