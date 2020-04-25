@@ -835,7 +835,7 @@ names(species_list) <- unlist(species_list)
 
 configs <- lapply(species_list, function(species){
 
-  protocol_list <- list(names(sdrf.by.species.protocol[[species]]))
+  protocol_list <- as.list(names(sdrf.by.species.protocol[[species]]))
   names(protocol_list) <- unlist(protocol_list)
  
   lapply( protocol_list, function(protocol){
