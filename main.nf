@@ -105,13 +105,13 @@ process get_not_updated_bundles {
         val expName from NOT_UPDATED_EXPERIMENTS.map{r -> r[0]}
 
     output:
-        stdout NOT_UPDATED_BUNDLES
+        file('bundleLines.txt') into NOT_UPDATED_BUNDLES
 
     """
         ls \$SCXA_RESULTS/$expName/*/bundle/MANIFEST | while read -r l; do
             species=\$(echo \$l | awk -F'/' '{print \$(NF-2)}' | tr -d \'\\n\')
             echo -e "$expName\\t\$species\\t$SCXA_RESULTS/$expName/\$species/bundle"
-        done
+        done > bundleLines.txt
 
     """
 }
@@ -425,13 +425,13 @@ process get_not_changed_bundles {
         set val(expName), val(species) from NOT_CHANGED_EXPERIMENTS.map{r -> tuple(r[1], r[2])}
 
     output:
-        stdout NOT_CHANGED_BUNDLES
+         file('bundleLines.txt') into NOT_CHANGED_BUNDLES
 
     """
         # Update the manifest time stamps to prevent re-config next time
         touch -m $SCXA_RESULTS/$expName/$species/bundle/MANIFEST
 
-        echo -e "$expName\\t$species\\t$SCXA_RESULTS/$expName/$species/bundle"
+        echo -e "$expName\\t$species\\t$SCXA_RESULTS/$expName/$species/bundle" > bundleLines.txt
     """
 }
 
