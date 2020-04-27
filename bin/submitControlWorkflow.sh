@@ -151,7 +151,7 @@ nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${wo
 
 # Run the LSF submission if it's not already running
 
-bjobs -w | grep "${controlJobName}" > /dev/null 2>&1
+bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 
