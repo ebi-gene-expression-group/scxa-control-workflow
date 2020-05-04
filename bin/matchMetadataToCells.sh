@@ -25,8 +25,8 @@ unzip -p $countMatrix ${zipdir}/barcodes.tsv > barcodes.tsv
 # ordering we add an index which we-re-sort by at the end
 
 <barcodes.tsv nl -s $'\t' |
-sort -t$'\t' -k 2 |
-join -t$'\t' -1 2 - <(sort $cellMeta) |
+sort -t$'\t' -V -k 2 |
+join -t$'\t' -1 2 - <(sort -V $cellMeta) |
 sort -t$'\t' -k 2,2n |
 cut -d$'\t' -f2 --complement >> ${outFile}.tmp
 
