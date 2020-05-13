@@ -1035,6 +1035,8 @@ process bundle {
         file('bundle/clusters_for_bundle.txt')
         file('bundle/MANIFEST')
         file('bundle.log')
+        file('filtered_normalised_stats.csv')
+        file('tpm_filtered_stats.csv') optional true
         file('bundleLines.txt') into NEW_BUNDLES
         
         """
