@@ -65,7 +65,7 @@ process compile_metadata {
         set val(expName), file("${expName}.cells.txt") optional true into CELLS 
 
     """
-    compileExpMetadata.sh $expName $idfFile $overwrite 
+    compileExpMetadata.sh $expName $idfFile $overwrite "${doneSuffix}" 
     """
 }
 

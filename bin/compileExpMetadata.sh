@@ -11,6 +11,7 @@ source $scriptDir/utils.sh
 expName=$1
 idfFile=$2
 overwrite=$3
+force=$4 # If a non-empty string, this will override the placement of an experiment in the excluded file
 
 # Have we excluded this study?
 
@@ -22,7 +23,7 @@ set -e
 # This study is in the excluded file, which is why we don't have results.
 # Signal to ignore it.
 
-if [ $excludeStatus -eq 0 ]; then
+if [ $excludeStatus -eq 0 ] && [ -z "$force" ]; then
     exit 0
 fi
 
