@@ -806,6 +806,10 @@ process condense_sdrf {
     cache 'deep'
     
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
+    
+    memory { 4.GB * task.attempt }
+    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    maxRetries 10
 
     input:
         set val(expName), val(species), file(cell_to_lib), file(idfFile), file(origSdrfFile), file(cellsFile) from CONDENSE_INPUTS 
