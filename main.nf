@@ -624,7 +624,7 @@ if ( skipQuantification == 'yes'){
         publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
         
         memory { 10.GB * task.attempt }
-        errorStrategy { task.attempt<=10 ? 'retry' : 'finish' }
+        errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' }
         maxRetries 10
         
         input:
@@ -654,7 +654,7 @@ if ( skipQuantification == 'yes'){
         publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
         
         memory { 10.GB * task.attempt }
-        errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
+        errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
         input:
             set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
