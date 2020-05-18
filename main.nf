@@ -804,6 +804,8 @@ SMART_CELL_TO_LIB
 process condense_sdrf {
         
     cache 'deep'
+        
+    maxForks 2
     
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
     
