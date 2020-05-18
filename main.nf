@@ -808,7 +808,7 @@ process condense_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
     
     memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 ? 'retry' : 'finish' }
+    errorStrategy { task.exitStatus == 130 || task.exitStatus ==  255 ? 'retry' : 'ignore' }
     maxRetries 10
 
     input:
