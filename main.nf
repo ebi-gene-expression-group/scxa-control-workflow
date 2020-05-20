@@ -141,53 +141,74 @@ MULTISPECIES_META
         META_FOR_REF
     }    
 
-// Locate reference files
+// Locate reference files. If we're skipping quantification, make sure to
+// select the reference used previously
 
-process add_reference {
+if ( skipQuantification == 'yes'){
 
-    conda 'pyyaml' 
-    
-    cache 'deep'
-    
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
+    process reuse_reference{
+        
+        input:
+            set val(expName), val(species) from META_FOR_REF.map{ r -> tuple(r[0], r[1]) }
+        
+        output:
+            set val(expName), val(species), file("*.fa.gz"), file("*.gtf.gz"), stdout into REFERENCES
 
-    input:
-        set val(expName), val(species) from META_FOR_REF.map{ r -> tuple(r[0], r[1]) }
-    
-    output:
-        set val(expName), val(species), file("*.fa.gz"), file("*.gtf.gz"), stdout into REFERENCES
+        """
+        ln -s $SCXA_RESULTS/$expName/$species/reference/*.fa.gz
+        ln -s $SCXA_RESULTS/$expName/$species/reference/*.gtf.gz
+        """
+    }
 
-    """
-    # Use references from the ISL setup
-    if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
-        irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
-        if [ ${params.islReferenceType} = 'newest' ]; then
-            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
+}else{
+    process add_reference {
 
-            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -rV | head -n 1)
-            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -rV | head -n 1)
+        conda 'pyyaml' 
+        
+        cache 'deep'
+        
+        errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
+            
+        publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
+
+        input:
+            set val(expName), val(species) from META_FOR_REF.map{ r -> tuple(r[0], r[1]) }
+        
+        output:
+            set val(expName), val(species), file("*.fa.gz"), file("*.gtf.gz"), stdout into REFERENCES
+
+        """
+        # Use references from the ISL setup
+        if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
+            irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
+            if [ ${params.islReferenceType} = 'newest' ]; then
+                gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
+                cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
+
+                cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -rV | head -n 1)
+                cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -rV | head -n 1)
+            else
+                cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
+                cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+            fi
+            if [ ! -e "\$cdna_fasta" ]; then
+                echo "Fasta file \$cdna_fasta does not exist" 1>&2
+                exit 1
+            elif [ ! -e "\$cdna_gtf" ]; then
+                echo "GTF file \$cdna_gtf does not exist" 1>&2
+                exit 1
+            fi
+            contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
         else
-            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
-        fi
-        if [ ! -e "\$cdna_fasta" ]; then
-            echo "Fasta file \$cdna_fasta does not exist" 1>&2
-            exit 1
-        elif [ ! -e "\$cdna_gtf" ]; then
-            echo "GTF file \$cdna_gtf does not exist" 1>&2
+            echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
             exit 1
         fi
-        contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
-    else
-        echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
-        exit 1
-    fi
-   
-    echo -n "\$contamination_index"
-    ln -s \$cdna_fasta
-    ln -s \$cdna_gtf
-    """
+       
+        echo -n "\$contamination_index"
+        ln -s \$cdna_fasta
+        ln -s \$cdna_gtf
+        """
+    }
 }
 
 REFERENCES.into{
