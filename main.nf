@@ -347,10 +347,10 @@ process add_reference {
 
         if [ ${params.islReferenceType} = 'newest' ]; then
             gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/.fa.gz/.\\*.fa.gz/') 
+            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
 
-            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -r | head -n 1)
-            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -r | head -n 1)
+            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -rV | head -n 1)
+            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -rV | head -n 1)
         else
             cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
             cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
@@ -418,7 +418,33 @@ process prepare_reference {
     """
 }
 
-CONF_WITH_PREPARED_REFERENCE
+// Synchronise the GTF and the FASTA 
+
+process synchronize_ref_files {
+
+    conda "${baseDir}/envs/atlas-gene-annotation-manipulation.yml"
+    
+    cache 'deep'
+
+    memory { 5.GB * task.attempt }
+
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3  ? 'retry' : 'ignore' }
+    maxRetries 3
+        
+    input:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_WITH_PREPARED_REFERENCE
+
+    output:
+        set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file('cleanedCdna.fa.gz'), file(referenceGtf), val(contaminationIndex), file('transcript_to_gene.txt') into CONF_WITH_SYNCH_REFERENCE
+
+    """
+    gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header --version-transcripts --filter-cdnas ${referenceFasta} \
+        --filter-cdnas-field "transcript_id" --filter-cdnas-output cleanedCdna.fa.gz --feature-type "transcript" \
+        --first-field "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id"    
+    """
+}
+
+CONF_WITH_SYNCH_REFERENCE
     .into{
         CONF_FOR_QUANT
         CONF_FOR_AGGR
@@ -460,7 +486,7 @@ if ( skipQuantification == 'yes'){
         executor 'local'
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from CONF_FOR_QUANT
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from CONF_FOR_QUANT
 
         output:
             set val(expName), val(species), val(protocol), file("results/*") into QUANT_RESULTS
@@ -503,7 +529,7 @@ if ( skipQuantification == 'yes'){
         maxRetries 10
         
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from SMART_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_CONF
             val flag from INIT_DONE_SMART
 
         output:
@@ -569,7 +595,7 @@ if ( skipQuantification == 'yes'){
         errorStrategy { task.attempt<=5 ? 'retry' : 'finish' }
 
         input:
-            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from DROPLET_CONF
+            set val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_CONF
             val flag from INIT_DONE_DROPLET
 
         output:
@@ -594,7 +620,7 @@ if ( skipQuantification == 'yes'){
                 --resultsRoot \$RESULTS_ROOT \
                 --sdrf \$RESULTS_ROOT/$sdrfFile \
                 --referenceFasta \$RESULTS_ROOT/$referenceFasta \
-                --referenceGtf \$RESULTS_ROOT/$referenceGtf \
+                --transcriptToGene \$RESULTS_ROOT/$transcriptToGene \
                 --protocol $protocol \
                 --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
                 -resume \
@@ -638,7 +664,7 @@ if (skipAggregation == 'yes' ){
         executor 'local'
         
         input:
-            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
@@ -667,7 +693,7 @@ if (skipAggregation == 'yes' ){
         maxRetries 20
         
         input:
-            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
+            set val(expName), val(species), file('quant_results/??/protocol'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*'), file('quant_results/??/*') from GROUPED_QUANTIFICATION_RESULTS   
 
         output:
             set val(expName), val(species), file("matrices/counts_mtx.zip") into COUNT_MATRICES
@@ -732,7 +758,7 @@ if (skipAggregation == 'yes' ){
 
 CONF_WITH_ORIG_REFERENCE_FOR_TERTIARY
     .groupTuple( by: [0,1] )
-    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[6][0]) }
+    .map{ row-> tuple( row[0], row[1], row[2].join(","), row[3][0], row[5][0], row[6][0]) }
     .unique()
     .join(COUNT_MATRICES, by: [0,1])
     .set { TERTIARY_INPUTS }         
@@ -750,10 +776,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         maxRetries 20
           
         input:
-            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file("matrices/${countMatrix}"), file("matrices/*_filter_cells_genes.zip"), file("matrices/*_normalised.zip"), file("clustering/clusters.txt"), file("umap"), file("tsne"), file("markers") into TERTIARY_RESULTS
             file('scanpy.log')
 
         """
@@ -802,10 +828,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         
             executor 'local'
             input:
-                set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
             
             output:
-                set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
         
             """
                 ln -s $SCXA_RESULTS/$expName/$species/scanpy/matrices 
@@ -837,10 +863,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
             maxRetries 3
               
             input:
-                set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
             output:
-                set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
+                set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file("matrices/${countMatrix}"), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into TERTIARY_RESULTS
 
             script: 
 
@@ -932,10 +958,10 @@ if ( tertiaryWorkflow == 'scanpy-workflow'){
         executor 'local'
         
         input:
-            set val(expName), val(species), val(protocolList), file(confFile), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(countMatrix) from TERTIARY_INPUTS
 
         output:
-            set val(expName), val(species), val(protocolList), file(confFile), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS"), file('NOSOFTWARE') into TERTIARY_RESULTS
+            set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file("matrices/${countMatrix}"), file("NOFILT"), file("NONORM"), file("NOCLUST"), file("NOUMAP"), file("NOTSNE"), file("NOMARKERS"), file('NOSOFTWARE') into TERTIARY_RESULTS
 
         """
             mkdir -p matrices
@@ -965,7 +991,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
+        set val(expName), val(species), val(protocolList), file(confFile), file(referenceFasta), file(referenceGtf), file(rawMatrix), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(tpmMatrix) from BUNDLE_INPUTS
         
     output:
         file('bundle/*')
@@ -975,19 +1001,6 @@ process bundle {
     """    
         RESULTS_ROOT=\$PWD
         SUBDIR="$expName/$species/bundle"     
-
-        # Retrieve the original reference file names to report to bundle 
-        species_conf=$SCXA_PRE_CONF/reference/${species}.conf
-        
-        if [ -e "\$species_conf" ]; then
-            cdna_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,cdna)
-            cdna_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$species_conf --paramKeys params,reference,gtf)
-        
-        elif [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
-            irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
-            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
-        fi
 
         TPM_OPTIONS=''
         tpm_filesize=\$(stat --printf="%s" \$(readlink ${tpmMatrix}))
@@ -1011,8 +1024,8 @@ process bundle {
             --resultsRoot \$RESULTS_ROOT \
             --protocolList ${protocolList} \
             --rawMatrix ${rawMatrix} \$TPM_OPTIONS \
-            --referenceFasta \$cdna_fasta \
-            --referenceGtf \$cdna_gtf \$TERTIARY_OPTIONS \
+            --referenceFasta $referenceFasta \
+            --referenceGtf $referenceGtf \$TERTIARY_OPTIONS \
             -resume \
             $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_bundle/main.nf \
             -work-dir $SCXA_WORK/\$SUBDIR \

@@ -1,0 +1,3 @@
+name: atlas-fastq-provider
+dependencies:
+  - atlas-gene-annotation-manipulation=0.0.1
