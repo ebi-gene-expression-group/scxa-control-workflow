@@ -280,7 +280,7 @@ process generate_configs {
 CONF_REF_BY_EXP_SPECIES.into{
     CONF_REF_BY_EXP_SPECIES_FOR_QUANT
     CONF_REF_BY_EXP_SPECIES_FOR_TERTIARY
-    CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE
+    PRE_CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE
 }
 
 // Protocol is first part of '.' - separated file name from sdrfToNfConf, so we
@@ -1004,6 +1004,13 @@ TAGS_FOR_BUNDLE
     .set{
         PROTOCOLS_BY_EXP_SPECIES
     }
+
+// In the case of multiple configs in multi-protocol experiments, just pass the
+// first one to bundling
+
+PRE_CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE
+    .map{ r -> tuple(r[0], r[1], r[2], r[3], r[4], r[5][0]) }
+    .set { CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE }
 
 PROTOCOLS_BY_EXP_SPECIES
     .join(CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE, by: [0,1])
