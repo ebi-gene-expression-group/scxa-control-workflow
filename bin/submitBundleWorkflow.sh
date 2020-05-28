@@ -37,8 +37,12 @@ mkdir -p $SCXA_NEXTFLOW/$SUBDIR
 mkdir -p $SCXA_RESULTS/$SUBDIR/reports
 pushd $SCXA_NEXTFLOW/$SUBDIR > /dev/null
 
+# Note: we could have received multiple config files, coming from multiple
+# protocols- just pass the first, we don't have any protocol-specific
+# behaviours in bundling
+
 nextflow run \
-    -config $RESULTS_ROOT/$confFile \
+    -config $RESULTS_ROOT/$(echo $confFile | awk '{print $1}') \
     --masterWorkflow scxa-control-workflow \
     --expName $expName \
     --resultsRoot $RESULTS_ROOT \
