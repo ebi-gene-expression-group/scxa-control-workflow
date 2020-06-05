@@ -16,7 +16,8 @@ tpmMatrix=${13}
 clusters=${14}
 markersDir=${15}
 tsneDir=${16}
-softwareReport=${17}
+umapDir=${17}
+softwareReport=${18}
 
 RESULTS_ROOT=$PWD
 SUBDIR="$expName/$species/bundle"     
@@ -29,7 +30,7 @@ fi
 
 TERTIARY_OPTIONS=''
 if [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
-    TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir $tsneDir --markersDir $markersDir --tertiarySoftwareReport ${softwareReport}"
+    TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir $tsneDir --umapDir $umapDir --markersDir $markersDir --tertiarySoftwareReport ${softwareReport}"
 fi 
 
 mkdir -p $SCXA_WORK/$SUBDIR
