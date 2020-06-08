@@ -1059,6 +1059,7 @@ process bundle {
         file("bundle/reference/${referenceFasta}")
         file("bundle/reference/${referenceGtf}")
         file('bundle/tsne_perplexity_*.tsv')
+        file('bundle/umap_n_neighbors_*.tsv')
         file('bundle/markers_*.tsv') optional true
         file('bundle/celltype_markers.tsv') optional true
         file('bundle/clusters_for_bundle.txt')
