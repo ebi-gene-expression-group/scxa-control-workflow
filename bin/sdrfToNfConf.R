@@ -842,11 +842,16 @@ configs <- lapply(species_list, function(species){
  
     species.protocol.sdrf <- sdrf.by.species.protocol[[species]][[protocol]]
     properties <- species.protocol.properties[[species]][[protocol]]
-  
-    # layout is the SDRF with the duplicated lanes for paired end removed
-    species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
-    rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
-  
+ 
+    # layout is the SDRF with the duplicated lanes for paired end (and possibly technical replication) removed
+    if(properties$has.techrep) {
+      species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[techrep.col]]),,drop=FALSE]
+      rownames(species.protocol.layout) <- species.protocol.layout[[techrep.col]]
+    }else{   
+      species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
+      rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
+    }
+
     # Generate starting config file content
 
     config <- c(
@@ -1056,18 +1061,16 @@ configs <- lapply(species_list, function(species){
     # Generate metadata file content to save
   
     metadata <- NULL
-    sdfcols2save2tsv <- getActualColnames(unique(c(
-      factors,
-      idf.factors,
-      idf.attrs,
-      techrep.col
-    )), species.protocol.sdrf)
+
+    metadata_cols <- unique(c(factors, idf.factors, idf.attrs, techrep.col))
+    sdfcols2save2tsv <- getActualColnames(metadata_cols, species.protocol.sdrf)
   
     if (length(sdfcols2save2tsv) > 0){
       metadata <- species.protocol.layout[,sdfcols2save2tsv, drop = FALSE]
       metadata <- cbind(run=rownames(metadata),metadata)
+      colnames(metadata) <- c('run', metadata_cols)
     }
-  
+
     list(config=config, metadata=metadata)
   })
 })
@@ -1119,15 +1122,11 @@ for (species in names(configs)){
 
     # If there's only one protocol, don't add a protocol suffix to the the outputs
 
-    file_suffix <- species
+    file_prefix <- paste(protocol, species, sep='.')
 
-    if ( length(protocol_configs) > 1 ){
-      file_suffix <- paste(species, protocol, sep='.')
-    }
-
-    conf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".conf"))
-    meta.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".metadata.tsv"))
-    sdrf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".sdrf.txt"))
+    conf.file <- file.path(opt$out_conf, paste0(file_prefix,'.',  opt$name, ".conf"))
+    meta.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".metadata.tsv"))
+    sdrf.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".sdrf.txt"))
   
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata
