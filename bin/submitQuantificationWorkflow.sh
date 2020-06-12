@@ -29,7 +29,7 @@ SUBDIR="$expName/$species/quantification/$protocol"
 quantWorkDir=$SCXA_WORK/$SUBDIR
 manualDownloadFolder=$SCXA_DATA/ManuallyDownloaded/$expName
 
-datasetInfo=$(grep "^$expName\t" $CONTROLLED_ACCESS_DATASETS)
+datasetInfo=$(grep "^$expName$(printf '\t')" $CONTROLLED_ACCESS_DATASETS)
 if [ $? -ne 0 ]; then
   caDir=$(echo -e "$datasetInfo" | awk '{print $2}')
   quantWorkDir=$caDir/analysis
