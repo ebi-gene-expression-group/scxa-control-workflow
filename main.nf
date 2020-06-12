@@ -285,6 +285,8 @@ process generate_configs {
 
 process check_controlled_access{
     
+    cache false
+    
     errorStrategy 'ignore'
 
     input:
