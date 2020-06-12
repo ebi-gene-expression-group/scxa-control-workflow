@@ -6,9 +6,13 @@ confFile=$2
 # Check if we're looking at a controlled access datasets, and if we have the
 # necessaries
 
-controlledAccessStatus=$(parseNfConfig.py --paramFile $confFile --paramKeys params,controlled_access)
+controlledAccessField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,controlled_access)
 
-if [ "$controlledAccessStatus" == 'yes' ]; then 
+# This controlled access field will only have been set by the config script if
+# a) a controlled access field is present in the SDRF and b) it has some 'yes'
+# values
+
+if [ "$controlledAccessField" != 'None' ]; then
     if [ -z "$CONTROLLED_ACCESS_DATASETS" ]; then
         echo "$expName is set as controlled access in $confFile, but the CONTROLLED_ACCESS_DATASETS environment variable is is not set" 1>&2
         exit 1
