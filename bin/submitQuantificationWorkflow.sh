@@ -27,11 +27,22 @@ SUBDIR="$expName/$species/quantification/$protocol"
 # use
 
 quantWorkDir=$SCXA_WORK/$SUBDIR
+manualDownloadFolder=$SCXA_DATA/ManuallyDownloaded/$expName
+caParam=
 
 datasetInfo=$(grep "^$expName\t" $CONTROLLED_ACCESS_DATASETS)
 if [ $? -ne 0 ]; then
   caDir=$(echo -e "$datasetInfo" | awk '{print $2}')
-  quantWorkDir=$caDir/analysis 
+  quantWorkDir=$caDir/analysis
+
+  # For controlled access, there may be some substructure to the data
+  # directory, but files will be available via symlinks in a flattened
+  # directory under /analysis
+  manualDownloadFolder=$caDir/analysis/data
+
+  # This setting will be used in the quantification workflows to /require/ the
+  # pre-download status of files.
+  caParam="--controlledAccess=yes"
 fi
 
 mkdir -p $quantWorkDir
@@ -64,9 +75,9 @@ nextflow run \
     --protocol $protocol \
     --referenceFasta $RESULTS_ROOT/$referenceFasta \
     --resultsRoot $RESULTS_ROOT \
-    --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
+    --manualDownloadFolder $manualDownloadFolder \
     --transcriptToGene $RESULTS_ROOT/$transcriptToGene \
-    $contIndex $enaSshOption \
+    $contIndex $enaSshOption $caParam \
     -resume \
     $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_${workflow}_quantification/main.nf \
     -work-dir $quantWorkDir \
