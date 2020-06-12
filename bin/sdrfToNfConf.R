@@ -477,7 +477,7 @@ print.info("Checking the presence of columns... done.")
 ## Check if there are any controlled access runs
 
 controlled.access='no'
-if ( ! is.null(controlled.access.cal) && any(sdrf[[controlled.access.col]] == 'yes')){
+if ( ! is.null(controlled.access.col) && any(sdrf[[controlled.access.col]] == 'yes')){
    controlled.access='yes'
 }
 
