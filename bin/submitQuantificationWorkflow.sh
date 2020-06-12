@@ -32,7 +32,7 @@ manualDownloadFolder=$SCXA_DATA/ManuallyDownloaded/$expName
 datasetInfo=$(grep "^$expName$(printf '\t')" $CONTROLLED_ACCESS_DATASETS)
 if [ $? -eq 0 ]; then
   caDir=$(echo -e "$datasetInfo" | awk '{print $2}')
-  quantWorkDir=$caDir/analysis
+  quantWorkDir=$caDir/analysis/nextflow_work
 
   # For controlled access, there may be some substructure to the data
   # directory, but files will be available via symlinks in a flattened
