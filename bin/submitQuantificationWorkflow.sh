@@ -30,7 +30,9 @@ quantWorkDir=$SCXA_WORK/$SUBDIR
 manualDownloadFolder=$SCXA_DATA/ManuallyDownloaded/$expName
 
 datasetInfo=$(grep "^$expName$(printf '\t')" $CONTROLLED_ACCESS_DATASETS)
-if [ $? -eq 0 ]; then
+isCa=$?
+
+if [ $isCa -eq 0 ]; then
   caDir=$(echo -e "$datasetInfo" | awk '{print $2}')
   quantWorkDir=$caDir/analysis/nextflow_work
 
@@ -84,6 +86,8 @@ nextflow run \
 if [ $? -ne 0 ]; then
     echo "Workflow failed for $expName - $species - scxa-${workflow}-quantification-workflow" 1>&2
     exit 1
+elif [ $isCa -eq 0 ]; then
+    rm -rf $quantWorkDir
 fi
             
 popd > /dev/null
