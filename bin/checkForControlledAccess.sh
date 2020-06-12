@@ -20,7 +20,7 @@ if [ "$controlledAccessField" != 'None' ]; then
         echo "Specified controlled access datasets file $CONTROLLED_ACCESS_DATASETS does not exist" 1>&2
         exit 1
     else
-        datasetInfo=$(grep "^$expName\t" $CONTROLLED_ACCESS_DATASETS)
+        datasetInfo=$(grep "^$expName$(printf '\t')" $CONTROLLED_ACCESS_DATASETS)
         if [ $? -ne 0 ]; then
             echo "Can't find controlled access info for $expName in $CONTROLLED_ACCESS_DATASETS" 1>&2
             exit 1
