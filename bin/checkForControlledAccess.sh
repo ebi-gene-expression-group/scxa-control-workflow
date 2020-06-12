@@ -16,6 +16,9 @@ if [ "$controlledAccessField" != 'None' ]; then
     if [ -z "$CONTROLLED_ACCESS_DATASETS" ]; then
         echo "$expName is set as controlled access in $confFile, but the CONTROLLED_ACCESS_DATASETS environment variable is is not set" 1>&2
         exit 1
+    elif [ ! -e "$CONTROLLED_ACCESS_DATASETS" ]; then
+        echo "Specified controlled access datasets file $CONTROLLED_ACCESS_DATASETS does not exist" 1>&2
+        exit 1
     else
         datasetInfo=$(grep "^$expName\t" $CONTROLLED_ACCESS_DATASETS)
         if [ $? -ne 0 ]; then
