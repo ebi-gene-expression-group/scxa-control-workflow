@@ -954,7 +954,7 @@ if ( tertiaryWorkflow == 'scanpy-galaxy' ) {
         
             maxForks params.maxConcurrentScanpyGalaxy
 
-            conda "${baseDir}/envs/bioblend.yml"
+            conda "${baseDir}/envs/galaxy-workflow-executor.yml"
 
             publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
             
