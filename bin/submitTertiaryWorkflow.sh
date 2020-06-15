@@ -39,7 +39,9 @@ else
     export FLAVOUR=w_smart-seq_clustering
 fi
 
-run_flavour_workflows.sh
+# This script is under /bin of the scxa-workflows repo
+run_tertiary_workflow.sh
+
 if [ $? -eq 0 ]; then
     mkdir -p matrices
                     
