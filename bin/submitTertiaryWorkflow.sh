@@ -40,6 +40,8 @@ else
 fi
 
 # This script is under /bin of the scxa-workflows repo
+
+export state_file=$TMPDIR/${expName}.${species}.galaxystate
 run_tertiary_workflow.sh
 
 if [ $? -eq 0 ]; then
