@@ -47,7 +47,9 @@ while read -r idfFile; do
     grep -P "$expId\\t" $SCXA_RESULTS/excluded.txt > /dev/null
     if [ $? -eq 0 ]; then
         experimentStatus='excluded'
-    else    
+    else 
+        # Notes: checkExperimentStatus.sh is the same as that used by the
+        # Nextflow workflow, so the logic is kept consistent   
         experimentStatus=$(checkExperimentStatus.sh $expId $sdrfFile $overwrite)
     fi
 
