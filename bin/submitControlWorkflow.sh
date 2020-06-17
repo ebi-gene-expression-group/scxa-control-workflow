@@ -3,7 +3,7 @@
 usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-t <tertiary workflow>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
 
 e=
-s=no
+q=no
 t=none
 u=no
 w=no

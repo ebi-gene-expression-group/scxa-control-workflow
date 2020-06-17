@@ -7,7 +7,44 @@
 # etc, and this may allow for more effective use of resources than Nextflow
 # processes waiting for a batch to finish before submitting more.
 
-maxExpsToRun=${1:-5}
+usage() { echo "Usage: $0 [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-t <tertiary workflow>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>] [-m <maximum number of experiments to analyse at once>]"  1>&2; }  
+
+q=no
+a=no
+t=scanpy-galaxy
+u=no
+w=no
+m=5
+
+while getopts ":q:a:t:u:w:m:" o; do
+    case "${o}" in
+        q)
+            q=${OPTARG}
+            ;;
+        a)
+            a=${OPTARG}
+            ;;
+        t)
+            t=${OPTARG}
+            ;;
+        u)
+            u=${OPTARG}
+            ;;
+        w)
+            w=${OPTARG}
+            ;;
+        m)
+            m=${OPTARG}
+            ;;
+        *)
+            usage
+            exit 0
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+maxExpsToRun=$m
 
 workflow=scxa-control-workflow
 controlJobSuffix=${SCXA_ENV}_$workflow
@@ -77,7 +114,7 @@ while read -r idfFile; do
     if [ "$currentlyRunning" = 'false' ] && [ $submitted -lt $maxToSubmit ] && [ "$experimentStatus" == 'new' ]; then
 
         echo "Submitting $expId for re-analysis"
-        $SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -e $expId
+        $SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -e $expId -q $q -t $t -a $a -u $u -w $w 
 
         currentJobs=$(bjobs -w | grep $controlJobSuffix)
         submitted=$((submitted+1))
