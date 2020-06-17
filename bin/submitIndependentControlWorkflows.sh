@@ -34,6 +34,16 @@ fi
 
 submitted=0
 
+# Fetch the Git SDRFs
+
+if [ ! -d 'metadata' ]; then
+    git clone $SCXA_METADATA_REPO metadata
+fi
+
+pushd metadata > /dev/null
+git pull > /dev/null
+popd > /dev/null
+
 # Submit workflows for any updatated metdata files. The Nextflow workflow
 # itself contains logic for not re-analaysing where it does not need to.
 
