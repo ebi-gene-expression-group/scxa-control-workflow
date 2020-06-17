@@ -122,6 +122,7 @@ while read -r idfFile; do
     fi
 done <<< "$(ls $SCXA_WORKFLOW_ROOT/metadata/*/*/*.idf.txt)"
 
-ls $SCXA_WORKFLOW_ROOT/results/*/*/bundle/MANIFEST | awk -F'/' '{OFS="\t";} {print $(NF-2),$(NF-3),$0}' > $SCXA_RESULTS/all.done.txt
+# List all finished bundles for loading
+ls $SCXA_WORKFLOW_ROOT/results/*/*/bundle/MANIFEST | while read -r l; do dirname $l; done | awk -F'/' '{OFS="\t";} {print $(NF-2),$(NF-1),$0}' > results/all.done.txt
 
 rm $submissionMarker
