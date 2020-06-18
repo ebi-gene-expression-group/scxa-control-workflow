@@ -116,10 +116,12 @@ write.table(status_table, file = 'status_table.txt')
 
 completed <- which(status_table[['Analysis completed']] != 'N/A')
 completed <- completed[order(status_table[completed, 'Analysis completed'], decreasing = TRUE)]
-not_completed <- which(status_table[['Analysis completed']] == 'N/A')
+not_completed <- which(status_table[['Analysis completed']] == 'N/A' & status_table[['Excluded']] == 'no')
+not_completed <- not_completed[order(status_table[not_completed, 'Metadata last modified'], decreasing = TRUE)]
+excluded <- which(status_table[['Excluded']] == 'yes')
 
 htmlwidgets::saveWidget(
-    datatable(status_table[c(not_completed, completed),], extensions = c('Buttons', 'FixedHeader'), rownames=FALSE, filter = 'top', options=list(dom = 'frtiBp', pageLength="500", searching = FALSE, fixedHeader = TRUE)) 
+    datatable(status_table[c(not_completed, completed, excluded),], extensions = c('Buttons', 'FixedHeader'), rownames=FALSE, filter = 'top', options=list(dom = 'frtiBp', pageLength="500", searching = FALSE, fixedHeader = TRUE)) 
         %>% formatStyle(c('Quantified', 'Configured', 'Aggregated', 'Bundled', 'Tertiary analysis complete', 'Up to date'), backgroundColor = styleEqual(c('no', 'yes'), c('red', 'lightgreen'))) 
         %>% formatStyle(c('Excluded'), backgroundColor = styleEqual(c('yes', 'no'), c('red', 'lightgreen')))
         %>% htmlwidgets::prependContent(htmltools::tags$h1("SCXA analysis pipeline status")),
