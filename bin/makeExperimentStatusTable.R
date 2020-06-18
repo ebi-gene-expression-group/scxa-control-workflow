@@ -124,7 +124,7 @@ htmlwidgets::saveWidget(
     datatable(status_table[c(not_completed, completed, excluded),], extensions = c('Buttons', 'FixedHeader'), rownames=FALSE, filter = 'top', options=list(dom = 'frtiBp', pageLength="500", searching = FALSE, fixedHeader = TRUE)) 
         %>% formatStyle(c('Quantified', 'Configured', 'Aggregated', 'Bundled', 'Tertiary analysis complete', 'Up to date'), backgroundColor = styleEqual(c('no', 'yes'), c('red', 'lightgreen'))) 
         %>% formatStyle(c('Excluded'), backgroundColor = styleEqual(c('yes', 'no'), c('red', 'lightgreen')))
-        %>% prependContent(htmltools::p(paste0('Last updated: ', date())))
+        %>% htmlwidgets::prependContent(htmltools::p(paste0('Last updated: ', date())))
         %>% htmlwidgets::prependContent(htmltools::tags$h1("SCXA analysis pipeline status")),
     outfile,
     title = "SCXA analysis pipeline status"
