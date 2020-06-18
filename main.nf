@@ -1120,7 +1120,7 @@ process cleanup {
         file(bundleLines) from BUNDLE_LINES
     
     output:
-        file("all.done${doneSuffix}.txt")
+        file("all.done${doneSuffix}.txt") into DONEFILE
 
     """
     touch $SCXA_WORK/.success
@@ -1134,3 +1134,23 @@ process cleanup {
     """
 }
 
+// 
+
+process report_table {
+
+    cache false
+    
+    conda "${baseDir}/envs/dt.yml"
+    
+    publishDir "$SCXA_HTML_DIR", mode: 'move', overwrite: true
+
+    input:
+        file(doneFile) from DONEFILE    
+
+    output:
+        file("scxa_analysis_status.html")
+
+    """
+    makeExperimentStatusTable.R scxa_analysis_status.html 
+    """
+}

@@ -1,0 +1,4 @@
+name: r-dt
+dependencies:
+  - r-dt
+  - pandoc
