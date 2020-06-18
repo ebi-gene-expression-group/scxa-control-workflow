@@ -1147,7 +1147,6 @@ process report_table {
 
     output:
         file("scxa_analysis_status.html")
-        file("scxa_analysis_status_files")
 
     """
     makeExperimentStatusTable.R scxa_analysis_status.html 
