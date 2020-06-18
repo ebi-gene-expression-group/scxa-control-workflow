@@ -1138,6 +1138,8 @@ process cleanup {
 
 process report_table {
 
+    cache false
+    
     conda "${baseDir}/envs/dt.yml"
     
     publishDir "$SCXA_HTML_DIR", mode: 'move', overwrite: true
