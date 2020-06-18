@@ -91,15 +91,30 @@ while read -r idfFile; do
     idfFileName=$(basename $idfFile)
     expId=$(echo $idfFileName | awk -F'.' '{print $1}')
     sdrfFile=$(dirname $idfFile)/${expId}.sdrf.txt
-    
+    runLog=$SCXA_WORKFLOW_ROOT/nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow/run.out   
+
+    experimentStatus='old'
+
     grep -P "$expId\\t" $SCXA_RESULTS/excluded.txt > /dev/null
     if [ $? -eq 0 ]; then
         experimentStatus='excluded'
-    else 
+    else
+        if [ -e "$runLog" ]; then
+            cat $runLog | grep "Exited with" > /dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${expId}\tUnknown error: see <workflows root>/nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow/run.out and delete when resolved" >> $SCXA_RESULTS/excluded.txt
+                experimentStatus='excluded'
+            fi
+        fi 
+ 
+    fi
+
+    if [ "$experimentStatus" != 'excluded' ]; then
+      
         # Notes: checkExperimentStatus.sh is the same as that used by the
         # Nextflow workflow, so the logic is kept consistent   
         experimentStatus=$(checkExperimentStatus.sh $expId $sdrfFile $overwrite)
-    fi
+    fi    
 
     echo "Experiment status for $expId: $experimentStatus"
     currentlyRunning='false'
