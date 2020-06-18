@@ -1140,7 +1140,7 @@ process report_table {
 
     conda "${baseDir}/envs/dt.yml"
     
-    publishDir "$reportHtmlDir", mode: 'move', overwrite: true
+    publishDir "$params.reportHtmlDir", mode: 'move', overwrite: true
 
     input:
         file(doneFile) from DONEFILE    
