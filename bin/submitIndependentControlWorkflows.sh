@@ -54,6 +54,7 @@ submissionMarker="$SCXA_RESULTS/.submitting"
 
 if [ -e  $submissionMarker ]; then
     echo "Submission process ongoing"
+    exit 0
 else
     touch $submissionMarker
 fi
