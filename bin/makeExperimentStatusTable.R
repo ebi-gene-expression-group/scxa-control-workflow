@@ -121,12 +121,13 @@ not_completed <- not_completed[order(status_table[not_completed, 'Metadata last 
 excluded <- which(status_table[['Excluded']] == 'yes')
 
 htmlwidgets::saveWidget(
-    datatable(status_table[c(not_completed, completed, excluded),], extensions = c('Buttons', 'FixedHeader'), rownames=FALSE, filter = 'top', options=list(dom = 'frtiBp', pageLength="500", searching = FALSE, fixedHeader = TRUE)) 
+    datatable(status_table[c(not_completed, completed, excluded),], extensions = c('Buttons', 'FixedHeader'), rownames=FALSE, filter = 'top', options=list(dom = 'rtiBp', pageLength="500", fixedHeader = TRUE)) 
         %>% formatStyle(c('Quantified', 'Configured', 'Aggregated', 'Bundled', 'Tertiary analysis complete', 'Up to date'), backgroundColor = styleEqual(c('no', 'yes'), c('red', 'lightgreen'))) 
         %>% formatStyle(c('Excluded'), backgroundColor = styleEqual(c('yes', 'no'), c('red', 'lightgreen')))
         %>% htmlwidgets::prependContent(htmltools::tags$h1("SCXA analysis pipeline status"))
         %>% htmlwidgets::prependContent(htmltools::p(paste0('Last updated: ', date()))),
     outfile,
+    selfcontained = FALSE,
     title = "SCXA analysis pipeline status"
 )
 
