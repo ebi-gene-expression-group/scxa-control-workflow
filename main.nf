@@ -279,7 +279,29 @@ process generate_configs {
     """
 }
 
-CONF_REF_BY_EXP_SPECIES.into{
+// Check for controlled access status. This will exclude an experiment unless
+// all requirements on user, directory etc are in place for a controlled access
+// quantification
+
+process check_controlled_access{
+    
+    cache false
+    
+    errorStrategy 'ignore'
+
+    input:
+        set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile) from CONF_REF_BY_EXP_SPECIES
+
+    output:
+        set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile) into CONF_REF_BY_EXP_SPECIES_CA_CHECKED
+
+
+    """
+    checkForControlledAccess.sh $expName $confFile
+    """
+}
+
+CONF_REF_BY_EXP_SPECIES_CA_CHECKED.into{
     CONF_REF_BY_EXP_SPECIES_FOR_QUANT
     CONF_REF_BY_EXP_SPECIES_FOR_TERTIARY
     CONF_REF_BY_EXP_SPECIES_FOR_BUNDLE

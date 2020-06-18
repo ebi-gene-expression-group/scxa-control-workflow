@@ -21,7 +21,28 @@ done
 
 RESULTS_ROOT=$PWD
 SUBDIR="$expName/$species/quantification/$protocol"     
-mkdir -p $SCXA_WORK/$SUBDIR
+
+# we ran checks earlier to check that we had all we needed in the case of
+# controlled access analysis- so here we just need to retrieve the directory to
+# use
+
+quantWorkDir=$SCXA_WORK/$SUBDIR
+manualDownloadFolder=$SCXA_DATA/ManuallyDownloaded/$expName
+
+datasetInfo=$(grep "^$expName$(printf '\t')" $CONTROLLED_ACCESS_DATASETS)
+isCa=$?
+
+if [ $isCa -eq 0 ]; then
+  caDir=$(echo -e "$datasetInfo" | awk '{print $2}')
+  quantWorkDir=$caDir/analysis/nextflow_work
+
+  # For controlled access, there may be some substructure to the data
+  # directory, but files will be available via symlinks in a flattened
+  # directory under /analysis
+  manualDownloadFolder=$caDir/analysis/data
+fi
+
+mkdir -p $quantWorkDir
 mkdir -p $SCXA_NEXTFLOW/$SUBDIR
 mkdir -p $SCXA_RESULTS/$SUBDIR/reports
 
@@ -51,12 +72,12 @@ nextflow run \
     --protocol $protocol \
     --referenceFasta $RESULTS_ROOT/$referenceFasta \
     --resultsRoot $RESULTS_ROOT \
-    --manualDownloadFolder $SCXA_DATA/ManuallyDownloaded/$expName \
+    --manualDownloadFolder $manualDownloadFolder \
     --transcriptToGene $RESULTS_ROOT/$transcriptToGene \
     $contIndex $enaSshOption \
     -resume \
     $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_${workflow}_quantification/main.nf \
-    -work-dir $SCXA_WORK/$SUBDIR \
+    -work-dir $quantWorkDir \
     -with-report $SCXA_RESULTS/$SUBDIR/reports/report.html \
     -with-trace  $SCXA_RESULTS/$SUBDIR/reports/trace.txt \
     -N $SCXA_REPORT_EMAIL \
@@ -65,6 +86,8 @@ nextflow run \
 if [ $? -ne 0 ]; then
     echo "Workflow failed for $expName - $species - scxa-${workflow}-quantification-workflow" 1>&2
     exit 1
+elif [ $isCa -eq 0 ]; then
+    rm -rf $quantWorkDir
 fi
             
 popd > /dev/null

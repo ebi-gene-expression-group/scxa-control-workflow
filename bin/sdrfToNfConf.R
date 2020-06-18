@@ -191,6 +191,7 @@ fastq.col <- getActualColnames('fastq uri', sdrf)
 cell.count.col <- getActualColnames('cell count', sdrf)
 hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
+controlled.access.col <- getActualColnames('controlled access', sdrf)
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
@@ -473,6 +474,13 @@ print.info("Checking the presence of columns... done.")
 # the content
 ################################################################################
 
+## Check if there are any controlled access runs
+
+controlled.access='no'
+if ( ! is.null(controlled.access.col) && any(sdrf[[controlled.access.col]] == 'yes')){
+   controlled.access='yes'
+}
+
 ## User can specify species, in which case we can discard irrelevant rows
 
 sdrf[[organism.col]] <- gsub(" ","_",tolower(sdrf[[organism.col]]))
@@ -736,7 +744,8 @@ for (species in names(sdrf.by.species.protocol)){
       protocol = tolower(protocol),
       has.spikes = FALSE,
       has.techreps = FALSE,
-      has.strandedness = FALSE
+      has.strandedness = FALSE,
+      has.controlled.access = FALSE
     )
   
     # Filtering could have removed all rows for a species
@@ -813,6 +822,12 @@ for (species in names(sdrf.by.species.protocol)){
       }
     }
   
+    ## Check if there are any controlled access runs
+
+    if ( ! is.null(controlled.access.col) && any(sdrf[[controlled.access.col]] == 'yes')){
+       properties$has.controlled.access=TRUE
+    }
+
     species.protocol.properties[[species]][[protocol]] <- properties 
   }
 }
@@ -907,6 +922,12 @@ configs <- lapply(species_list, function(species){
 
     if (properties$has.strandedness){
       config_fields['strand'] <- strand.col
+    }
+
+    # Do any rows need controlled access analysis?
+
+    if (properties$has.controlled.access){
+      config_fields['controlled_access'] <- controlled.access.col
     }
     
     # For droplet techs, add colums with strighforward statements of the URIs
