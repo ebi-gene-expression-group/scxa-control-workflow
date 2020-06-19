@@ -199,8 +199,8 @@ organism.col <- getActualColnames('organism', sdrf)
 # Define protocols in case of single cell  
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
-supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq")
-sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq')
+supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq","seq-well")
+sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq','seq-well')
   
 # Check the protocol and use to determine single-cell
 
@@ -561,6 +561,7 @@ if ( is.singlecell ) {
     '10xv2' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     '10xv3' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     'drop-seq' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    'seq-well' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
     "smart-seq" = cols.for.download,
     "smart-seq2" = cols.for.download,
     "smarter" = cols.for.download,
@@ -576,6 +577,7 @@ if ( is.singlecell ) {
     '10xv2' = c('index1 file'),
     '10xv3' = c('index1 file'),
     'drop-seq' = c(),
+    'seq-well' = c(),
     "smart-seq2" = c(),
     "smarter" = c(),
     "smart-like" = c()
@@ -599,6 +601,14 @@ if ( is.singlecell ) {
       'end' =  '5'
     ),
     'drop-seq' = list(
+      'umi_barcode_offset' = 12,  
+      'umi_barcode_size' = 8,  
+      'cell_barcode_size' = 12,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    'seq-well' = list(
       'umi_barcode_offset' = 12,  
       'umi_barcode_size' = 8,  
       'cell_barcode_size' = 12,  
