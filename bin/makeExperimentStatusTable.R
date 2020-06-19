@@ -21,7 +21,7 @@ status_table <- do.call(rbind, lapply(idf_files, function(idf){
         metadata_files <- c(metadata_files, cells)
     }
 
-    metamods <- unlist(lapply(metadata_files, function(x) as.character(file.info(x)$mtime)))[1]
+    metamods <- unlist(lapply(metadata_files, function(x) as.character(file.info(x)$mtime)))
     metadata_last_modified <- metamods[order(as.Date(metamods), decreasing = TRUE)][1]
 
     exp_id=unlist(strsplit(basename(idf), '\\.'))[1] 
