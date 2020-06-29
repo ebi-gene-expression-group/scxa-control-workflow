@@ -22,7 +22,9 @@ status_table <- do.call(rbind, lapply(idf_files, function(idf){
     }
 
     metamods <- unlist(lapply(metadata_files, function(x) as.character(file.info(x)$mtime)))
-    metadata_last_modified <- metamods[order(as.Date(metamods), decreasing = TRUE)][1]
+    metadata_order <- order(as.Date(metamods), decreasing = TRUE)
+    metadata_last_modified <- metamods[metadata_order][1]
+    last_modified_metadata_file <- metadata_files[metadata_order[1]]
 
     exp_id=unlist(strsplit(basename(idf), '\\.'))[1] 
     exp_dir=file.path(workflow_root, 'results', exp_id)
@@ -90,7 +92,7 @@ status_table <- do.call(rbind, lapply(idf_files, function(idf){
 
             # Check updates
 
-            if(file_test('-nt', test_files$Bundled, idf)){
+            if(file_test('-nt', test_files$Bundled, last_modified_metadata_file)){
                 up_to_date <- 'yes'
             }
         } 
