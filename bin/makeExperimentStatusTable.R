@@ -14,7 +14,7 @@ exclusions <- read.delim(file.path(workflow_root, 'results', 'excluded.txt'), he
 status_table <- do.call(rbind, lapply(idf_files, function(idf){
 
     sdrf <- sub('\\.idf', '.sdrf', idf)
-    cells <- sub('\\.idf', '.sdrf', idf)
+    cells <- sub('\\.idf', '.cells', idf)
 
     metadata_files <- c(idf, sdrf)
     if (file.exists(cells)){
