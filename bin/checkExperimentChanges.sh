@@ -38,7 +38,8 @@ if [ -e "$manifestPath" ]; then
     elif [ $cellsDiff -eq 1 ]; then
         experiment_status='meta_changed'
     fi
+else
+    experimentStatus="changed"
 fi
 
 echo -n "$experimentStatus"
-exit 1
