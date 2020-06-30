@@ -527,7 +527,7 @@ process reset_experiment{
 
         # Now we've removed the results, link the results for publishing
 
-        cp -P in/*.sdrf.txt in/*conf .
+        cp -P in/*.meta_for_quant.txt in/*conf .
     """
 }
 
