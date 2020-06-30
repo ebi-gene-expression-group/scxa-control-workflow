@@ -202,6 +202,7 @@ hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
 controlled.access.col <- getActualColnames('controlled access', sdrf)
 
 cell_meta_fields <- run.col
+cell.meta.cols <- cells.cell.meta.cols <- NULL
 if (! is.null(opt$cell_meta_fields)){
     cell_meta_fields <- c(cell_meta_fields, unlist(strsplit(opt$cell_meta_fields, ',')))
     cell.meta.cols <- getActualColnames(cell_meta_fields, sdrf)
@@ -1072,7 +1073,7 @@ configs <- lapply(species_list, function(species){
     if ( is.droplet.protocol(protocol) && ! is.null(opt$cells_file)){
       # This is a droplet protocol, expect cell type info to be in the cells file
       cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], cell_meta_fields, drop = FALSE]        
-    else{
+    }else{
       # This is not a droplet protocol, expect cell type info to be in the SDRF file
       cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell_meta_fields, drop = FALSE]        
     }    
@@ -1199,8 +1200,13 @@ for (species in names(configs)){
 
     conf.file <- file.path(opt$out_conf, paste0(file_prefix,'.',  opt$name, ".conf"))
     meta.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".metadata.tsv"))
-    sdrf.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".sdrf.txt"))
-    cells.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".cells.txt"))
+
+    # These two files subset the metadata to that which inpacts on
+    # quantification and on tertiary analysis. Changes in these outputs between
+    # runs can be used to detect if changes to metadata require re-analysis
+    
+    sdrf.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".meta_for_quant.txt"))
+    cells.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".meta_for_tertiary.txt"))
   
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata

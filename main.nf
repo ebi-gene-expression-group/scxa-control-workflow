@@ -266,7 +266,7 @@ process generate_configs {
 
     output:
         set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file("*.${species}.${expName}.conf") into CONF_REF_BY_EXP_SPECIES
-        set val(expName), val(species), file("*.${species}.${expName}.sdrf.txt"), file("*.${species}.${expName}.cells.txt") into CONFSDRF_BY_EXP_SPECIES
+        set val(expName), val(species), file("*.${species}.${expName}.meta_for_quant.txt"), file("*.${species}.${expName}.meta_for_tertiary.txt") into CONFSDRF_BY_EXP_SPECIES
 
     """
     # Cells file will be empty (from reminder: true above) for some experiments
@@ -331,11 +331,11 @@ CONFSDRF_BY_EXP_SPECIES
 process extend_config_for_protocol{
 
     input:
-        set val(expName), val(species), val(protocol),  file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(sdrfFile), file(cellsFile) from CONF_REF_BY_EXP_SPECIES_PROTOCOL.join(CONFSDRF_BY_EXP_SPECIES_PROTOCOL, by: [0,1,2])
+        set val(expName), val(species), val(protocol),  file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(metaForQuant), file(metaForTertiary) from CONF_REF_BY_EXP_SPECIES_PROTOCOL.join(CONFSDRF_BY_EXP_SPECIES_PROTOCOL, by: [0,1,2])
 
     output:
         set val("${expName}-${species}-${protocol}"), val(expName), val(species), val(protocol) into TAGS 
-        set val("${expName}-${species}-${protocol}"), file("${expName}.${species}.${protocol}.conf"), file(sdrfFile), file(cellsFile) into TAGGED_CONF 
+        set val("${expName}-${species}-${protocol}"), file("${expName}.${species}.${protocol}.conf"), file(metaForQuant), file(metaForTertiary) into TAGGED_CONF 
         set val("${expName}-${species}-${protocol}"), file(referenceFasta), file(referenceGtf), file(contIndex) into TAGGED_REFERENCES
     
     """
@@ -450,14 +450,14 @@ IS_DROPLET_EXP_SPECIES.into{
 process check_experiment_changed{
 
     input:
-        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(cellsFile) from TAGS_FOR_CHANGEDCHECK.join(CONF_FOR_CHANGEDCHECK)
+        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary) from TAGS_FOR_CHANGEDCHECK.join(CONF_FOR_CHANGEDCHECK)
 
     output:
-        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
+        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
         
 
     """
-    checkExperimentChanges.sh $expName $species $confFile $sdrfFile $cellsFile
+    checkExperimentChanges.sh $expName $species $confFile $metaForQuant $metaForTertiary
     """
 }
 
@@ -508,7 +508,7 @@ process reset_experiment{
         set val(tag), val(expName), val(species), val(protocol), file("in/*"), file("in/*"), val(expStatus) from CHANGED_FOR_QUANT
 
     output:
-        set val(tag), file("*.conf"), file("*.sdrf.txt") into NEW_OR_RESET_EXPERIMENTS
+        set val(tag), file("*.conf"), file("*.meta_for_quant.txt") into NEW_OR_RESET_EXPERIMENTS
         
     """
         # Only remove downstream results where we're not re-using them
@@ -542,7 +542,7 @@ process prepare_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(tag), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from NEW_OR_RESET_EXPERIMENTS.join(TAGGED_REFERENCES)
+        set val(tag), file(confFile), file(metaForQuant), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from NEW_OR_RESET_EXPERIMENTS.join(TAGGED_REFERENCES)
     
     output:
         set val(tag), file("out/*.fa.gz"), file("out/*.gtf.gz"), val(contaminationIndex) into PREPARED_REFERENCES
@@ -712,7 +712,7 @@ process smart_quantify {
     maxRetries 10
     
     input:
-        set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(cellsFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_INPUTS
+        set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_INPUTS
         val flag from INIT_DONE_SMART
 
     output:
@@ -721,7 +721,7 @@ process smart_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
+    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
     """
 }
 
@@ -741,7 +741,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
     input:
-        set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
+        set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
         val flag from INIT_DONE_DROPLET
 
     output:
@@ -749,7 +749,7 @@ process droplet_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
+    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
     """
 }
 
