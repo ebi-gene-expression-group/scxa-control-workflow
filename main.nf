@@ -271,15 +271,15 @@ process generate_configs {
     """
     # Cells file will be empty (from reminder: true above) for some experiments
     cells_options=
-    cells_filesize=$(stat --printf="%s" $(readlink ${cellsFile}))
-    if [ $cells_filesize -gt 0 ]; then
+    cells_filesize=\$(stat --printf="%s" \$(readlink ${cellsFile}))
+    if [ \$cells_filesize -gt 0 ]; then
         cells_options="--cells=$cellsFile --cell_meta_fields="$params.cellAnalysisFields""
     fi
 
     mkdir -p tmp
     sdrfToNfConf.R \
         --sdrf=\$(readlink $sdrfFile) \
-        --idf=$idfFile $cells_options\
+        --idf=$idfFile \$cells_options \
         --name=$expName \
         --verbose \
         --out_conf \$(pwd)
