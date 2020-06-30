@@ -36,7 +36,7 @@ if [ -e "$manifestPath" ]; then
     if [ $configDiff -eq 1 ] || [ $sdrfDiff -eq 1 ]; then
         experimentStatus='changed'
     elif [ $cellsDiff -eq 1 ]; then
-        experiment_status='meta_changed'
+        experimentStatus='meta_changed'
     fi
 else
     experimentStatus="changed"
