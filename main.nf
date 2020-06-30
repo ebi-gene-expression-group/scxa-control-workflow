@@ -542,7 +542,7 @@ process prepare_reference {
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
 
     input:
-        set val(tag), file(confFile), file(metaForQuant), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from NEW_OR_RESET_EXPERIMENTS.join(TAGGED_REFERENCES)
+        set val(tag), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from NEW_OR_RESET_EXPERIMENTS.join(TAGGED_REFERENCES)
     
     output:
         set val(tag), file("out/*.fa.gz"), file("out/*.gtf.gz"), val(contaminationIndex) into PREPARED_REFERENCES
