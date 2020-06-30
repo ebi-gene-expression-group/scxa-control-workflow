@@ -453,7 +453,7 @@ process check_experiment_changed{
         set val(tag), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary) from TAGS_FOR_CHANGEDCHECK.join(CONF_FOR_CHANGEDCHECK)
 
     output:
-        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
+        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
         
 
     """
@@ -465,14 +465,14 @@ NEW_OR_CHANGED_EXPERIMENTS = Channel.create()
 NOT_CHANGED_EXPERIMENTS = Channel.create()
 
 COMPILED_DERIVED_CONFIG_WITH_STATUS.choice( NEW_OR_CHANGED_EXPERIMENTS, NOT_CHANGED_EXPERIMENTS ) {a -> 
-    a[5] == 'unchanged' ? 1 : 0
+    a[7] == 'unchanged' ? 1 : 0
 }
 
 CHANGED_FOR_QUANT = Channel.create()
 CHANGED_FOR_TERTIARY_ONLY = Channel.create()
 
 NEW_OR_CHANGED_EXPERIMENTS.choice( CHANGED_FOR_QUANT, CHANGED_FOR_TERTIARY_ONLY ) {a -> 
-    a[5] == 'meta_changed' ? 1 : 0
+    a[7] == 'meta_changed' ? 1 : 0
 }
 
 // Generate bundle lines for the things updated but not actually changed for
@@ -505,7 +505,7 @@ process reset_experiment{
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
 
     input:
-        set val(tag), val(expName), val(species), val(protocol), file("in/*"), file("in/*"), val(expStatus) from CHANGED_FOR_QUANT
+        set val(tag), val(expName), val(species), val(protocol), file("in/*"), file("in/*"), file("in/*"), val(expStatus) from CHANGED_FOR_QUANT
 
     output:
         set val(tag), file("*.conf"), file("*.meta_for_quant.txt"), file("*.meta_for_tertiary.txt") into NEW_OR_RESET_EXPERIMENTS
