@@ -266,13 +266,15 @@ process generate_configs {
 
     output:
         set val(expName), val(species), file(referenceFasta), file(referenceGtf), file(contIndex), file("*.${species}.${expName}.conf") into CONF_REF_BY_EXP_SPECIES
-        set val(expName), val(species), file("*.${species}.${expName}.sdrf.txt") into CONFSDRF_BY_EXP_SPECIES
+        set val(expName), val(species), file("*.${species}.${expName}.sdrf.txt"), file("*.${species}.${expName}.cells.txt") into CONFSDRF_BY_EXP_SPECIES
 
     """
     mkdir -p tmp
     sdrfToNfConf.R \
         --sdrf=\$(readlink $sdrfFile) \
         --idf=$idfFile \
+        --cells=$cellsFile \
+        --cell_meta_fields=$params.cellAnalysisFields \
         --name=$expName \
         --verbose \
         --out_conf \$(pwd)
@@ -317,18 +319,18 @@ CONF_REF_BY_EXP_SPECIES_FOR_QUANT
 
 CONFSDRF_BY_EXP_SPECIES
     .transpose()
-    .map { r -> tuple(r[0], r[1], r[2].simpleName, r[2]) }
+    .map { r -> tuple(r[0], r[1], r[2].simpleName, r[2], r[3]) }
     .set{ CONFSDRF_BY_EXP_SPECIES_PROTOCOL }
 
 
 process extend_config_for_protocol{
 
     input:
-        set val(expName), val(species), val(protocol),  file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(sdrfFile) from CONF_REF_BY_EXP_SPECIES_PROTOCOL.join(CONFSDRF_BY_EXP_SPECIES_PROTOCOL, by: [0,1,2])
+        set val(expName), val(species), val(protocol),  file(referenceFasta), file(referenceGtf), file(contIndex), file(confFile), file(sdrfFile), file(cellsFile) from CONF_REF_BY_EXP_SPECIES_PROTOCOL.join(CONFSDRF_BY_EXP_SPECIES_PROTOCOL, by: [0,1,2])
 
     output:
         set val("${expName}-${species}-${protocol}"), val(expName), val(species), val(protocol) into TAGS 
-        set val("${expName}-${species}-${protocol}"), file("${expName}.${species}.${protocol}.conf"), file(sdrfFile) into TAGGED_CONF 
+        set val("${expName}-${species}-${protocol}"), file("${expName}.${species}.${protocol}.conf"), file(sdrfFile), file(cellsFile) into TAGGED_CONF 
         set val("${expName}-${species}-${protocol}"), file(referenceFasta), file(referenceGtf), file(contIndex) into TAGGED_REFERENCES
     
     """
@@ -443,14 +445,14 @@ IS_DROPLET_EXP_SPECIES.into{
 process check_experiment_changed{
 
     input:
-        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile) from TAGS_FOR_CHANGEDCHECK.join(CONF_FOR_CHANGEDCHECK)
+        set val(tag), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(cellsFile) from TAGS_FOR_CHANGEDCHECK.join(CONF_FOR_CHANGEDCHECK)
 
     output:
         set val(tag), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), stdout into COMPILED_DERIVED_CONFIG_WITH_STATUS
         
 
     """
-    checkExperimentChanges.sh $expName $species $confFile $sdrfFile 
+    checkExperimentChanges.sh $expName $species $confFile $sdrfFile $cellsFile
     """
 }
 
@@ -459,6 +461,13 @@ NOT_CHANGED_EXPERIMENTS = Channel.create()
 
 COMPILED_DERIVED_CONFIG_WITH_STATUS.choice( NEW_OR_CHANGED_EXPERIMENTS, NOT_CHANGED_EXPERIMENTS ) {a -> 
     a[5] == 'unchanged' ? 1 : 0
+}
+
+CHANGED_FOR_QUANT = Channel.create()
+CHANGED_FOR_TERTIARY_ONLY = Channel.create()
+
+NEW_OR_CHANGED_EXPERIMENTS.choice( CHANGED_FOR_QUANT, CHANGED_FOR_TERTIARY_ONLY ) {a -> 
+    a[5] == 'meta_changed' ? 1 : 0
 }
 
 // Generate bundle lines for the things updated but not actually changed for
@@ -491,7 +500,7 @@ process reset_experiment{
     publishDir "$SCXA_CONF/study", mode: 'copy', overwrite: true
 
     input:
-        set val(tag), val(expName), val(species), val(protocol), file("in/*"), file("in/*"), val(expStatus) from NEW_OR_CHANGED_EXPERIMENTS
+        set val(tag), val(expName), val(species), val(protocol), file("in/*"), file("in/*"), val(expStatus) from CHANGED_FOR_QUANT
 
     output:
         set val(tag), file("*.conf"), file("*.sdrf.txt") into NEW_OR_RESET_EXPERIMENTS
@@ -616,112 +625,142 @@ IS_DROPLET_PROT
     .join(CLEANED_REFERENCES)
     .join(TRANSCRIPT_TO_GENE_QUANT)
     .set{
-        QUANT_INPUTS
+        PRE_QUANT_INPUTS
     }
 
 
 // If we just want to run tertiary using our published quantification results
 // from previous runs, we can do that
 
+QUANT_INPUTS = Channel.create()
+QUANT_SPOOF_INPUTS = Channel.create()
+
+// The contents of CHANGED_FOR_TERTIARY_ONLY is experiments with changes that
+// require tertiary re-analysis but not quantification- e.g. changes to cell
+// type information. But even the content of PRE-QUANT inputs (normally going
+// through quantification) will be directed to skip quantification if the flag
+// is specified.
+
+CHANGED_FOR_TERTIARY_ONLY.map{  r -> tuple( r[0], r[1], r[2], r[3] ) }
+    .set{PRE_QUANT_SPOOF_INPUTS}
+
 if ( skipQuantification == 'yes'){
-
-    process spoof_quantify {
-        
-        executor 'local'
-
-        input:
-            set val(tag), val(expName), val(species), val(protocol) from QUANT_INPUTS.map{ r -> tuple( r[0], r[2], r[3], r[4] ) }
-
-        output:
-            set val(tag), file("results/*") into QUANT_RESULTS
-
-        """
-            mkdir -p results
-            for PROG in alevin kallisto; do
-                if [ -e $SCXA_RESULTS/$expName/$species/quantification/$protocol/\$PROG ]; then
-                    ln -s $SCXA_RESULTS/$expName/$species/quantification/$protocol/\$PROG results/\$PROG
-                fi
-            done
-        """
-    }
-
+    PRE_QUANT_INPUTS
+        .map{ r -> tuple( r[0], r[2], r[3], r[4] ) }
+        .concat(PRE_QUANT_SPOOF_INPUTS)        
+        .set{QUANT_SPOOF_INPUTS}
+    
+    QUANT_INPUTS = Channel.empty()
 }else{
-
-    // Separate droplet and smart-type experiments
-
-    DROPLET_INPUTS = Channel.create()
-    SMART_INPUTS = Channel.create()
-
-    QUANT_INPUTS.choice( SMART_INPUTS, DROPLET_INPUTS ) {a ->
-        a[1] == 'True' ? 1 : 0 
-    }
-
-    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
-
-    process smart_quantify {
-
-        maxForks params.maxConcurrentQuantifications
-
-        conda "${baseDir}/envs/nextflow.yml"
-        
-        cache 'deep'
-
-        publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
-        
-        memory { 10.GB * task.attempt }
-        errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' }
-        maxRetries 10
-        
-        input:
-            set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_INPUTS
-            val flag from INIT_DONE_SMART
-
-        output:
-            set val(tag), file ("kallisto") into SMART_KALLISTO_DIRS 
-            set val(tag), file ("qc") into SMART_QUANT_QC
-            file('quantification.log')    
-
-        """
-        submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
-        """
-    }
-
-    // Run quantification with https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow
-
-    process droplet_quantify {
-
-        maxForks params.maxConcurrentQuantifications
-
-        conda "${baseDir}/envs/nextflow.yml"
-
-        cache 'deep'
-        
-        publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
-        
-        memory { 10.GB * task.attempt }
-        errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
-
-        input:
-            set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
-            val flag from INIT_DONE_DROPLET
-
-        output:
-            set val(tag), file("alevin") into ALEVIN_DROPLET_DIRS
-            file('quantification.log')    
-
-        """
-        submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
-        """
-    }
-
-    // Collect the smart and droplet workflow results
-
-    SMART_KALLISTO_DIRS
-        .concat(ALEVIN_DROPLET_DIRS)
-        .set { 
-            QUANT_RESULTS 
-        }
+    PRE_QUANT_SPOOF_INPUTS
+        .set{QUANT_SPOOF_INPUTS}
+    
+    PRE_QUANT_INPUTS
+        .set{ QUANT_INPUTS }
 }
+
+// This process re-uses previously generated quantifcation results
+
+process spoof_quantify {
+    
+    executor 'local'
+
+    input:
+        set val(tag), val(expName), val(species), val(protocol) from QUANT_SPOOF_INPUTS
+
+    output:
+        set val(tag), file("results/*") into SPOOFED_QUANT_RESULTS
+
+    """
+        mkdir -p results
+        for PROG in alevin kallisto; do
+            if [ -e $SCXA_RESULTS/$expName/$species/quantification/$protocol/\$PROG ]; then
+                ln -s $SCXA_RESULTS/$expName/$species/quantification/$protocol/\$PROG results/\$PROG
+            fi
+        done
+    """
+}
+
+// Separate droplet and smart-type experiments
+
+DROPLET_INPUTS = Channel.create()
+SMART_INPUTS = Channel.create()
+
+QUANT_INPUTS.choice( SMART_INPUTS, DROPLET_INPUTS ) {a ->
+    a[1] == 'True' ? 1 : 0 
+}
+
+// Run quantification with https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow
+
+process smart_quantify {
+
+    maxForks params.maxConcurrentQuantifications
+
+    conda "${baseDir}/envs/nextflow.yml"
+    
+    cache 'deep'
+
+    publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
+    
+    memory { 10.GB * task.attempt }
+    errorStrategy { task.attempt<=10 ? 'retry' : 'ignore' }
+    maxRetries 10
+    
+    input:
+        set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(cellsFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_INPUTS
+        val flag from INIT_DONE_SMART
+
+    output:
+        set val(tag), file ("kallisto") into SMART_KALLISTO_DIRS 
+        set val(tag), file ("qc") into SMART_QUANT_QC
+        file('quantification.log')    
+
+    """
+    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
+    """
+}
+
+// Run quantification with https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow
+
+process droplet_quantify {
+
+    maxForks params.maxConcurrentQuantifications
+
+    conda "${baseDir}/envs/nextflow.yml"
+
+    cache 'deep'
+    
+    publishDir "$SCXA_RESULTS/$expName/$species/quantification/$protocol", mode: 'copy', overwrite: true
+    
+    memory { 10.GB * task.attempt }
+    errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
+
+    input:
+        set val(tag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(sdrfFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
+        val flag from INIT_DONE_DROPLET
+
+    output:
+        set val(tag), file("alevin") into ALEVIN_DROPLET_DIRS
+        file('quantification.log')    
+
+    """
+    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$sdrfFile" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
+    """
+}
+
+// Collect the smart and droplet workflow results
+
+SMART_KALLISTO_DIRS
+    .concat(ALEVIN_DROPLET_DIRS)
+    .set { 
+        PRE_QUANT_RESULTS 
+    }
+
+SPOOFED_QUANT_RESULTS
+    .concat(PRE_QUANT_RESULTS)
+    .set{
+        QUANT_RESULTS
+    }
 
 // Aggregation just needs the quantifation results and the transcript/ gene
 // mappings
@@ -796,8 +835,8 @@ COUNT_MATRICES
 // process needs to know the column with technical replicates etc.
 
 TAGS_FOR_TERTIARY                                           // tag, expname, species, protocol
-    .join(PRE_CONF_FOR_TERTIARY)                            // tag, expname, species, protocol, conf, confsdrf
-    .groupTuple( by: [1,2] )                                // [tag], expname, species, [protocol], [conf], [confsdrf]
+    .join(PRE_CONF_FOR_TERTIARY)                            // tag, expname, species, protocol, conf, confsdrf, confcells
+    .groupTuple( by: [1,2] )                                // [tag], expname, species, [protocol], [conf], [confsdrf], [confcells]
     .map{ r -> tuple(r[1], r[2], r[4][0], r[5][0]) }        // expname, species, conf, confsdrf
     .join(COUNT_MATRICES_FOR_CELL_TO_LIB, by: [0,1])        // expname, species, conf, confsdrf, countmatrix
     .join(IS_DROPLET_EXP_SPECIES_FOR_CELLMETA, by: [0,1])   // expname, species, conf, confsdrf, countmatrix, isdroplet

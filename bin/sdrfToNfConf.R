@@ -24,6 +24,8 @@ option_list <- list(
   make_option(c("--nc_window"), type="numeric", dest="nc_window", default=10, help="Clusters window [default %default]"),  
   make_option(c("-s", "--sdrf"), type="character", dest="sdrf_file", default=NA, help="SDRF file name"),
   make_option(c("-i", "--idf"), type="character", dest="idf_file", default=NULL, help="IDF file name"),
+  make_option(c("-e", "--cells"), type="character", dest="cells_file", default=NULL, help="Cells file name (droplet experiments only)"),
+  make_option(c("-f", "--cell_meta_fields"), type="character", dest="cell_meta_fields", default=NULL, help="Comma-separated list of cell metadata fields important for analysis"),
   make_option(c("--sc"), action="store_true",default=FALSE,dest="is_sc",help="Single cell experiment?. Default is FALSE."),
   make_option(c("-c","--check_only"),action="store_true",dest="check_only",default=FALSE,help="Checks the sdrf/idf but skips the generation of the configuration file."),
   make_option(c("-v","--verbose"),action="store_true",dest="verbose",default=FALSE,help="Produce verbose output."),
@@ -168,6 +170,10 @@ print.info("Loading SDRF ",opt$sdrf_file," ...")
 sdrf <- read.tsv(opt$sdrf_file,header=TRUE,comment.char="",fill=TRUE)
 print.info("Loading SDRF...done.")
 
+print.info("Loading cells ",opt$cells_file," ...")
+cells <- read.tsv(opt$cells_file,header=TRUE,comment.char="",fill=TRUE)
+print.info("Loading cell-wise metadata...done.")
+
 # Set some variable names we'll be using a lot. getActualColnames() will set
 # things to null when they're not present
 
@@ -192,6 +198,12 @@ cell.count.col <- getActualColnames('cell count', sdrf)
 hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
 controlled.access.col <- getActualColnames('controlled access', sdrf)
+
+if (! is.null(opt$cell_meta_fields)){
+    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ''))
+    cell.meta.cols <- getActualColnames(cell_meta_fields, sdrf)
+    cell.cell.meta.cols <- getActualColnames(cell_meta_fields, cells)
+}
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
@@ -738,6 +750,9 @@ names(run.fastq.files) <- unique(sdrf[[run.col]])
 
 sdrf.by.species.protocol <- lapply(split(sdrf, sdrf[[organism.col]]), function(x) split(x, x[[protocol.col]]) )
 
+# Filter any cells file to match the protocol-wise data
+cells.by.species.protocol <- list()
+
 # Run the checks first
 
 species.protocol.properties <- list()
@@ -756,6 +771,7 @@ for (species in names(sdrf.by.species.protocol)){
       has.techreps = FALSE,
       has.strandedness = FALSE,
       has.controlled.access = FALSE
+      has.cell.meta = FALSE
     )
   
     # Filtering could have removed all rows for a species
@@ -838,6 +854,12 @@ for (species in names(sdrf.by.species.protocol)){
        properties$has.controlled.access=TRUE
     }
 
+    # Check if there are inferred cell types in the SDRF
+
+    if ( (! is.null(cell.meta.cols)) || (! is.null(cells.cell.meta.cols))){
+        properties$has.cell.meta=TRUE
+    }
+
     species.protocol.properties[[species]][[protocol]] <- properties 
   }
 }
@@ -887,6 +909,7 @@ configs <- lapply(species_list, function(species){
     )
 
     config_fields <- c(run = run.col, layout = library.layout.col)
+    
     if (!  is.droplet.protocol(protocol)){
       if ( length(fastq.fields) > 1 ){
         perror('Multiple fastq fields on non-droplet experiment')
@@ -1033,6 +1056,12 @@ configs <- lapply(species_list, function(species){
           config_fields[field_label] <- field_name
         }
       }
+      
+      # This is a droplet protocol, expect cell type info to be in the cells file
+      cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], c(run.col, cell_meta_fields), drop = FALSE]        
+    }else{
+      # This is not a droplet protocol, expect cell type info to be in the SDRF file
+      cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, c(run.col, cell_meta_fields), drop = FALSE]        
     }    
 
     # Record field containing cell counts, where present
@@ -1054,7 +1083,7 @@ configs <- lapply(species_list, function(species){
 
     # Re-save the tweaked SDRF for output
     sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, config_fields]        
- 
+    
     # Put spikes in if present
 
     config <- c (config, spikes)
@@ -1158,6 +1187,7 @@ for (species in names(configs)){
     conf.file <- file.path(opt$out_conf, paste0(file_prefix,'.',  opt$name, ".conf"))
     meta.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".metadata.tsv"))
     sdrf.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".sdrf.txt"))
+    cells.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".cells.txt"))
   
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata
@@ -1171,6 +1201,7 @@ for (species in names(configs)){
       pinfo("Created ", meta.file)
     }
     write.tsv(sdrf.by.species.protocol[[species]][[protocol]], file=sdrf.file)
+    write.tsv(cells.by.species.protocol[[species]][[protocol]], file=cells.file)
     writeLines(config, con = conf.file)
     pinfo("Created ", conf.file)
   }
