@@ -269,12 +269,17 @@ process generate_configs {
         set val(expName), val(species), file("*.${species}.${expName}.sdrf.txt"), file("*.${species}.${expName}.cells.txt") into CONFSDRF_BY_EXP_SPECIES
 
     """
+    # Cells file will be empty (from reminder: true above) for some experiments
+    cells_options=
+    cells_filesize=$(stat --printf="%s" $(readlink ${cellsFile}))
+    if [ $cells_filesize -gt 0 ]; then
+        cells_options="--cells=$cellsFile --cell_meta_fields="$params.cellAnalysisFields""
+    fi
+
     mkdir -p tmp
     sdrfToNfConf.R \
         --sdrf=\$(readlink $sdrfFile) \
-        --idf=$idfFile \
-        --cells=$cellsFile \
-        --cell_meta_fields=$params.cellAnalysisFields \
+        --idf=$idfFile $cells_options\
         --name=$expName \
         --verbose \
         --out_conf \$(pwd)

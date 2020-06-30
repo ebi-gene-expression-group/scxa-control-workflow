@@ -199,10 +199,11 @@ hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
 controlled.access.col <- getActualColnames('controlled access', sdrf)
 
+cell_meta_fields <- run.col
 if (! is.null(opt$cell_meta_fields)){
-    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ''))
+    cell_meta_fields <- c(cell_meta_fields, unlist(strsplit(opt$cell_meta_fields, ',')))
     cell.meta.cols <- getActualColnames(cell_meta_fields, sdrf)
-    cell.cell.meta.cols <- getActualColnames(cell_meta_fields, cells)
+    cells.cell.meta.cols <- getActualColnames(cell_meta_fields, cells)
 }
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
@@ -770,7 +771,7 @@ for (species in names(sdrf.by.species.protocol)){
       has.spikes = FALSE,
       has.techreps = FALSE,
       has.strandedness = FALSE,
-      has.controlled.access = FALSE
+      has.controlled.access = FALSE,
       has.cell.meta = FALSE
     )
   
@@ -1058,10 +1059,10 @@ configs <- lapply(species_list, function(species){
       }
       
       # This is a droplet protocol, expect cell type info to be in the cells file
-      cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], c(run.col, cell_meta_fields), drop = FALSE]        
+      cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], cell_meta_fields, drop = FALSE]        
     }else{
       # This is not a droplet protocol, expect cell type info to be in the SDRF file
-      cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, c(run.col, cell_meta_fields), drop = FALSE]        
+      cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell_meta_fields, drop = FALSE]        
     }    
 
     # Record field containing cell counts, where present
