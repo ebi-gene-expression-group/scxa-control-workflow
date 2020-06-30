@@ -508,7 +508,7 @@ process reset_experiment{
         set val(tag), val(expName), val(species), val(protocol), file("in/*"), file("in/*"), val(expStatus) from CHANGED_FOR_QUANT
 
     output:
-        set val(tag), file("*.conf"), file("*.meta_for_quant.txt") into NEW_OR_RESET_EXPERIMENTS
+        set val(tag), file("*.conf"), file("*.meta_for_quant.txt"), file("*.meta_for_tertiary.txt") into NEW_OR_RESET_EXPERIMENTS
         
     """
         # Only remove downstream results where we're not re-using them
@@ -527,7 +527,7 @@ process reset_experiment{
 
         # Now we've removed the results, link the results for publishing
 
-        cp -P in/*.meta_for_quant.txt in/*conf .
+        cp -P in/*.meta_for_quant.txt in/*conf in/*.meta_for_tertiary.txt .
     """
 }
 
