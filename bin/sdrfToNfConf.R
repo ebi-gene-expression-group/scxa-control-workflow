@@ -170,9 +170,11 @@ print.info("Loading SDRF ",opt$sdrf_file," ...")
 sdrf <- read.tsv(opt$sdrf_file,header=TRUE,comment.char="",fill=TRUE)
 print.info("Loading SDRF...done.")
 
-print.info("Loading cells ",opt$cells_file," ...")
-cells <- read.tsv(opt$cells_file,header=TRUE,comment.char="",fill=TRUE)
-print.info("Loading cell-wise metadata...done.")
+if ( ! is.null(opt$cells_file)){
+    print.info("Loading cells ",opt$cells_file," ...")
+    cells <- read.tsv(opt$cells_file,header=TRUE,comment.char="",fill=TRUE)
+    print.info("Loading cell-wise metadata...done.")
+}
 
 # Set some variable names we'll be using a lot. getActualColnames() will set
 # things to null when they're not present
@@ -1058,9 +1060,19 @@ configs <- lapply(species_list, function(species){
         }
       }
       
+    }
+
+    # Choose the info we'll be putting in the cells metadata file. This file
+    # will mostly be used to determine when analysis-relevant metdata has
+    # changed between runs. In the case of a droplet experiment without a cells
+    # file, the file of run IDs will not be cell identifiers per se, but will
+    # serve to differentiate this run from a future one where that file is
+    # present.
+    
+    if ( is.droplet.protocol(protocol) && ! is.null(opt$cells_file)){
       # This is a droplet protocol, expect cell type info to be in the cells file
       cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], cell_meta_fields, drop = FALSE]        
-    }else{
+    else{
       # This is not a droplet protocol, expect cell type info to be in the SDRF file
       cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell_meta_fields, drop = FALSE]        
     }    
