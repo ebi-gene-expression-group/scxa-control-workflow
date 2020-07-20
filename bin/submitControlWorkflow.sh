@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-t <tertiary workflow>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
+usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
 
 e=
 q=no
-t=none
+t=scanpy-galaxy
 u=no
 w=no
 
@@ -18,9 +18,6 @@ while getopts ":e:q:a:t:u:w:" o; do
             ;;
         a)
             a=${OPTARG}
-            ;;
-        t)
-            t=${OPTARG}
             ;;
         u)
             u=${OPTARG}
@@ -41,7 +38,6 @@ shift $((OPTIND-1))
 expName=$e
 skipQuantification=$q
 skipAggregation=$a
-tertiaryWorkflow=$t
 skipTertiary=$u
 overwrite=$w
 
@@ -132,22 +128,18 @@ if [ -n "$overwrite" ]; then
     overwritePart="--overwrite $overwrite"
 fi
 
-tertiaryWorkflowPart=
-galaxyCredentialsPart=
+tertiaryWorkflowPart="--tertiaryWorkflow scanpy-galaxy"
 
-if [ -n "$tertiaryWorkflow" ]; then
-    tertiaryWorkflowPart="--tertiaryWorkflow $tertiaryWorkflow"
-
-    if [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
-        if [ -z "$GALAXY_CREDENTIALS" ]; then
-            echo "Please set the GALAXY_CREDENTIALS environment variable"
-            exit 1
-        fi
-        galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
-    fi
+if [ -z "$GALAXY_CREDENTIALS" ]; then
+    echo "Please set the GALAXY_CREDENTIALS environment variable"
+    exit 1
+else
+    echo "Galaxy credentials at $GALAXY_CREDENTIALS"
 fi
+galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
 
 nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
+echo "$nextflowCommand"
 
 # Run the LSF submission if it's not already running
 

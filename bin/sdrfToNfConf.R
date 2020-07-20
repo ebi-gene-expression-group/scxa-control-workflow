@@ -206,7 +206,9 @@ cell.meta.cols <- cells.cell.meta.cols <- NULL
 if (! is.null(opt$cell_meta_fields)){
     cell_meta_fields <- c(cell_meta_fields, unlist(strsplit(opt$cell_meta_fields, ',')))
     cell.meta.cols <- getActualColnames(cell_meta_fields, sdrf)
-    cells.cell.meta.cols <- getActualColnames(cell_meta_fields, cells)
+    if ( ! is.null(opt$cells_file)){
+        cells.cell.meta.cols <- getActualColnames(cell_meta_fields, cells)
+    }
 }
 
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
@@ -1072,10 +1074,11 @@ configs <- lapply(species_list, function(species){
     
     if ( is.droplet.protocol(protocol) && ! is.null(opt$cells_file)){
       # This is a droplet protocol, expect cell type info to be in the cells file
-      cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], cell_meta_fields, drop = FALSE]        
+      cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], cells.cell.meta.cols, drop = FALSE]        
     }else{
       # This is not a droplet protocol, expect cell type info to be in the SDRF file
-      cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell_meta_fields, drop = FALSE]        
+        print(paste("selecting", cell.meta.cols))
+      cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell.meta.cols, drop = FALSE]        
     }    
 
     # Record field containing cell counts, where present
@@ -1223,6 +1226,7 @@ for (species in names(configs)){
     write.tsv(cells.by.species.protocol[[species]][[protocol]], file=cells.file)
     writeLines(config, con = conf.file)
     pinfo("Created ", conf.file)
+    pinfo("Created ", cells.file)
   }
 }
 
