@@ -2,12 +2,15 @@
 
 expName=$1
 sdrfFile=$2
-overwrite=$3
+cellsFile=$3
+overwrite=$4
 
 # Start by assuming a new experiment
 
 newExperiment=1
 bundleManifests=$(ls $SCXA_RESULTS/$expName/*/bundle/MANIFEST 2>/dev/null || true)
+
+cells_filesize=$(stat --printf="%s" $(readlink ${cellsFile}))
 
 # If there are existing bundles for this experiment then just use
 # those, unless the related SDRFs have been updated
@@ -15,7 +18,7 @@ bundleManifests=$(ls $SCXA_RESULTS/$expName/*/bundle/MANIFEST 2>/dev/null || tru
 if [ -n "$bundleManifests" ] && [ "$overwrite" != 'yes' ]; then
     newExperiment=0
     while read -r bundleManifest; do
-        if [ $sdrfFile -nt "$bundleManifest" ]; then
+        if [[ $sdrfFile -nt "$bundleManifest" || ( $cells_filesize -gt 0 && $cellsFile -nt "$bundleManifest" ) ]]; then
             newExperiment=1
             break
         fi
