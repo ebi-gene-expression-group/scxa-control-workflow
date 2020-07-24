@@ -81,9 +81,32 @@ process compile_metadata {
 
 SDRF_IDF
     .join(CELLS, remainder: true)
-    .set{
-        COMPILED_METADATA
+    .into{
+        COMPILED_METADATA_FOR_STATUS
+        COMPILED_METADATA_FOR_CELLTYPE
     }
+
+// Check if experiment has cell types, and pick field to use
+
+process checkCellTypeField {
+
+    input:
+        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA_FOR_CELLTYPE
+
+    output:
+        stdout CELL_TYPE_FIELD 
+
+    """
+    findCelltypeField.sh "$sdrfFile" "$cellsFile" "$params.cellTypeField"
+    """
+}
+
+// A corrected version for use in file names etc
+
+CELL_TYPE_FIELD.map { r-> r.replaceAll(" ", "_").toLowerCase() }.into{
+    CELL_TYPE_FIELD_FOR_TERTIARY
+    CELL_TYPE_FIELD_FOR_BUNDLE
+}
 
 // Check the update status of the experiment
 
@@ -92,13 +115,13 @@ process checkExperimentStatus {
     cache false
 
     input:
-        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA
+        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA_FOR_STATUS
 
     output:
         set val(expName), file(idfFile), file(sdrfFile), file(cellsFile), stdout into COMPILED_METADATA_WITH_STATUS
         
     """
-    checkExperimentStatus.sh $expName $sdrfFile $overwrite
+    checkExperimentStatus.sh $expName $sdrfFile $cellsFile $overwrite
     """
 }
 
@@ -465,10 +488,8 @@ process check_experiment_changed{
     """
     expStatus=\$(checkExperimentChanges.sh $expName $species confFile metaForQuant metaForTertiary $skipQuantification $skipAggregation $skipTertiary $overwrite)
 
-    if [ "\$expStatus" == 'changed' ]; then
+    if [ "\$expStatus" != 'unchanged' ]; then
         cp -P confFile/* metaForTertiary/* metaForQuant/* .
-    elif [ "\$expStatus" == 'meta_changed' ]; then
-        cp -P metaForTertiary/* .
     fi
     echo -n "\$expStatus"
     """
@@ -921,10 +942,10 @@ SMART_KALLISTO_DIRS
 // existing quantifications specified for reaggregation.
 
 ESP_TAGS_FOR_AGGR
-    .join(NEW_QUANT_RESULTS.concat(TO_REAGGREGATE.join(REUSED_QUANT_RESULTS)))
+    .join(NEW_QUANT_RESULTS.concat(TO_REAGGREGATE.map{r -> tuple(r[0])}.join(REUSED_QUANT_RESULTS)))
     .join(TRANSCRIPT_TO_GENE_AGGR)
     .groupTuple( by: [1,2] )
-    .map{ r -> tuple( r[1], r[2], r[3], r[5], r[6] ) }
+    .map{ r -> tuple( r[1], r[2], r[3], r[4], r[5] ) }
     .set{ GROUPED_QUANTIFICATION_RESULTS }
 
 process aggregate {
@@ -1139,6 +1160,7 @@ process tertiary {
       
     input:
         set val(esTag), val(expName), val(species), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+        val(cellTypeField) from CELL_TYPE_FIELD_FOR_TERTIARY
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into NEW_TERTIARY_RESULTS
@@ -1146,7 +1168,7 @@ process tertiary {
     script:
 
         """
-            submitTertiaryWorkflow.sh "$expName" "$species" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials"
+            submitTertiaryWorkflow.sh "$expName" "$species" "$countMatrix" "$referenceGtf" "$cellMetadata" "$cellTypeField" "$isDroplet" "$galaxyCredentials"
         """
 }
 
@@ -1160,11 +1182,14 @@ NEW_TERTIARY_RESULTS
     .join(PROTOCOLS_BY_EXP_SPECIES)                                                     // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList
     .join(CONF_BY_EXP_SPECIES_FOR_BUNDLE)                                               // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile
     .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix
-    .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES))                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
+    //.subscribe { println it }
+    .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
     .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
     .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
     .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
     .set{BUNDLE_INPUTS}
+
+//BUNDLE_INPUTS = Channel.create()
 
 process bundle {
     
@@ -1178,7 +1203,8 @@ process bundle {
     
     input:
         set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
-        
+        val(cellTypeField) from CELL_TYPE_FIELD_FOR_BUNDLE 
+            
     output:
         file('bundle/software.tsv')
         file('bundle/filtered_normalised/genes.tsv.gz')
@@ -1211,7 +1237,7 @@ process bundle {
         file('bundle/tsne_perplexity_*.tsv')
         file('bundle/umap_n_neighbors_*.tsv')
         file('bundle/markers_*.tsv') optional true
-        file('bundle/celltype_markers.tsv') optional true
+        file("bundle/${cellTypeField}_markers.tsv") optional true
         file('bundle/clusters_for_bundle.txt')
         file('bundle/MANIFEST')
         file('bundle.log')
@@ -1220,7 +1246,7 @@ process bundle {
         file('bundleLines.txt') into NEW_BUNDLES
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport
         """
 }
 
