@@ -26,7 +26,7 @@ for ctf in "${ctfs[@]}"; do
     
     sdrf_cell_type_field=$(head -n 1 $sdrf_file | grep -io "[^$(echo -e "\t")]*$(echo "\\[$ctf\\]") *")    
     if [ $? -eq 0 ]; then
-        echo "$sdrf_cell_type_field" | head -n 1 | tr -d '\n'
+        echo -n "$ctf"
         break
     elif [ $has_cells -eq 1 ]; then
 
@@ -36,7 +36,7 @@ for ctf in "${ctfs[@]}"; do
         echo "No cell type in SDRF, checking .cells file" 1>&2
         cells_cell_type_field=$(head -n 1 $cells_file | grep -io "[^$(echo -e "\t")]*$(echo "\\[$ctf\\]") *")    
         if [ $? -eq 0 ]; then
-            echo "$cells_cell_type_field" | head -n 1 | tr -d '\n'
+            echo -n "$ctf"
             break
         else
             
@@ -45,7 +45,7 @@ for ctf in "${ctfs[@]}"; do
         
             cells_cell_type_field=$(head -n 1 $cells_file | grep -io "[$(echo -e "\t")] *$(echo "$ctf") *")    
             if [ $? -eq 0 ]; then
-                echo "$cells_cell_type_field" | head -n 1 | tr -d '\n' | tr -d '\t'
+                echo -n "$ctf"
                 break
             fi
         fi
