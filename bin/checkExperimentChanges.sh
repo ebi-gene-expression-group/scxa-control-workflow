@@ -27,6 +27,7 @@ manifestPath=$resultsDir/bundle/MANIFEST
 
 quantExists=$(pattern_file_exists "$resultsDir/quantification/*/quantification.log")
 aggExists=$(pattern_file_exists "$resultsDir/aggregation/matrices/counts_mtx.zip")
+metaExists=$(pattern_file_exists "$resultsDir/metadata/${expName}-${species}.metadata.matched.tsv")
 tertiaryExists=$(pattern_file_exists "$resultsDir/scanpy/clustering_software_versions.txt")
 bundleExists=$(pattern_file_exists $resultsDir/bundle/MANIFEST)
 
@@ -77,39 +78,47 @@ else
 
     # Has quantification-relevant metadata changed?
     
-    while read -r nmfq; do
-        oldMetaForQuant=$SCXA_CONF/study/$(basename $nmfq)
-        
-        diff_configs $newMetaForQuant/$nmfq $oldMetaForQuant
-        if [ $? -eq 1 ]; then
-            echo "$newMetaForQuant/$nmfq is different to $oldMetaForQuant" 1>&2
-            quantMetaDiff=1
-            break
-        else
-            echo "$newMetaForQuant/$nmfq is not different to $oldMetaForQuant" 1>&2
-        fi
-    done <<< "$(ls $newMetaForQuant)"
-    
-    # Has tertiary-relevant metadata changed?
+    if [ $quantExists ]; then
+        while read -r nmfq; do
+            oldMetaForQuant=$SCXA_CONF/study/$(basename $nmfq)
+            
+            diff_configs $newMetaForQuant/$nmfq $oldMetaForQuant
+            if [ $? -eq 1 ]; then
+                echo "$newMetaForQuant/$nmfq is different to $oldMetaForQuant" 1>&2
+                quantMetaDiff=1
+                break
+            else
+                echo "$newMetaForQuant/$nmfq is not different to $oldMetaForQuant" 1>&2
+            fi
+        done <<< "$(ls $newMetaForQuant)"
 
-    while read -r nmft; do
-        oldMetaForTertiary=$SCXA_CONF/study/$(basename $nmft)
-        
-        # Compare configs and derived SDRFS
+        # Has tertiary-relevant metadata changed?
 
-        diff_configs $newMetaForTertiary/$nmft $oldMetaForTertiary
-        if [ $? -eq 1 ]; then
-            echo "$newMetaForTertiary/$nmft is different to $oldMetaForTertiary" 1>&2
-            tertiaryMetaDiff=1
-            break
+        if [ $tertiaryExists ]; then
+            while read -r nmft; do
+                oldMetaForTertiary=$SCXA_CONF/study/$(basename $nmft)
+                
+                # Compare configs and derived SDRFS
+
+                diff_configs $newMetaForTertiary/$nmft $oldMetaForTertiary
+                if [ $? -eq 1 ]; then
+                    echo "$newMetaForTertiary/$nmft is different to $oldMetaForTertiary" 1>&2
+                    tertiaryMetaDiff=1
+                    break
+                else
+                    echo "$newMetaForTertiary/$nmft is not different to $oldMetaForTertiary" 1>&2
+                fi
+            done <<< "$(ls $newMetaForTertiary)"
         else
-            echo "$newMetaForTertiary/$nmft is not different to $oldMetaForTertiary" 1>&2
+            echo 'No completed tertiary results were found' 1>&2
         fi
-    done <<< "$(ls $newMetaForTertiary)"
+    else
+        echo 'No completed quantification results were found' 1>&2
+    fi
     
     if [ $configDiff -eq 1 ] || [ $quantMetaDiff -eq 1 ] || [ ! $quantExists ]; then
         experimentStatus='changed_for_quantification'
-    elif [ ! $aggExists ]; then
+    elif [ ! $aggExists ] || [ ! $metaExists ]; then
         experimentStatus='changed_for_aggregation'
     elif [ $tertiaryMetaDiff -eq 1 ] || [ ! $tertiaryExists ]; then
         experimentStatus='changed_for_tertiary'
@@ -117,6 +126,5 @@ else
         experimentStatus='changed_for_bundling'
     fi
 fi    
-
 
 echo -n "$experimentStatus"
