@@ -517,6 +517,8 @@ NOT_CHANGED_EXPERIMENTS
 
 process reset_experiment{
     
+    cache 'deep'
+   
     input:
         set val(expName), val(species), val(espTags), val(expStatus) from NEW_OR_CHANGED_EXPERIMENTS
 
@@ -535,6 +537,8 @@ process reset_experiment{
         else
             reset_stages="bundle"
         fi
+
+        rm -f $TMPDIR/${expName}.${species}.galaxystate
 
         for stage in \$reset_stages; do
             rm -rf $SCXA_RESULTS/$expName/$species/\$stage
