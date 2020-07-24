@@ -174,6 +174,8 @@ if ( ! is.null(opt$cells_file)){
     print.info("Loading cells ",opt$cells_file," ...")
     cells <- read.tsv(opt$cells_file,header=TRUE,comment.char="",fill=TRUE)
     print.info("Loading cell-wise metadata...done.")
+}else{
+    cells <- sdrf
 }
 
 # Set some variable names we'll be using a lot. getActualColnames() will set
@@ -201,16 +203,24 @@ hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
 controlled.access.col <- getActualColnames('controlled access', sdrf)
 
-cell_meta_fields <- run.col
-cell.meta.cols <- cells.cell.meta.cols <- NULL
-if (! is.null(opt$cell_meta_fields)){
-    cell_meta_fields <- c(cell_meta_fields, unlist(strsplit(opt$cell_meta_fields, ',')))
-    cell.meta.cols <- getActualColnames(cell_meta_fields, sdrf)
-    if ( ! is.null(opt$cells_file)){
-        cells.cell.meta.cols <- getActualColnames(cell_meta_fields, cells)
-    }
-}
 
+# We may have been supplied with some cell-wise fields to extract
+
+cell.meta.cols <- NULL
+
+if (! is.null(opt$cell_meta_fields)){
+    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ','))
+
+    if ( ! is.null(opt$cells_file)){
+        cell.id.col <- getActualColnames('cell id', cells)
+        cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, cells)))
+    }else{
+        cell.id.col <- run.col
+        cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, sdrf)))
+    }
+
+    cell.meta.cols <- c(cell.id.col,  cell_meta_fields[ ! is.null(cell_meta_fields)])
+}
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
 
@@ -862,7 +872,7 @@ for (species in names(sdrf.by.species.protocol)){
 
     # Check if there are inferred cell types in the SDRF
 
-    if ( (! is.null(cell.meta.cols)) || (! is.null(cells.cell.meta.cols))){
+    if ( (! is.null(cell.meta.cols))){
         properties$has.cell.meta=TRUE
     }
 
@@ -1073,11 +1083,21 @@ configs <- lapply(species_list, function(species){
     # present.
     
     if ( is.droplet.protocol(protocol) && ! is.null(opt$cells_file)){
-      # This is a droplet protocol, expect cell type info to be in the cells file
-      cells.by.species.protocol[[species]][[protocol]] <<- cells[cells[cells[[run.col]] %in% species.protocol.sdrf[[run.col]]], cells.cell.meta.cols, drop = FALSE]        
+      cell_run_techrep_ids <- unlist(lapply(strsplit(cells[[cell.id.col]], '-'), function(x) x[1]  ))
+      if(properties$has.techrep) {
+        cell.relate.col <- techrep.col    
+      }else{
+        cell.relate.col <- run.col
+      }
+
+      # This is a droplet protocol, expect cell type info to be in the cells
+      # file. We relate this back to our protocol-wise SDRF dataframe to match
+      # cells to protocol
+    
+      cells.by.species.protocol[[species]][[protocol]] <<- cells[cell_run_techrep_ids %in% species.protocol.sdrf[[cell.relate.col]], cell.meta.cols, drop = FALSE]
     }else{
-      # This is not a droplet protocol, expect cell type info to be in the SDRF file
-        print(paste("selecting", cell.meta.cols))
+      # This is not a droplet protocol, or does not have a cells file, expect
+      # cell type info to be in the SDRF file
       cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell.meta.cols, drop = FALSE]        
     }    
 
