@@ -7,8 +7,9 @@ species=$2
 countMatrix=$3
 referenceGtf=$4
 cellMetadata=$5
-isDroplet=$6
-galaxyCredentials=$7
+celltypeField=$6
+isDroplet=$7
+galaxyCredentials=$8
 
 rm -rf $SCXA_RESULTS/$expName/$species/bundle
                 
@@ -28,6 +29,7 @@ export matrix_file=${zipdir}/matrix.mtx.gz
 export genes_file=${zipdir}/genes.tsv.gz
 export barcodes_file=${zipdir}/barcodes.tsv.gz
 export cell_meta_file=$cellMetadata
+export cell_type_field=$(echo $celltypeField | sed "s/ /_/g")
 export tpm_filtering='False'
 export create_conda_env=no
 export GALAXY_CRED_FILE=$galaxyCredentials
@@ -81,6 +83,6 @@ if [ $? -eq 0 ]; then
     fi
 
     if [ -e 'celltype_markers.tsv' ]; then
-        mv celltype_markers.tsv markers
+        mv celltype_markers.tsv markers/${celltypeField}_markers.tsv
     fi
 fi 
