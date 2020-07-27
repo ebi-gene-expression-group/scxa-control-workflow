@@ -711,7 +711,7 @@ process check_privacy {
 
     """
     privacyStatus=\$(wget -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}')
-    echo -n "$privacyStatus"
+    echo -n "\$privacyStatus"
     """
 }
 
