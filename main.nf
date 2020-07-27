@@ -320,6 +320,7 @@ ESP_TAGS.into{
     ESP_TAGS_FOR_QUANT
     ESP_TAGS_FOR_AGGR
     ESP_TAGS_FOR_IS_DROPLET
+    ESP_TAGS_FOR_PRIVACY_CHECK
 }
 
 // Make comma-separated list of the protocols for each exp/species combo
@@ -577,6 +578,7 @@ TO_QUANTIFY
     .into{
         TO_QUANTIFY_FOR_QUANT
         TO_QUANTIFY_FOR_REFERENCE
+        TO_QUANTIFY_FOR_PRIVACY_CHECK
     }
 
 NOT_CHANGED_FOR_QUANT
@@ -694,6 +696,23 @@ process reuse_tertiary {
 ////////////////////////////////////////////////////////////////
 // Processes to derive new results
 ////////////////////////////////////////////////////////////////
+
+// Is experiment public or private?
+
+process check_privacy {
+
+    executor 'local'
+
+    input:
+        set val(espTag), val(expName), val(species), val(protocol) from TO_QUANTIFY_FOR_PRIVACY_CHECK.join(ESP_TAGS_FOR_PRIVACY_CHECK)
+
+    output:
+        set val(espTag), stdout into PRIVACY_STATUS
+
+    """
+    wget  -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc={$expName} 2>/dev/null | tr "\t" "\n" | awk -F':' '/privacy/ {print $2}'
+    """
+}
 
 // Symlink to correct reference file, re-using the reference from last
 // quantification where appropriate
@@ -862,6 +881,7 @@ TO_QUANTIFY_FOR_QUANT
     .join(ANALYSIS_META_FOR_QUANT)
     .join(CLEANED_REFERENCES)
     .join(TRANSCRIPT_TO_GENE_QUANT)
+    .join(PRIVACY_STATUS)
     .set{
         QUANT_INPUTS
     }
@@ -892,7 +912,7 @@ process smart_quantify {
     maxRetries 10
     
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from SMART_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), file(privacyStatus) from SMART_INPUTS
         val flag from INIT_DONE_SMART
 
     output:
@@ -901,7 +921,7 @@ process smart_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
+    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser" "$privacyStatus"
     """
 }
 
@@ -921,7 +941,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene) from DROPLET_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), file(privacyStatus) from DROPLET_INPUTS
         val flag from INIT_DONE_DROPLET
 
     output:
@@ -929,7 +949,7 @@ process droplet_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser"
+    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser" "$privacyStatus"
     """
 }
 
