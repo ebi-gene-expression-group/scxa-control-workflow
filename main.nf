@@ -710,7 +710,8 @@ process check_privacy {
         set val(espTag), stdout into PRIVACY_STATUS
 
     """
-    wget  -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}'
+    privacyStatus=\$(wget -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}')
+    echo -n "$privacyStatus"
     """
 }
 
