@@ -681,7 +681,7 @@ process reuse_tertiary {
     executor 'local'
     
     input:
-        set val(esTag), val(expStatus), val(expName), val(species) from NOT_CHANGED_FOR_TERTIARY_FOR_REUSE_TERTIARY.join(ES_TAGS_FOR_REUSE_TERTIARY)
+        set val(esTag), val(expName), val(species) from NOT_CHANGED_FOR_TERTIARY_FOR_REUSE_TERTIARY.join(ES_TAGS_FOR_REUSE_TERTIARY)
     
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into REUSED_TERTIARY_RESULTS
@@ -1186,14 +1186,11 @@ NEW_TERTIARY_RESULTS
     .join(PROTOCOLS_BY_EXP_SPECIES)                                                     // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList
     .join(CONF_BY_EXP_SPECIES_FOR_BUNDLE)                                               // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile
     .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix
-    //.subscribe { println it }
     .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
     .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
     .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
     .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
     .set{BUNDLE_INPUTS}
-
-//BUNDLE_INPUTS = Channel.create()
 
 process bundle {
     
