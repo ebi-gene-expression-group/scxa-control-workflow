@@ -47,6 +47,9 @@ elif [ "$privacyStatus" != 'public' ]; then
   if [ -z "$SCXA_PRIVATE_PATH" ]; then
     echo "$expName is a private experiment, but SCXA_PRIVATE_PATH is not set in the environment" 1>&2
     exit 1
+  elif [ "$privacyStatus" != 'private' ]; then
+    echo "Invalid privacy status: '$privacyStatus'"
+    exit 1
   fi
 
   expType=$(echo -n "$expName" | awk -F '-' '{print $2}')

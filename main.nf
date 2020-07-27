@@ -710,7 +710,7 @@ process check_privacy {
         set val(espTag), stdout into PRIVACY_STATUS
 
     """
-    wget  -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc={$expName} 2>/dev/null | tr "\t" "\n" | awk -F':' '/privacy/ {print \$2}'
+    wget  -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}'
     """
 }
 
@@ -912,7 +912,7 @@ process smart_quantify {
     maxRetries 10
     
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), file(privacyStatus) from SMART_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
         val flag from INIT_DONE_SMART
 
     output:
@@ -941,7 +941,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), file(privacyStatus) from DROPLET_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
         val flag from INIT_DONE_DROPLET
 
     output:
