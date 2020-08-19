@@ -19,6 +19,28 @@ diff_configs (){
     file1=$1
     file2=$2
 
-    diff -I '^//' $file1 $file2 > /dev/null 2>&1
-    return $? 
+    diffStat=
+
+    if [ -e $file1 ] && [ -e $file2 ]; then
+        diff -I '^//' $file1 $file2 > /dev/null 2>&1
+        diffStat=$?
+    else
+        diffStat=1
+    fi
+
+    return $diffStat
+}
+
+# Pattern file exits
+
+pattern_file_exists(){
+    pattern=$1
+
+    ls $pattern > /dev/null 2>&1
+    fexists=$?
+    if [ $fexists -eq 0 ]; then
+        echo true
+    fi
+
+    return $fexists    
 }
