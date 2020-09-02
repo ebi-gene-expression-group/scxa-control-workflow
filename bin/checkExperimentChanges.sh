@@ -118,9 +118,9 @@ else
     
     if [ $configDiff -eq 1 ] || [ $quantMetaDiff -eq 1 ] || [ ! $quantExists ]; then
         experimentStatus='changed_for_quantification'
-    elif [ ! $aggExists ] || [ ! $metaExists ]; then
+    elif [ ! $aggExists ] || [ ! $metaExists ] || [ $tertiaryMetaDiff -eq 1 ]; then
         experimentStatus='changed_for_aggregation'
-    elif [ $tertiaryMetaDiff -eq 1 ] || [ ! $tertiaryExists ]; then
+    elif [ ! $tertiaryExists ]; then
         experimentStatus='changed_for_tertiary'
     elif [ ! $bundleExists ]; then
         experimentStatus='changed_for_bundling'
