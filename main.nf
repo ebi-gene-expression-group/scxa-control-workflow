@@ -710,7 +710,12 @@ process check_privacy {
         set val(espTag), stdout into PRIVACY_STATUS
 
     """
-    privacyStatus=\$(wget -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}')
+    expType=\$(echo "$expName" | awk -F'-' '{print $2}')
+    if [ \$expType='MTAB' ]; then
+        privacyStatus=\$(wget -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}')
+    else
+        privacyStatus=public
+    fi
     echo -n "\$privacyStatus"
     """
 }
