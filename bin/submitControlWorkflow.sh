@@ -4,7 +4,6 @@ usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantificati
 
 e=
 q=no
-t=scanpy-galaxy
 u=no
 w=no
 
