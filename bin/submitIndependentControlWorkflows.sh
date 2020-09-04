@@ -133,6 +133,11 @@ while read -r idfFile; do
         submitted=$((submitted+1))
 
     fi
+
+    if [ $submitted -ge $maxToSubmit ]; then
+        break
+    fi
+
 done <<< "$(ls $SCXA_WORKFLOW_ROOT/metadata/*/*/*.idf.txt)"
 
 # List all finished bundles for loading, exluding anything that might have been
