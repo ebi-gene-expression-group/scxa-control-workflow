@@ -91,6 +91,7 @@ while read -r idfFile; do
     idfFileName=$(basename $idfFile)
     expId=$(echo $idfFileName | awk -F'.' '{print $1}')
     sdrfFile=$(dirname $idfFile)/${expId}.sdrf.txt
+    cellsFile=$(dirname $idfFile)/${expId}.cells.txt
     runLog=$SCXA_WORKFLOW_ROOT/nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow/run.out   
 
     experimentStatus='old'
@@ -113,7 +114,7 @@ while read -r idfFile; do
       
         # Notes: checkExperimentStatus.sh is the same as that used by the
         # Nextflow workflow, so the logic is kept consistent   
-        experimentStatus=$(checkExperimentStatus.sh $expId $sdrfFile $overwrite)
+        experimentStatus=$(checkExperimentStatus.sh $expId $sdrfFile $cellsFile $overwrite)
     fi    
 
     echo "Experiment status for $expId: $experimentStatus"

@@ -10,7 +10,10 @@ overwrite=$4
 newExperiment=1
 bundleManifests=$(ls $SCXA_RESULTS/$expName/*/bundle/MANIFEST 2>/dev/null || true)
 
-cells_filesize=$(stat --printf="%s" $(readlink ${cellsFile}))
+cells_filesize=0
+if [ -n "$cellsfile" ] && [ -e $cellsFile ]; then
+    cells_filesize=$(stat --printf="%s" $(readlink ${cellsFile}))
+fi
 
 # If there are existing bundles for this experiment then just use
 # those, unless the related SDRFs have been updated
