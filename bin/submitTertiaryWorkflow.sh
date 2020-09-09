@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+scriptDir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source $scriptDir/utils.sh
+
 # Submit a workflow for Galaxy
 
 expName=$1
@@ -44,13 +47,15 @@ fi
 # Extract things we need from the conf file
 
 cellTypeField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
-if [ $cellTypeField != 'None' ]; then
-    export cell_type_field=$(echo $cellTypeField | sed "s/ /_/g")
+if [ "$cellTypeField" != 'None' ]; then
+    export cell_type_field=$(sanitise_field "$cellTypeField")
+    echo "Cell type field: $cell_type_field"
 fi
 
 batchField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,batch)
-if [ $batchField != 'None' ]; then
-    export batch_field=$(echo $batchField | sed "s/ /_/g")
+if [ "$batchField" != 'None' ]; then
+    export batch_field=$(sanitise_field "$batchField")
+    echo "Batch field: $batch_field"
 fi
 
 # This script is under /bin of the scxa-workflows repo

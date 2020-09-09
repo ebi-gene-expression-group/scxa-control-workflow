@@ -339,19 +339,14 @@ process checkCellTypeField {
         set val(esTag), stdout into CELL_TYPE_FIELD 
 
     """
+    source $SCXA_BIN/utils.sh
     cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
     if [ \$cellTypeField='None' ]; then
         cellTypeField=''
     fi
-    echo -n "\$cellTypeField"
+    sanitise_field "\$cellTypeField"
     """
 }
-// A corrected version for use in file names etc
-
-CELL_TYPE_FIELD.map { r-> tuple(r[0], r[1].replaceAll(" ", "_").toLowerCase()) }
-    .set{
-        CELL_TYPE_FIELD_FOR_BUNDLE
-    }
 
 // Extend config for protocol-wise info
 
@@ -1242,7 +1237,7 @@ NEW_TERTIARY_RESULTS
     .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
     .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
     .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
-    .join(CELL_TYPE_FIELD_FOR_BUNDLE)                                                   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata, cellTypeField
+    .join(CELL_TYPE_FIELD)                                                   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata, cellTypeField
     .set{BUNDLE_INPUTS}
 
 process bundle {

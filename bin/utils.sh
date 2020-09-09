@@ -44,3 +44,16 @@ pattern_file_exists(){
 
     return $fexists    
 }
+
+# Satitise MAGE-TAB field names
+
+sanitise_field(){
+    local field=$1
+
+    echo -e "$field" | \
+        sed -e "s/\(Characteristic\|Factor Value\)[ ]*//g" | \
+        sed -e "s/^\[//" | \
+        sed -e "s/\]$//" | \
+        tr '[:upper:]' '[:lower:]' | \
+        sed "s/ /_/g"
+}
