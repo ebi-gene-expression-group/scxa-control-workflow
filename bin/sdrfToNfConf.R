@@ -211,7 +211,6 @@ cell.meta.cols <- NULL
 cell.type.col <- NULL
 
 if (! is.null(opt$cell_meta_fields)){
-    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ','))
 
     if ( ! is.null(opt$cells_file)){
         cell.meta.source <- cells
@@ -235,6 +234,8 @@ if (! is.null(opt$cell_meta_fields)){
         }
     }
     
+    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ','))
+    cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, cell.meta.source)))
     cell.meta.cols <- unique(c(cell.id.col, cell.type.col, cell_meta_fields[ ! is.null(cell_meta_fields)]))
 }
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
@@ -476,8 +477,8 @@ if ( !is.null(opt$idf_file) ) {
 
   # Retrieve batch field if present
 
-  if ( "eabatcheffect" %in% rownames(idf)){
-    batch.col <- getActualColnames(idf["eabatcheffect",1], sdrf)
+  if ( "batcheffect" %in% rownames(idf)){
+    batch.col <- getActualColnames(idf["batcheffect",1], sdrf)
     cell.meta.cols <- c(cell.meta.cols, batch.col)
   }
 }
