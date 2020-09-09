@@ -86,28 +86,6 @@ SDRF_IDF
         COMPILED_METADATA_FOR_CELLTYPE
     }
 
-// Check if experiment has cell types, and pick field to use
-
-process checkCellTypeField {
-
-    input:
-        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA_FOR_CELLTYPE
-
-    output:
-        set expName, stdout into CELL_TYPE_FIELD 
-
-    """
-    findCelltypeField.sh "$sdrfFile" "$cellsFile" "$params.cellTypeField"
-    """
-}
-
-// A corrected version for use in file names etc
-
-CELL_TYPE_FIELD.map { r-> tuple(r[0], r[1].replaceAll(" ", "_").toLowerCase()) }
-    CELL_TYPE_FIELD_FOR_TERTIARY
-    CELL_TYPE_FIELD_FOR_BUNDLE
-    CELL_TYPE_FIELD_FOR_FILTERING
-}
 // Check the update status of the experiment
 
 process checkExperimentStatus {
@@ -190,7 +168,6 @@ ES_TAGS.unique().into{
     ES_TAGS_FOR_REUSE_TERTIARY
     ES_TAGS_FOR_REUSE_AGG
     ES_TAGS_FOR_BUNDLING
-    ES_TAGS_FOR_CELL_TYPE_FIELD
 }
 
 META_WITH_SPECIES_IDF
@@ -198,16 +175,6 @@ META_WITH_SPECIES_IDF
         META_WITH_SPECIES_FOR_QUANT
         META_WITH_SPECIES_FOR_TERTIARY
     }        
-
-# Make cell type field keyed by exp/ species
-
-ES_TAGS_FOR_CELL_TYPE_FIELD
-    .combine(CELL_TYPE_FIELD)
-    .map{ r -> tuple(r[0], r[3] } 
-    .into{
-        CELL_TYPE_FIELD_FOR_TERTIARY
-        CELL_TYPE_FIELD_FOR_BUNDLE
-    }
 
 // Generate the configuration file and parse it to derive protocol. Also derive
 // an SDRF file containing only things relevant for analysis. This can be used
@@ -242,6 +209,9 @@ process generate_configs {
     
     if [ -n "$params.cellAnalysisFields" ]; then
         cells_options="\$cells_options --cell_meta_fields=\\"$params.cellAnalysisFields\\""
+        if [ -n "$params.cellTypeFields" ]; then
+          cells_options="\$cells_options --cell_type_fields=\\"$params.cellTypeFields\\""  
+        fi
     fi
     
     mkdir -p tmp
@@ -353,7 +323,33 @@ ESP_TAGS_FOR_ES_CONFIG
     .map{ r -> tuple( (r[1] + '-' + r[2]).toString(), r[4][0] ) }
     .into{
        CONF_BY_EXP_SPECIES_FOR_CELLMETA
+       CONF_BY_EXP_SPECIES_FOR_CELLTYPE
        CONF_BY_EXP_SPECIES_FOR_BUNDLE 
+    }
+
+// Check if experiment has cell types
+
+process checkCellTypeField {
+
+    input:
+        set val(esTag), file(confFile) from CONF_BY_EXP_SPECIES_FOR_CELLTYPE 
+
+    output:
+        set val(esTag), stdout into CELL_TYPE_FIELD 
+
+    """
+    cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
+    if [ \$cellTypeField='None' ]; then
+        cellTypeField=''
+    fi
+    echo -n "\$cellTypeField"
+    """
+}
+// A corrected version for use in file names etc
+
+CELL_TYPE_FIELD.map { r-> tuple(r[0], r[1].replaceAll(" ", "_").toLowerCase()) }
+    .set{
+        CELL_TYPE_FIELD_FOR_BUNDLE
     }
 
 // Extend config for protocol-wise info
@@ -1192,11 +1188,11 @@ process remove_singlets {
 // pre-existing aggregations flagged for tertiary
 
 ES_TAGS_FOR_TERTIARY                                                                                            // esTag, expName, species
-    .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, countMatrix
-    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
-    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
-    .join(CELL_TYPE_FIELD_FOR_TERTIARY)                                                                         // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet, cellTypeField
+    .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
+    .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
+    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex
+    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
+    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
 process tertiary {
@@ -1219,7 +1215,7 @@ process tertiary {
     maxRetries 3
       
     input:
-        set val(esTag), val(expName), val(species), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet), val(cellTypeField) from TERTIARY_INPUTS
+        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into NEW_TERTIARY_RESULTS
@@ -1227,7 +1223,7 @@ process tertiary {
     script:
 
         """
-            submitTertiaryWorkflow.sh "$expName" "$species" "$countMatrix" "$referenceGtf" "$cellMetadata" "$cellTypeField" "$isDroplet" "$galaxyCredentials"
+            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials"
         """
 }
 
@@ -1302,7 +1298,7 @@ process bundle {
         file('bundleLines.txt') into NEW_BUNDLES
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport
         """
 }
 
