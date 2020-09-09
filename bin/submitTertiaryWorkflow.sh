@@ -11,9 +11,8 @@ confFile=$3
 countMatrix=$4
 referenceGtf=$5
 cellMetadata=$6
-batchField=$7
-isDroplet=$8
-galaxyCredentials=$9
+isDroplet=$7
+galaxyCredentials=$8
 
 rm -rf $SCXA_RESULTS/$expName/$species/bundle
 
