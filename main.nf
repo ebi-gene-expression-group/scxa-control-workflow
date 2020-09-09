@@ -94,7 +94,7 @@ process checkCellTypeField {
         set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA_FOR_CELLTYPE
 
     output:
-        stdout CELL_TYPE_FIELD 
+        set expName, stdout into CELL_TYPE_FIELD 
 
     """
     findCelltypeField.sh "$sdrfFile" "$cellsFile" "$params.cellTypeField"
@@ -103,12 +103,11 @@ process checkCellTypeField {
 
 // A corrected version for use in file names etc
 
-CELL_TYPE_FIELD.map { r-> r.replaceAll(" ", "_").toLowerCase() }.into{
+CELL_TYPE_FIELD.map { r-> tuple(r[0], r[1].replaceAll(" ", "_").toLowerCase()) }
     CELL_TYPE_FIELD_FOR_TERTIARY
     CELL_TYPE_FIELD_FOR_BUNDLE
     CELL_TYPE_FIELD_FOR_FILTERING
 }
-
 // Check the update status of the experiment
 
 process checkExperimentStatus {
@@ -191,6 +190,7 @@ ES_TAGS.unique().into{
     ES_TAGS_FOR_REUSE_TERTIARY
     ES_TAGS_FOR_REUSE_AGG
     ES_TAGS_FOR_BUNDLING
+    ES_TAGS_FOR_CELL_TYPE_FIELD
 }
 
 META_WITH_SPECIES_IDF
@@ -198,6 +198,16 @@ META_WITH_SPECIES_IDF
         META_WITH_SPECIES_FOR_QUANT
         META_WITH_SPECIES_FOR_TERTIARY
     }        
+
+# Make cell type field keyed by exp/ species
+
+ES_TAGS_FOR_CELL_TYPE_FIELD
+    .combine(CELL_TYPE_FIELD)
+    .map{ r -> tuple(r[0], r[3] } 
+    .into{
+        CELL_TYPE_FIELD_FOR_TERTIARY
+        CELL_TYPE_FIELD_FOR_BUNDLE
+    }
 
 // Generate the configuration file and parse it to derive protocol. Also derive
 // an SDRF file containing only things relevant for analysis. This can be used
@@ -1186,6 +1196,7 @@ ES_TAGS_FOR_TERTIARY                                                            
     .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex
     .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
     .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
+    .join(CELL_TYPE_FIELD_FOR_TERTIARY)                                                                         // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet, cellTypeField
     .set{TERTIARY_INPUTS}
 
 process tertiary {
@@ -1208,8 +1219,7 @@ process tertiary {
     maxRetries 3
       
     input:
-        set val(esTag), val(expName), val(species), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
-        val(cellTypeField) from CELL_TYPE_FIELD_FOR_TERTIARY
+        set val(esTag), val(expName), val(species), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet), val(cellTypeField) from TERTIARY_INPUTS
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into NEW_TERTIARY_RESULTS
@@ -1235,6 +1245,7 @@ NEW_TERTIARY_RESULTS
     .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
     .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
     .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
+    .join(CELL_TYPE_FIELD_FOR_BUNDLE)                                                   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata, cellTypeField
     .set{BUNDLE_INPUTS}
 
 process bundle {
@@ -1248,8 +1259,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
-        val(cellTypeField) from CELL_TYPE_FIELD_FOR_BUNDLE 
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata), val(cellTypeField) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
