@@ -209,8 +209,8 @@ process generate_configs {
     
     if [ -n "$params.cellAnalysisFields" ]; then
         cells_options="\$cells_options --cell_meta_fields=\\"$params.cellAnalysisFields\\""
-        if [ -n "$params.cellTypeFields" ]; then
-          cells_options="\$cells_options --cell_type_fields=\\"$params.cellTypeFields\\""  
+        if [ -n "$params.cellTypeField" ]; then
+          cells_options="\$cells_options --cell_type_fields=\\"$params.cellTypeField\\""  
         fi
     fi
     
