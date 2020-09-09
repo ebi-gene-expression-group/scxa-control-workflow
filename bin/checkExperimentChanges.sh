@@ -116,7 +116,7 @@ else
         echo 'No completed quantification results were found' 1>&2
     fi
     
-    if [ $configDiff -eq 1 ] || [ $quantMetaDiff -eq 1 ] || [ ! $quantExists ]; then
+    if [ $quantMetaDiff -eq 1 ] || [ ! $quantExists ]; then
         experimentStatus='changed_for_quantification'
     elif [ ! $aggExists ] || [ ! $metaExists ] || [ $tertiaryMetaDiff -eq 1 ]; then
         experimentStatus='changed_for_aggregation'
