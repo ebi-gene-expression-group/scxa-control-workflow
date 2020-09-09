@@ -4,15 +4,16 @@
 
 expName=$1
 species=$2
-countMatrix=$3
-referenceGtf=$4
-cellMetadata=$5
-celltypeField=$6
-isDroplet=$7
-galaxyCredentials=$8
+confFile=$3
+countMatrix=$4
+referenceGtf=$5
+cellMetadata=$6
+batchField=$7
+isDroplet=$8
+galaxyCredentials=$9
 
 rm -rf $SCXA_RESULTS/$expName/$species/bundle
-                
+
 # Galaxy workflow wants the matrix components separately
 
 zipdir=$(unzip -qql ${countMatrix} | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
@@ -29,7 +30,6 @@ export matrix_file=${zipdir}/matrix.mtx.gz
 export genes_file=${zipdir}/genes.tsv.gz
 export barcodes_file=${zipdir}/barcodes.tsv.gz
 export cell_meta_file=$cellMetadata
-export cell_type_field=$(echo $celltypeField | sed "s/ /_/g")
 export tpm_filtering='False'
 export create_conda_env=no
 export GALAXY_CRED_FILE=$galaxyCredentials
@@ -39,6 +39,18 @@ if [ "$isDroplet" = 'True' ]; then
     export FLAVOUR=w_droplet_clustering
 else
     export FLAVOUR=w_smart-seq_clustering
+fi
+
+# Extract things we need from the conf file
+
+cellTypeField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
+if [ $cellTypeField != 'None' ]; then
+    export cell_type_field=$(echo $cellTypeField | sed "s/ /_/g")
+fi
+
+batchField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,batch)
+if [ $batchField != 'None' ]; then
+    export batch_field=$(echo $batchField | sed "s/ /_/g")
 fi
 
 # This script is under /bin of the scxa-workflows repo
