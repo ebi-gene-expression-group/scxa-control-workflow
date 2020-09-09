@@ -51,7 +51,7 @@ sanitise_field(){
     local field=$1
 
     echo -e "$field" | \
-        sed -e "s/\(Characteristic\|Factor Value\)[ ]*//g" | \
+        sed -e "s/\(Characteristics\|Factor Value\)[ ]*//g" | \
         sed -e "s/^\[//" | \
         sed -e "s/\]$//" | \
         tr '[:upper:]' '[:lower:]' | \
