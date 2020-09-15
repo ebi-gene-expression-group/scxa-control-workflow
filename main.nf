@@ -1088,8 +1088,12 @@ process condense_sdrf {
         set val(esTag), file("${expName}.${species}.condensed-sdrf.tsv") into CONDENSED 
 
     """
+    cellTypeFields=
+    if [ -n "$params.cellTypeField" ]; then
+        cellTypeFields="-t \\"$params.cellTypeField\\""
+    fi
     echo -e "exclusions: $ZOOMA_EXCLUSIONS"
-    single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS
+    single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS \$cellTypeFields
     mv ${expName}.condensed-sdrf.tsv "${expName}.${species}.condensed-sdrf.tsv"
     """        
 }
