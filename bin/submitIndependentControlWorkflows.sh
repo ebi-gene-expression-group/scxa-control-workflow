@@ -56,7 +56,7 @@ else
 fi
 
 currentJobs=$(bjobs -w | grep $controlJobSuffix)
-nJobsRunning=$(echo $currentJobs | wc -l)
+nJobsRunning=$(echo -e "$currentJobs" | wc -l)
 maxToSubmit=$((maxExpsToRun-nJobsRunning))
 
 if [ $nJobsRunning -ge $maxExpsToRun ]; then
