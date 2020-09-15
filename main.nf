@@ -1093,7 +1093,7 @@ process condense_sdrf {
         cellTypeFields="-t \\"$params.cellTypeField\\""
     fi
     echo -e "exclusions: $ZOOMA_EXCLUSIONS"
-    single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS \$cellTypeFields
+    eval "single_cell_condensed_sdrf.sh -e $expName -f $idfFile -o \$(pwd) -z $ZOOMA_EXCLUSIONS \$cellTypeFields"
     mv ${expName}.condensed-sdrf.tsv "${expName}.${species}.condensed-sdrf.tsv"
     """        
 }
