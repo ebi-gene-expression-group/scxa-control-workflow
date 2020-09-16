@@ -60,7 +60,8 @@ nJobsRunning=$(echo -e "$currentJobs" | wc -l)
 maxToSubmit=$((maxExpsToRun-nJobsRunning))
 
 if [ $nJobsRunning -ge $maxExpsToRun ]; then
-    echo "$nJobsRunning already running, submitting no more\n"
+    echo -e "$nJobsRunning already running, submitting no more\n"
+    rm $submissionMarker
     exit 0
 else
     echo "Will sumbit a maximum of $maxToSubmit jobs"
