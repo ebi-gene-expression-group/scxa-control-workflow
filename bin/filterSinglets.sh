@@ -4,9 +4,9 @@ cellMeta=$1
 cellTypeField=$2
 outFile=$3
 
-cp ${cellMeta} ${outFile}.tmp
-
 if [ ! -z "$cellTypeField" ]; then
+    cp ${cellMeta} ${outFile}.tmp
+
     echo "Cell type field found, searching for singlets to remove"
     head -n 1 ${cellMeta} | awk -F"\t" -v fieldName=$cellTypeField '{for(i=1;i<=NF;i++) if($i==fieldName) print i}' | head -n 1 | while read -r fieldNum; do
         tail -n +2 ${cellMeta} | awk -F'\t' -v fieldNum=$fieldNum '{print $fieldNum}' | sort | uniq -c | sed -e 's/^[ ]*//' | while read -r l; do 
@@ -18,7 +18,10 @@ if [ ! -z "$cellTypeField" ]; then
             fi
         done
     done
+    
+    mv ${outFile}.tmp $outFile
+else
+    cp -P $cellMeta $outFile
 fi
     
-mv ${outFile}.tmp $outFile
 
