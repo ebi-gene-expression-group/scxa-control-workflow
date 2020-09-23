@@ -106,6 +106,7 @@ process checkCellTypeField {
 CELL_TYPE_FIELD.map { r-> r.replaceAll(" ", "_").toLowerCase() }.into{
     CELL_TYPE_FIELD_FOR_TERTIARY
     CELL_TYPE_FIELD_FOR_BUNDLE
+    CELL_TYPE_FIELD_FOR_FILTERING
 }
 
 // Check the update status of the experiment
@@ -1161,13 +1162,29 @@ NEW_MATCHED_META
         MATCHED_META_FOR_BUNDLING
     }
 
+// For Tertiary, remove any singlet cell types since they upset Scanpy's differential
+
+process remove_singlets {
+
+    input:
+        set val(esTag), file(cellMetadata) from MATCHED_META_FOR_TERTIARY
+        val(cellTypeField) from CELL_TYPE_FIELD_FOR_FILTERING
+    
+    output:
+       set val(esTag), file("${esTag}.metadata.matched.filtered.tsv") into FILTERED_MATCHED_META_FOR_TERTIARY
+
+    """
+    filterSinglets.sh $cellMetadata $cellTypeField "${esTag}.metadata.matched.filtered.tsv" 
+    """
+}
+
 // Run tertiary analysis anew. Input is newly aggregated studies and
 // pre-existing aggregations flagged for tertiary
 
 ES_TAGS_FOR_TERTIARY                                                                                            // esTag, expName, species
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, countMatrix
     .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
+    .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
     .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
