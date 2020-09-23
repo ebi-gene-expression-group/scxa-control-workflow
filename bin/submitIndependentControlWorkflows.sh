@@ -41,12 +41,11 @@ done
 shift $((OPTIND-1))
 
 maxExpsToRun=$m
-export SCXA_RESULTS=$SCXA_WORKFLOW_ROOT/results
 
 # List all finished bundles for loading, exluding anything that might have been
 # added to the excluded set after completion
 
-ls $SCXA_RESULTS/*/*/bundle/MANIFEST | while read -r l; do dirname $l; done | awk -F'/' '{OFS="\t";} {print $(NF-2),$(NF-1),$0}' | while read -r m; do
+ls $SCXA_WORKFLOW_ROOT/results/*/*/bundle/MANIFEST | while read -r l; do dirname $l; done | awk -F'/' '{OFS="\t";} {print $(NF-2),$(NF-1),$0}' | while read -r m; do
     exp=$(echo -e "$m" | awk '{print $1}');
     grep "^$exp$(printf '\t')" $SCXA_RESULTS/excluded.txt > /dev/null;
     if [ $? -ne 0 ]; then
@@ -59,6 +58,7 @@ done > $SCXA_RESULTS/all.done.txt
 workflow=scxa-control-workflow
 controlJobSuffix=${SCXA_ENV}_$workflow
 
+export SCXA_RESULTS=$SCXA_WORKFLOW_ROOT/results
 submissionMarker="$SCXA_RESULTS/.submitting"
 
 if [ -e  $submissionMarker ]; then
