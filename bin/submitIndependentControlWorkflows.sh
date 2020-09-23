@@ -41,6 +41,7 @@ done
 shift $((OPTIND-1))
 
 maxExpsToRun=$m
+submitNew='yes'
 
 workflow=scxa-control-workflow
 controlJobSuffix=${SCXA_ENV}_$workflow
@@ -61,8 +62,7 @@ maxToSubmit=$((maxExpsToRun-nJobsRunning))
 
 if [ $nJobsRunning -ge $maxExpsToRun ]; then
     echo -e "$nJobsRunning already running, submitting no more\n"
-    rm $submissionMarker
-    exit 0
+    submitNew='no'
 else
     echo "Will sumbit a maximum of $maxToSubmit jobs"
 fi
@@ -115,28 +115,27 @@ while read -r idfFile; do
     fi    
 
     echo "Experiment status for $expId: $experimentStatus"
-    currentlyRunning='false'
 
-    # Check if the jobs is already running
+    if [ "$submitNew" == 'yes' ]; then
 
-    echo -e "$currentJobs" | grep "${expId}_$controlJobSuffix" > /dev/null
-    if [ $? -eq 0 ]; then
-        currentlyRunning='true'
-        echo "$expId is currently running"
-    fi
+        # Check if the jobs is already running
 
-    if [ "$currentlyRunning" = 'false' ] && [ $submitted -lt $maxToSubmit ] && [ "$experimentStatus" == 'new' ]; then
+        currentlyRunning='false'
+        echo -e "$currentJobs" | grep "${expId}_$controlJobSuffix" > /dev/null
+        if [ $? -eq 0 ]; then
+            currentlyRunning='true'
+            echo "$expId is currently running"
+        fi
 
-        echo "Submitting $expId for re-analysis"
-        $SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -e $expId -q $q -a $a -u $u -w $w 
+        if [ "$currentlyRunning" = 'false' ] && [ $submitted -lt $maxToSubmit ] && [ "$experimentStatus" == 'new' ]; then
 
-        currentJobs=$(bjobs -w | grep $controlJobSuffix)
-        submitted=$((submitted+1))
+            echo "Submitting $expId for re-analysis"
+            $SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -e $expId -q $q -a $a -u $u -w $w 
 
-    fi
+            currentJobs=$(bjobs -w | grep $controlJobSuffix)
+            submitted=$((submitted+1))
 
-    if [ $submitted -ge $maxToSubmit ]; then
-        break
+        fi
     fi
 
 done <<< "$(ls $SCXA_WORKFLOW_ROOT/metadata/*/*/*.idf.txt)"
