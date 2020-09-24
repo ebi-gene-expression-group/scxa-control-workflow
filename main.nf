@@ -1174,7 +1174,7 @@ process remove_singlets {
        set val(esTag), file("${esTag}.metadata.matched.filtered.tsv") into FILTERED_MATCHED_META_FOR_TERTIARY
 
     """
-    filterSinglets.sh $cellMetadata $cellTypeField "${esTag}.metadata.matched.filtered.tsv" 
+    filterSinglets.sh $cellMetadata "$cellTypeField" "${esTag}.metadata.matched.filtered.tsv" 
     """
 }
 
