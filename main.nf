@@ -1168,7 +1168,7 @@ ES_TAGS_FOR_TERTIARY                                                            
     .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
     .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
+    .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
     .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
