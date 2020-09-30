@@ -323,30 +323,12 @@ ESP_TAGS_FOR_ES_CONFIG
     .map{ r -> tuple( (r[1] + '-' + r[2]).toString(), r[4][0] ) }
     .into{
        CONF_BY_EXP_SPECIES_FOR_CELLMETA
+       CONF_BY_EXP_SPECIES_FOR_TERTIARY 
        CONF_BY_EXP_SPECIES_FOR_CELLTYPE
+       CONF_BY_EXP_SPECIES_FOR_SINGLETS
        CONF_BY_EXP_SPECIES_FOR_TERTIARY 
        CONF_BY_EXP_SPECIES_FOR_BUNDLE 
     }
-
-// Check if experiment has cell types
-
-process checkCellTypeField {
-
-    input:
-        set val(esTag), file(confFile) from CONF_BY_EXP_SPECIES_FOR_CELLTYPE 
-
-    output:
-        set val(esTag), stdout into CELL_TYPE_FIELD 
-
-    """
-    source $SCXA_BIN/utils.sh
-    cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
-    if [ \$cellTypeField='None' ]; then
-        cellTypeField=''
-    fi
-    sanitise_field "\$cellTypeField"
-    """
-}
 
 // Extend config for protocol-wise info
 
@@ -1169,14 +1151,13 @@ NEW_MATCHED_META
 process remove_singlets {
 
     input:
-        set val(esTag), file(cellMetadata) from MATCHED_META_FOR_TERTIARY
-        val(cellTypeField) from CELL_TYPE_FIELD_FOR_FILTERING
+        set val(esTag), file(cellMetadata), file(confFile) from MATCHED_META_FOR_TERTIARY.join(CONF_BY_EXP_SPECIES_FOR_SINGLETS)
     
     output:
        set val(esTag), file("${esTag}.metadata.matched.filtered.tsv") into FILTERED_MATCHED_META_FOR_TERTIARY
 
     """
-    filterSinglets.sh $cellMetadata "$cellTypeField" "${esTag}.metadata.matched.filtered.tsv" 
+    filterSinglets.sh $cellMetadata "$confFile" "${esTag}.metadata.matched.filtered.tsv" 
     """
 }
 
@@ -1221,6 +1202,28 @@ process tertiary {
         """
             submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials"
         """
+}
+
+// Check if experiment has cell types. The only reason we're extracting this in
+// a process rather than letting the process do so is that we need to know the
+// value to name the output in the bundle process.
+
+process checkCellTypeField {
+
+    input:
+        set val(esTag), file(confFile) from CONF_BY_EXP_SPECIES_FOR_CELLTYPE 
+
+    output:
+        set val(esTag), stdout into CELL_TYPE_FIELD 
+
+    """
+    source $SCXA_BIN/utils.sh
+    cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
+    if [ \$cellTypeField='None' ]; then
+        cellTypeField=''
+    fi
+    sanitise_field "\$cellTypeField"
+    """
 }
 
 // Bundling requires pretty much everything, so we need to gather a few
