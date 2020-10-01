@@ -99,7 +99,7 @@ if [ $? -eq 0 ]; then
     fi
 
     if [ -e 'celltype_markers.tsv' ]; then
-        mv celltype_markers.tsv markers/${celltypeField}_markers.tsv
+        mv celltype_markers.tsv markers/${cell_type_field}_markers.tsv
     fi
 
     rm -f state_file
