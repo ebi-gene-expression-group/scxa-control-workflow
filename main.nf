@@ -1298,7 +1298,7 @@ process bundle {
         file("bundle/$projectFile")
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
         """
 }
 
