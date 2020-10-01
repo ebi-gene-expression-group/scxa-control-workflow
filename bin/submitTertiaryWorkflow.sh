@@ -90,7 +90,7 @@ if [ $? -eq 0 ]; then
     mkdir -p markers
     set +e
                     
-    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_clusters_resolution)
+    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_louvain_resolution)
     if [ $? -ne 0 ]; then
         echo "No marker files present"
         touch markers/NOMARKERS
