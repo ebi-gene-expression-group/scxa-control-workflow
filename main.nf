@@ -671,10 +671,10 @@ process reuse_tertiary {
         set val(esTag), val(expName), val(species) from NOT_CHANGED_FOR_TERTIARY_FOR_REUSE_TERTIARY.join(ES_TAGS_FOR_REUSE_TERTIARY)
     
     output:
-        set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into REUSED_TERTIARY_RESULTS
+        set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into REUSED_TERTIARY_RESULTS
 
     """
-        retrieveStoredFiles.sh $expName $species scanpy "matrices clusters_for_bundle.txt umap tsne markers clustering_software_versions.txt"
+        retrieveStoredFiles.sh $expName $species scanpy "matrices clusters_for_bundle.txt umap tsne markers clustering_software_versions.txt project.h5ad"
     """
 }
 
