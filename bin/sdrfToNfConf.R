@@ -1127,7 +1127,11 @@ configs <- lapply(species_list, function(species){
       # This is a droplet protocol, expect cell type info to be in the cells
       # file. We relate this back to our protocol-wise SDRF dataframe to match
       # cells to protocol
-    
+   
+      if ( ! is.null(batch.col)){
+        cells[[batch.col]] <- sdrf[match(cell_run_techrep_ids, species.protocol.sdrf[[cell.relate.col]]), batch.col ]
+      }
+
       cells.by.species.protocol[[species]][[protocol]] <<- cells[cell_run_techrep_ids %in% species.protocol.sdrf[[cell.relate.col]], cell.meta.cols, drop = FALSE]
     }else{
       # This is not a droplet protocol, or does not have a cells file, expect
