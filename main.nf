@@ -1295,7 +1295,7 @@ process bundle {
         file('bundle/filtered_normalised_stats.csv')
         file('bundle/tpm_filtered_stats.csv') optional true
         file('bundleLines.txt') into NEW_BUNDLES
-        file("bundle/$projectFile")
+        file("bundle/${expName}.project.h5ad")
         
         """
             submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
