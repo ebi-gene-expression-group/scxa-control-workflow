@@ -86,29 +86,6 @@ SDRF_IDF
         COMPILED_METADATA_FOR_CELLTYPE
     }
 
-// Check if experiment has cell types, and pick field to use
-
-process checkCellTypeField {
-
-    input:
-        set val(expName), file(idfFile), file(sdrfFile), file(cellsFile) from COMPILED_METADATA_FOR_CELLTYPE
-
-    output:
-        stdout CELL_TYPE_FIELD 
-
-    """
-    findCelltypeField.sh "$sdrfFile" "$cellsFile" "$params.cellTypeField"
-    """
-}
-
-// A corrected version for use in file names etc
-
-CELL_TYPE_FIELD.map { r-> r.replaceAll(" ", "_").toLowerCase() }.into{
-    CELL_TYPE_FIELD_FOR_TERTIARY
-    CELL_TYPE_FIELD_FOR_BUNDLE
-    CELL_TYPE_FIELD_FOR_FILTERING
-}
-
 // Check the update status of the experiment
 
 process checkExperimentStatus {
@@ -232,6 +209,9 @@ process generate_configs {
     
     if [ -n "$params.cellAnalysisFields" ]; then
         cells_options="\$cells_options --cell_meta_fields=\\"$params.cellAnalysisFields\\""
+        if [ -n "$params.cellTypeField" ]; then
+          cells_options="\$cells_options --cell_type_fields=\\"$params.cellTypeField\\""  
+        fi
     fi
     
     mkdir -p tmp
@@ -343,6 +323,9 @@ ESP_TAGS_FOR_ES_CONFIG
     .map{ r -> tuple( (r[1] + '-' + r[2]).toString(), r[4][0] ) }
     .into{
        CONF_BY_EXP_SPECIES_FOR_CELLMETA
+       CONF_BY_EXP_SPECIES_FOR_CELLTYPE
+       CONF_BY_EXP_SPECIES_FOR_SINGLETS
+       CONF_BY_EXP_SPECIES_FOR_TERTIARY 
        CONF_BY_EXP_SPECIES_FOR_BUNDLE 
     }
 
@@ -687,10 +670,10 @@ process reuse_tertiary {
         set val(esTag), val(expName), val(species) from NOT_CHANGED_FOR_TERTIARY_FOR_REUSE_TERTIARY.join(ES_TAGS_FOR_REUSE_TERTIARY)
     
     output:
-        set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into REUSED_TERTIARY_RESULTS
+        set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into REUSED_TERTIARY_RESULTS
 
     """
-        retrieveStoredFiles.sh $expName $species scanpy "matrices clusters_for_bundle.txt umap tsne markers clustering_software_versions.txt"
+        retrieveStoredFiles.sh $expName $species scanpy "matrices clusters_for_bundle.txt umap tsne markers clustering_software_versions.txt project.h5ad"
     """
 }
 
@@ -1167,14 +1150,13 @@ NEW_MATCHED_META
 process remove_singlets {
 
     input:
-        set val(esTag), file(cellMetadata) from MATCHED_META_FOR_TERTIARY
-        val(cellTypeField) from CELL_TYPE_FIELD_FOR_FILTERING
+        set val(esTag), file(cellMetadata), file(confFile) from MATCHED_META_FOR_TERTIARY.join(CONF_BY_EXP_SPECIES_FOR_SINGLETS)
     
     output:
        set val(esTag), file("${esTag}.metadata.matched.filtered.tsv") into FILTERED_MATCHED_META_FOR_TERTIARY
 
     """
-    filterSinglets.sh $cellMetadata "$cellTypeField" "${esTag}.metadata.matched.filtered.tsv" 
+    filterSinglets.sh $cellMetadata "$confFile" "${esTag}.metadata.matched.filtered.tsv" 
     """
 }
 
@@ -1182,10 +1164,11 @@ process remove_singlets {
 // pre-existing aggregations flagged for tertiary
 
 ES_TAGS_FOR_TERTIARY                                                                                            // esTag, expName, species
-    .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, countMatrix
-    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
-    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
+    .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
+    .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
+    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex
+    .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
+    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
 process tertiary {
@@ -1208,17 +1191,38 @@ process tertiary {
     maxRetries 3
       
     input:
-        set val(esTag), val(expName), val(species), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
-        val(cellTypeField) from CELL_TYPE_FIELD_FOR_TERTIARY
+        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
 
     output:
-        set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt') into NEW_TERTIARY_RESULTS
+        set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into NEW_TERTIARY_RESULTS
 
     script:
 
         """
-            submitTertiaryWorkflow.sh "$expName" "$species" "$countMatrix" "$referenceGtf" "$cellMetadata" "$cellTypeField" "$isDroplet" "$galaxyCredentials"
+            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials"
         """
+}
+
+// Check if experiment has cell types. The only reason we're extracting this in
+// a process rather than letting the process do so is that we need to know the
+// value to name the output in the bundle process.
+
+process checkCellTypeField {
+
+    input:
+        set val(esTag), file(confFile) from CONF_BY_EXP_SPECIES_FOR_CELLTYPE 
+
+    output:
+        set val(esTag), stdout into CELL_TYPE_FIELD 
+
+    """
+    source $SCXA_BIN/utils.sh
+    cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
+    if [ \$cellTypeField='None' ]; then
+        cellTypeField=''
+    fi
+    sanitise_field "\$cellTypeField"
+    """
 }
 
 // Bundling requires pretty much everything, so we need to gather a few
@@ -1226,15 +1230,16 @@ process tertiary {
 // with re-used tertiary analysis flagged for re-bundling
 
 NEW_TERTIARY_RESULTS                                                
-    .concat(TO_REBUNDLE.join(REUSED_TERTIARY_RESULTS))                                  // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport
-    .join(ES_TAGS_FOR_BUNDLING)                                                         // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species
-    .join(PROTOCOLS_BY_EXP_SPECIES)                                                     // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList
-    .join(CONF_BY_EXP_SPECIES_FOR_BUNDLE)                                               // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile
-    .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix
-    .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
-    .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
-    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
-    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
+    .concat(TO_REBUNDLE.join(REUSED_TERTIARY_RESULTS))                                  // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile
+    .join(ES_TAGS_FOR_BUNDLING)                                                         // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species
+    .join(PROTOCOLS_BY_EXP_SPECIES)                                                     // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList
+    .join(CONF_BY_EXP_SPECIES_FOR_BUNDLE)                                               // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile
+    .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix
+    .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
+    .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
+    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
+    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
+    .join(CELL_TYPE_FIELD)                                                   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata, cellTypeField
     .set{BUNDLE_INPUTS}
 
 process bundle {
@@ -1248,8 +1253,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
-        val(cellTypeField) from CELL_TYPE_FIELD_FOR_BUNDLE 
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata), val(cellTypeField) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
@@ -1290,9 +1294,10 @@ process bundle {
         file('bundle/filtered_normalised_stats.csv')
         file('bundle/tpm_filtered_stats.csv') optional true
         file('bundleLines.txt') into NEW_BUNDLES
+        file("bundle/${expName}.project.h5ad")
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
         """
 }
 

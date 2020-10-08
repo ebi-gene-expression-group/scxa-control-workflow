@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
 cellMeta=$1
-cellTypeField=$2
+confFile=$2
 outFile=$3
 
-if [ ! -z "$cellTypeField" ]; then
+# Extract things we need from the conf file
+
+cellTypeField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
+
+if [ "$cellTypeField" != 'None' ]; then
     cp ${cellMeta} ${outFile}.tmp
 
     echo "Cell type field found, searching for singlets to remove"

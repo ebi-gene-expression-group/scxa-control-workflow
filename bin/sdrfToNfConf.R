@@ -26,6 +26,7 @@ option_list <- list(
   make_option(c("-i", "--idf"), type="character", dest="idf_file", default=NULL, help="IDF file name"),
   make_option(c("-e", "--cells"), type="character", dest="cells_file", default=NULL, help="Cells file name (droplet experiments only)"),
   make_option(c("-f", "--cell_meta_fields"), type="character", dest="cell_meta_fields", default=NULL, help="Comma-separated list of cell metadata fields important for analysis"),
+  make_option(c("-t", "--cell_type_fields"), type="character", dest="cell_type_fields", default=NULL, help="Comma-separated list of possible fields for cell type"),
   make_option(c("--sc"), action="store_true",default=FALSE,dest="is_sc",help="Single cell experiment?. Default is FALSE."),
   make_option(c("-c","--check_only"),action="store_true",dest="check_only",default=FALSE,help="Checks the sdrf/idf but skips the generation of the configuration file."),
   make_option(c("-v","--verbose"),action="store_true",dest="verbose",default=FALSE,help="Produce verbose output."),
@@ -202,24 +203,40 @@ cell.count.col <- getActualColnames('cell count', sdrf)
 hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
 controlled.access.col <- getActualColnames('controlled access', sdrf)
-
+batch.col <- NULL
 
 # We may have been supplied with some cell-wise fields to extract
 
 cell.meta.cols <- NULL
+cell.type.col <- NULL
 
 if (! is.null(opt$cell_meta_fields)){
-    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ','))
 
     if ( ! is.null(opt$cells_file)){
+        cell.meta.source <- cells
         cell.id.col <- getActualColnames('cell id', cells)
-        cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, cells)))
     }else{
+        cell.meta.source <- sdrf
         cell.id.col <- run.col
-        cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, sdrf)))
     }
+    
+    # See if cell type fields specifically have been supplied
 
-    cell.meta.cols <- c(cell.id.col,  cell_meta_fields[ ! is.null(cell_meta_fields)])
+    if (! is.null(opt$cell_type_fields)){
+        cell_type_fields <- unlist(strsplit(opt$cell_type_fields, ','))
+        
+        for (ctf in cell_type_fields){
+            actf <- getActualColnames(ctf, cell.meta.source)
+            if (! is.null(actf)){
+                cell.type.col <- actf
+                break
+            }
+        }
+    }
+    
+    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ','))
+    cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, cell.meta.source)))
+    cell.meta.cols <- unique(c(cell.id.col, cell.type.col, cell_meta_fields[ ! is.null(cell_meta_fields)]))
 }
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
@@ -456,6 +473,13 @@ if ( !is.null(opt$idf_file) ) {
       perror("IDF error in EAAdditionalAttributes:",paste(idf.attrs[not.present],sep=",")," not found in SDRF")
       q(status=1)
     }
+  }
+
+  # Retrieve batch field if present
+
+  if ( "batcheffect" %in% rownames(idf)){
+    batch.col <- getActualColnames(idf["batcheffect",1], sdrf)
+    cell.meta.cols <- c(cell.meta.cols, batch.col)
   }
 }
 
@@ -1103,7 +1127,11 @@ configs <- lapply(species_list, function(species){
       # This is a droplet protocol, expect cell type info to be in the cells
       # file. We relate this back to our protocol-wise SDRF dataframe to match
       # cells to protocol
-    
+   
+      if ( ! is.null(batch.col)){
+        cells[[batch.col]] <- sdrf[match(cell_run_techrep_ids, species.protocol.sdrf[[cell.relate.col]]), batch.col ]
+      }
+
       cells.by.species.protocol[[species]][[protocol]] <<- cells[cell_run_techrep_ids %in% species.protocol.sdrf[[cell.relate.col]], cell.meta.cols, drop = FALSE]
     }else{
       # This is not a droplet protocol, or does not have a cells file, expect
@@ -1119,6 +1147,20 @@ configs <- lapply(species_list, function(species){
     }
     config_fields['cell_count'] <- cell.count.col
 
+    # Re-save the tweaked SDRF for output
+    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, config_fields]        
+
+    # Add cell metadata fields we need to know about, but which didn't need to
+    # go in the tweaked SDRF (i.e. they're relevant for tertiary analysis)
+
+    if ( ! is.null(batch.col)){
+        config_fields['batch'] <- batch.col
+    }
+
+    if ( ! is.null(cell.type.col)){
+        config_fields['cell_type'] <- cell.type.col
+    }
+   
     # Create the config fields section
 
     config <- c(
@@ -1127,9 +1169,6 @@ configs <- lapply(species_list, function(species){
       unlist(lapply(names(config_fields), function(x) paste0("        ", x," = '", config_fields[x], "'"))),
       '    }\n'
     )
-
-    # Re-save the tweaked SDRF for output
-    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, config_fields]        
     
     # Put spikes in if present
 

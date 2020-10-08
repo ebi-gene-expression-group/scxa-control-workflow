@@ -1,18 +1,21 @@
 #!/usr/bin/env bash
 
+scriptDir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+source $scriptDir/utils.sh
+
 # Submit a workflow for Galaxy
 
 expName=$1
 species=$2
-countMatrix=$3
-referenceGtf=$4
-cellMetadata=$5
-celltypeField=$6
+confFile=$3
+countMatrix=$4
+referenceGtf=$5
+cellMetadata=$6
 isDroplet=$7
 galaxyCredentials=$8
 
 rm -rf $SCXA_RESULTS/$expName/$species/bundle
-                
+
 # Galaxy workflow wants the matrix components separately
 
 zipdir=$(unzip -qql ${countMatrix} | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
@@ -29,7 +32,6 @@ export matrix_file=${zipdir}/matrix.mtx.gz
 export genes_file=${zipdir}/genes.tsv.gz
 export barcodes_file=${zipdir}/barcodes.tsv.gz
 export cell_meta_file=$cellMetadata
-export cell_type_field=$(echo $celltypeField | sed "s/ /_/g")
 export tpm_filtering='False'
 export create_conda_env=no
 export GALAXY_CRED_FILE=$galaxyCredentials
@@ -39,6 +41,20 @@ if [ "$isDroplet" = 'True' ]; then
     export FLAVOUR=w_droplet_clustering
 else
     export FLAVOUR=w_smart-seq_clustering
+fi
+
+# Extract things we need from the conf file
+
+cellTypeField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
+if [ "$cellTypeField" != 'None' ]; then
+    export cell_type_field=$(sanitise_field "$cellTypeField")
+    echo "Cell type field: $cell_type_field"
+fi
+
+batchField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,batch)
+if [ "$batchField" != 'None' ]; then
+    export batch_field=$(sanitise_field "$batchField")
+    echo "Batch field: $batch_field"
 fi
 
 # This script is under /bin of the scxa-workflows repo
@@ -74,7 +90,7 @@ if [ $? -eq 0 ]; then
     mkdir -p markers
     set +e
                     
-    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_clusters_resolution)
+    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_louvain_resolution)
     if [ $? -ne 0 ]; then
         echo "No marker files present"
         touch markers/NOMARKERS
@@ -83,7 +99,7 @@ if [ $? -eq 0 ]; then
     fi
 
     if [ -e 'celltype_markers.tsv' ]; then
-        mv celltype_markers.tsv markers/${celltypeField}_markers.tsv
+        mv celltype_markers.tsv markers/${cell_type_field}_markers.tsv
     fi
 
     rm -f state_file
