@@ -111,7 +111,7 @@ while read -r idfFile; do
       
         # Notes: checkExperimentStatus.sh is the same as that used by the
         # Nextflow workflow, so the logic is kept consistent   
-        experimentStatus=$(checkExperimentStatus.sh $expId $sdrfFile $cellsFile $overwrite)
+        experimentStatus=$(checkExperimentStatus.sh $expId $idfFile $sdrfFile $cellsFile $overwrite)
     fi    
 
     echo "Experiment status for $expId: $experimentStatus"

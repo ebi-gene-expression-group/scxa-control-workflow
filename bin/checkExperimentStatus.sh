@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 expName=$1
-sdrfFile=$2
-cellsFile=$3
-overwrite=$4
+idfFile=$2
+sdrfFile=$3
+cellsFile=$4
+overwrite=$5
 
 # Start by assuming a new experiment
 
@@ -21,7 +22,7 @@ fi
 if [ -n "$bundleManifests" ] && [ "$overwrite" != 'yes' ]; then
     newExperiment=0
     while read -r bundleManifest; do
-        if [[ $sdrfFile -nt "$bundleManifest" || ( $cells_filesize -gt 0 && $cellsFile -nt "$bundleManifest" ) ]]; then
+        if [[ $idfFile -nt "$bundleManifest" || $sdrfFile -nt "$bundleManifest" || ( $cells_filesize -gt 0 && $cellsFile -nt "$bundleManifest" ) ]]; then
             newExperiment=1
             break
         fi

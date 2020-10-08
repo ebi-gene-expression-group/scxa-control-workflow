@@ -99,7 +99,7 @@ process checkExperimentStatus {
         set val(expName), file(idfFile), file(sdrfFile), file(cellsFile), stdout into COMPILED_METADATA_WITH_STATUS
         
     """
-    checkExperimentStatus.sh $expName $sdrfFile $cellsFile $overwrite
+    checkExperimentStatus.sh $expName $idfFile $sdrfFile $cellsFile $overwrite
     """
 }
 
