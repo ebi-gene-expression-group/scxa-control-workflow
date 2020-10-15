@@ -50,7 +50,7 @@ pattern_file_exists(){
 sanitise_field(){
     local field=$1
 
-    echo -e "$field" | \
+    echo -en "$field" | \
         tr '[:upper:]' '[:lower:]' | \
         sed -e "s/\(characteristics\|factor[ ]*value\)[ ]*//g" | \
         sed -e "s/^\[//" | \

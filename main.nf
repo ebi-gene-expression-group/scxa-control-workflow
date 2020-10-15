@@ -1218,7 +1218,7 @@ process checkCellTypeField {
     """
     source $SCXA_BIN/utils.sh
     cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
-    if [ \$cellTypeField='None' ]; then
+    if [ "\$cellTypeField" = 'None' ]; then
         cellTypeField=''
     fi
     sanitise_field "\$cellTypeField"
