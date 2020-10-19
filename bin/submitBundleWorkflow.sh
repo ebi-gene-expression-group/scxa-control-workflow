@@ -9,17 +9,16 @@ referenceGtf=$6
 tertiaryWorkflow=$7
 condensedSdrf=$8
 cellMeta=$9
-cellTypeField=${10}
-rawMatrix=${11}
-filteredMatrix=${12}
-normalisedMatrix=${13}
-tpmMatrix=${14}
-clusters=${15}
-markersDir=${16}
-tsneDir=${17}
-umapDir=${18}
-softwareReport=${19}
-projectFile=${20}
+rawMatrix=${10}
+filteredMatrix=${11}
+normalisedMatrix=${12}
+tpmMatrix=${13}
+clusters=${14}
+markersDir=${15}
+tsneDir=${16}
+umapDir=${17}
+softwareReport=${18}
+projectFile=${19}
 
 RESULTS_ROOT=$PWD
 SUBDIR="$expName/$species/bundle"     
@@ -51,7 +50,6 @@ nextflow run \
     --resultsRoot $RESULTS_ROOT \
     --protocolList ${protocolList} \
     --cellMetadata ${cellMeta} \
-    --cellTypeField ${cellTypeField} \
     --condensedSdrf ${condensedSdrf} \
     --rawMatrix ${rawMatrix} $TPM_OPTIONS \
     --referenceFasta $referenceFasta \
