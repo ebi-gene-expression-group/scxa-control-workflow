@@ -90,16 +90,12 @@ if [ $? -eq 0 ]; then
     mkdir -p markers
     set +e
                     
-    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_louvain_resolution)
+    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_resolution)
     if [ $? -ne 0 ]; then
         echo "No marker files present"
         touch markers/NOMARKERS
     else
         mv $marker_files markers
-    fi
-
-    if [ -e 'celltype_markers.tsv' ]; then
-        mv celltype_markers.tsv markers/${cell_type_field}_markers.tsv
     fi
 
     rm -f state_file
