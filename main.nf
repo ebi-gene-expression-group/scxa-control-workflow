@@ -1203,28 +1203,6 @@ process tertiary {
         """
 }
 
-// Check if experiment has cell types. The only reason we're extracting this in
-// a process rather than letting the process do so is that we need to know the
-// value to name the output in the bundle process.
-
-process checkCellTypeField {
-
-    input:
-        set val(esTag), file(confFile) from CONF_BY_EXP_SPECIES_FOR_CELLTYPE 
-
-    output:
-        set val(esTag), stdout into CELL_TYPE_FIELD 
-
-    """
-    source $SCXA_BIN/utils.sh
-    cellTypeField=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,cell_type)
-    if [ "\$cellTypeField" = 'None' ]; then
-        cellTypeField=''
-    fi
-    sanitise_field "\$cellTypeField"
-    """
-}
-
 // Bundling requires pretty much everything, so we need to gather a few
 // channels. Input experiments are those with new tertiary analysis, plus those
 // with re-used tertiary analysis flagged for re-bundling
@@ -1239,7 +1217,6 @@ NEW_TERTIARY_RESULTS
     .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
     .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
     .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
-    .join(CELL_TYPE_FIELD)                                                   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata, cellTypeField
     .set{BUNDLE_INPUTS}
 
 process bundle {
@@ -1253,7 +1230,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata), val(cellTypeField) from BUNDLE_INPUTS
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
@@ -1287,7 +1264,6 @@ process bundle {
         file('bundle/tsne_perplexity_*.tsv')
         file('bundle/umap_n_neighbors_*.tsv')
         file('bundle/markers_*.tsv') optional true
-        file("bundle/${cellTypeField}_markers.tsv") optional true
         file('bundle/clusters_for_bundle.txt')
         file('bundle/MANIFEST')
         file('bundle.log')
@@ -1297,7 +1273,7 @@ process bundle {
         file("bundle/${expName}.project.h5ad")
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$cellTypeField" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
         """
 }
 
