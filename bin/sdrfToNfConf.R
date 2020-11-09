@@ -407,8 +407,12 @@ if ( !is.null(opt$idf_file) ) {
   
   # Additional IDF checks for Atlas
   
-  if ( ! tolower(idf["experimenttype",1]) %in% c("baseline","differential") ){
-    perror("IDF error in EAExperimentType: Invalid value (",idf["experimenttype",1],") expected baseline or differential")
+  exp_types <- idf["experimenttype",]
+  exp_types <- exp_types[exp_types != '']
+  invalid_exp_types <- exp_types[! exp_types %in% c("baseline","differential","trajectory")]
+
+  if (length(invalid_exp_types) > 0){
+    perror("IDF error in EAExperimentType, the following types are invalid:", paste(invalid_exp_types, collapse=','))
     q(status=1)
   }
    
