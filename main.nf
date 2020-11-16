@@ -324,7 +324,6 @@ ESP_TAGS_FOR_ES_CONFIG
     .into{
        CONF_BY_EXP_SPECIES_FOR_CELLMETA
        CONF_BY_EXP_SPECIES_FOR_CELLTYPE
-       CONF_BY_EXP_SPECIES_FOR_SINGLETS
        CONF_BY_EXP_SPECIES_FOR_TERTIARY 
        CONF_BY_EXP_SPECIES_FOR_BUNDLE 
     }
@@ -1145,21 +1144,6 @@ NEW_MATCHED_META
         MATCHED_META_FOR_BUNDLING
     }
 
-// For Tertiary, remove any singlet cell types since they upset Scanpy's differential
-
-process remove_singlets {
-
-    input:
-        set val(esTag), file(cellMetadata), file(confFile) from MATCHED_META_FOR_TERTIARY.join(CONF_BY_EXP_SPECIES_FOR_SINGLETS)
-    
-    output:
-       set val(esTag), file("${esTag}.metadata.matched.filtered.tsv") into FILTERED_MATCHED_META_FOR_TERTIARY
-
-    """
-    filterSinglets.sh $cellMetadata "$confFile" "${esTag}.metadata.matched.filtered.tsv" 
-    """
-}
-
 // Run tertiary analysis anew. Input is newly aggregated studies and
 // pre-existing aggregations flagged for tertiary
 
@@ -1167,7 +1151,7 @@ ES_TAGS_FOR_TERTIARY                                                            
     .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
     .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(FILTERED_MATCHED_META_FOR_TERTIARY)                                                                   // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
+    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
     .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
