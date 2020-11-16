@@ -1316,6 +1316,8 @@ NOT_UPDATED_BUNDLES
 process cleanup {
     
     executor 'local'
+
+    errorStrategy 'ignore'
     
     publishDir "$SCXA_RESULTS", mode: 'copy', overwrite: true
     
