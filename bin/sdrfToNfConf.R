@@ -408,7 +408,7 @@ if ( !is.null(opt$idf_file) ) {
   # Additional IDF checks for Atlas
   
   exp_types <- idf["experimenttype",]
-  exp_types <- exp_types[exp_types != '']
+  exp_types <- exp_types[exp_types != '' && ! is.na(exp_types)]
   invalid_exp_types <- exp_types[! exp_types %in% c("baseline","differential","trajectory")]
 
   if (length(invalid_exp_types) > 0){
