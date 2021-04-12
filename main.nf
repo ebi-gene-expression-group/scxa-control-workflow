@@ -557,6 +557,7 @@ EXPERIMENTS_FOR_ANALYSIS.join(ESP_TAGS_FOR_QUANT_CHECK).groupTuple( by: [2,3]).c
 }
 
 TO_QUANTIFY
+    .transpose()
     .map{ r -> tuple( r[0] ) }
     .into{
         TO_QUANTIFY_FOR_QUANT
