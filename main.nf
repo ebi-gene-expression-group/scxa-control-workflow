@@ -16,7 +16,7 @@ if ( params.containsKey('galaxyCredentials')){
     galaxyCredentials = params.galaxyCredentials
 }
 galaxyInstance = ''
-if ( params.containsKey('galaxyinstance')){
+if ( params.containsKey('galaxyInstance')){
     galaxyInstance = params.galaxyInstance
 }
 
