@@ -15,6 +15,10 @@ galaxyCredentials = ''
 if ( params.containsKey('galaxyCredentials')){
     galaxyCredentials = params.galaxyCredentials
 }
+galaxyInstance = ''
+if ( params.containsKey('galaxyinstance')){
+    galaxyInstance = params.galaxyInstance
+}
 
 skipQuantification = 'no'
 skipAggregation = 'no'
@@ -1184,7 +1188,7 @@ process tertiary {
     script:
 
         """
-            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials"
+            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
         """
 }
 
