@@ -13,6 +13,7 @@ referenceGtf=$5
 cellMetadata=$6
 isDroplet=$7
 galaxyCredentials=$8
+galaxyInstance=${9:-ebi_cluster_ge_user}
 
 rm -rf $SCXA_RESULTS/$expName/$species/bundle
 
@@ -35,7 +36,7 @@ export cell_meta_file=$cellMetadata
 export tpm_filtering='False'
 export create_conda_env=no
 export GALAXY_CRED_FILE=$galaxyCredentials
-export GALAXY_INSTANCE=ebi_cluster_ge_user
+export GALAXY_INSTANCE=$galaxyInstance
        
 if [ "$isDroplet" = 'True' ]; then
     export FLAVOUR=w_droplet_clustering
