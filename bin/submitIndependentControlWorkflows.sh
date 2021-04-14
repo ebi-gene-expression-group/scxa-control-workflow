@@ -158,10 +158,12 @@ done > $SCXA_RESULTS/all.done.txt
 cat $SCXA_RESULTS/all.done.txt | while read -r l; do
     expName=$(echo "$l" | awk '{print $1}')
     species=$(echo "$l" | awk '{print $2}')
-        
-    nohup rm -rf $SCXA_WORKFLOW_ROOT/work/scxa-control-workflow_$expName &
-    nohup rm -rf $SCXA_WORKFLOW_ROOT/nextflow/${expName}_prod_scxa-control-workflow &
-    nohup rm -rf $SCXA_WORKFLOW_ROOT/nextflow/${expName} &
+    
+    for tmpWfDir in work/scxa-control-workflow_$expName nextflow/${expName}_prod_scxa-control-workflow nextflow/${expName}; do
+        if [ -d "${SCXA_WORKFLOW_ROOT}/${tmpWfDir}" ]; then
+            nohup rm -rf ${SCXA_WORKFLOW_ROOT}/${tmpWfDir} &
+        fi
+    done
 done
 
 rm $submissionMarker
