@@ -136,6 +136,9 @@ else
     echo "Galaxy credentials at $GALAXY_CREDENTIALS"
 fi
 galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
+if [ -n "$GALAXY_INSTANCE" ]; then
+    galaxyCredentialsPart="$galaxyCredentialsPart --galaxyInstance $GALAXY_INSTANCE"
+fi
 
 nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
 echo "$nextflowCommand"
