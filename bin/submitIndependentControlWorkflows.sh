@@ -150,4 +150,18 @@ ls $SCXA_WORKFLOW_ROOT/results/*/*/bundle/MANIFEST | while read -r l; do dirname
         echo -e "$m";
     fi;
 done > $SCXA_RESULTS/all.done.txt
+
+# Now do all the cleanup for completed experiments that couldn't be done from
+# within the workflow. We'll have to tweak this if we ever allow multi-species
+# experiments, since the dirs are not currently tagged by species.
+
+cat $SCXA_RESULTS/all.done.txt | while read -r l; do
+    expName=$(echo "$l" | awk '{print $1}')
+    species=$(echo "$l" | awk '{print $2}')
+        
+    nohup rm -rf $SCXA_WORKFLOW_ROOT/work/scxa-control-workflow_$expName &
+    nohup rm -rf $SCXA_WORKFLOW_ROOT/nextflow/${expName}_prod_scxa-control-workflow &
+    nohup rm -rf $SCXA_WORKFLOW_ROOT/nextflow/${expName} &
+done
+
 rm $submissionMarker
