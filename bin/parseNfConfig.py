@@ -20,6 +20,7 @@ with open(args.param_file, 'r') as nf_file:
         if (not 'includeConfig' in line) and (not '}' in line) and (not line.startswith('//')):
             line = line.replace('{', ':')
             line = line.replace('=', ':')
+            line = line.replace('//', '#')
             nf_content += line
 
 # Parse content as YAML

@@ -199,6 +199,7 @@ sc.quality.col <- getActualColnames('single cell quality', sdrf)
 libary.layout.col <- getActualColnames('library layout', sdrf)
 spike.in.col <- getActualColnames('spike_in', sdrf)
 fastq.col <- getActualColnames('fastq uri', sdrf)
+sra.col <- getActualColnames('sra uri', sdrf)
 cell.count.col <- getActualColnames('cell count', sdrf)
 hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
@@ -251,6 +252,7 @@ sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-s
 
 is.singlecell <- FALSE
 is.hca <- ! is.null(hca.bundle.uuid.col)
+is.sra <- ! is.null(sra.col)
 
 if ( ! is.null(protocol.col)){
 
@@ -296,10 +298,9 @@ for (comp in names(compare)){
     q(status=1)
   }
 }
-
 ## Verify presence of mandatory columns (SDRF) and regularise names
 
-cols.for.download <- ifelse(is.hca, c(hca.bundle.uuid.col, hca.bundle.version.col) , fastq.col)
+cols.for.download <- ifelse(is.hca, c(hca.bundle.uuid.col, hca.bundle.version.col) , ifelse(is.sra, sra.col, fastq.col))
 expected.cols <- c("Source Name")
 expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTION","LIBRARY_LAYOUT",cols.for.download)
 expected.characteristic.cols <- c()
@@ -1027,7 +1028,7 @@ configs <- lapply(species_list, function(species){
       umi_field <- getActualColnames('umi barcode read', sdrf)
       cb_field <- getActualColnames('cell barcode read', sdrf)
       
-      if (! is.hca){
+      if (! any(is.hca, is.sra)){
         uri_cols <- which(colnames(sdrf) == fastq.col)
         if (length(uri_cols) < 2 ){
           perror('Less than 2 FASTQ URI fields supplied for droplet experiment- expect at least two, probably one for barcode/UMI, one for cDNA.')
@@ -1070,6 +1071,8 @@ configs <- lapply(species_list, function(species){
 
         if (is.hca){
           species.protocol.sdrf[[uri_field]] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], files, sep='/')
+        }else if(is.sra){
+          species.protocol.sdrf[[uri_field]] <- paste('sra', species.protocol.sdrf[[sra.col]], files, sep='/')
         }else{
 
           nlibs <- nrow(species.protocol.sdrf)
