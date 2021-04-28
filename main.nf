@@ -735,19 +735,21 @@ process add_reference {
         if [ \$? -eq 0 ]; then
             species=\$ens_species
         fi
+    else 
+        species=$species
     fi
 
     if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
-        irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
+        irap_species_conf=$IRAP_CONFIG_DIR/\${species}.conf
         if [ ${params.islReferenceType} = 'newest' ]; then
-            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep $species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
+            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep \$species | awk '{print \$6}') | sed 's/RELNO/\\*/')
+            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep \$species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
 
-            cdna_gtf=\$(ls \$IRAP_DATA/reference/${species}/\$gtf_pattern | sort -rV | head -n 1)
-            cdna_fasta=\$(ls \$IRAP_DATA/reference/${species}/\$cdna_pattern | sort -rV | head -n 1)
+            cdna_gtf=\$(ls \$IRAP_DATA/reference/\${species}/\$gtf_pattern | sort -rV | head -n 1)
+            cdna_fasta=\$(ls \$IRAP_DATA/reference/\${species}/\$cdna_pattern | sort -rV | head -n 1)
         else
-            cdna_fasta=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-            cdna_gtf=$IRAP_DATA/reference/$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
+            cdna_fasta=$IRAP_DATA/reference/\$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
+            cdna_gtf=$IRAP_DATA/reference/\$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
         fi
         if [ ! -e "\$cdna_fasta" ]; then
             echo "Fasta file \$cdna_fasta does not exist" 1>&2
