@@ -727,7 +727,16 @@ process add_reference {
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz"), stdout into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
-    # Use references from the ISL setup
+    # Use references from the ISL setup. Use pre-baked conversions for when
+    # ensembl species paths don't match organism
+    
+    if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; then
+        ens_species=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES | awk '{print \$2}')
+        if [ \$? -eq 0 ]; then
+            species=\$ens_species
+        fi
+    fi
+
     if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
         irap_species_conf=$IRAP_CONFIG_DIR/${species}.conf
         if [ ${params.islReferenceType} = 'newest' ]; then
