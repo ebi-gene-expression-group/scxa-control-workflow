@@ -730,13 +730,12 @@ process add_reference {
     # Use references from the ISL setup. Use pre-baked conversions for when
     # ensembl species paths don't match organism
     
+    species=$species
     if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; then
         ens_species=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES | awk '{print \$2}')
         if [ \$? -eq 0 ]; then
             species=\$ens_species
         fi
-    else 
-        species=$species
     fi
 
     if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
