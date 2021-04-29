@@ -732,9 +732,9 @@ process add_reference {
     
     species=$species
     if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; then
-        ens_species=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES | awk '{print \$2}')
+        species_line=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES)
         if [ \$? -eq 0 ]; then
-            species=\$ens_species
+            species=\$(echo -e "\$species_line" | awk '{print \$2}')
         fi
     fi
 
