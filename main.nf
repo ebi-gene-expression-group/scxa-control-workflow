@@ -732,10 +732,12 @@ process add_reference {
     
     species=$species
     if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; then
+        set +e
         species_line=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES)
         if [ \$? -eq 0 ]; then
             species=\$(echo -e "\$species_line" | awk '{print \$2}')
         fi
+        set -e
     fi
 
     if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
