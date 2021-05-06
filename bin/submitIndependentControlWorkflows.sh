@@ -156,14 +156,20 @@ done > $SCXA_RESULTS/all.done.txt
 # experiments, since the dirs are not currently tagged by species.
 
 cat $SCXA_RESULTS/all.done.txt | while read -r l; do
-    expName=$(echo "$l" | awk '{print $1}')
+    expId=$(echo "$l" | awk '{print $1}')
     species=$(echo "$l" | awk '{print $2}')
-    
-    for tmpWfDir in work/scxa-control-workflow_$expName nextflow/${expName}_${SCXA_ENV}_scxa-control-workflow nextflow/${expName}; do
-        if [ -d "${SCXA_WORKFLOW_ROOT}/${tmpWfDir}" ]; then
-            nohup rm -rf ${SCXA_WORKFLOW_ROOT}/${tmpWfDir} &
-        fi
-    done
+
+    controlJobName="${expId}_${controlJobSuffix}"
+
+    bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
+
+    if [ $? -ne 0 ]; then
+        for tmpWfDir in work/scxa-control-workflow_$expId nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow nextflow/${expId}; do
+            if [ -d "${SCXA_WORKFLOW_ROOT}/${tmpWfDir}" ]; then
+                nohup rm -rf ${SCXA_WORKFLOW_ROOT}/${tmpWfDir} &
+            fi
+        done
+    fi
 done
 
 rm $submissionMarker
