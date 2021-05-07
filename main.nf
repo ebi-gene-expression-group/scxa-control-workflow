@@ -261,6 +261,8 @@ CONF_ANALYSIS_META_BY_EXP_SPECIES
 
 process check_controlled_access{
     
+    conda 'pyyaml' 
+    
     cache false
     
     errorStrategy 'ignore'
