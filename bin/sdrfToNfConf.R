@@ -973,7 +973,7 @@ configs <- lapply(species_list, function(species){
 
       # For non-droplet HCA experiments...
       if (is.hca){
-        species.protocol.sdrf[['hca_uri']] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], species.protocol.sdrf[[fastq.fields]], sep='/')
+        species.protocol.sdrf[['hca_uri']] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[fastq.fields]], sep='/')
         config_fields['fastq'] <- 'hca_uri'
       }else{
         config_fields['fastq'] <- fastq.fields
