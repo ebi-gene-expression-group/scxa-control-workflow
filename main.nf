@@ -780,7 +780,7 @@ process transcript_to_gene {
     gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header \
         --version-transcripts --feature-type "transcript" --first-field \
         "transcript_id" --output-file transcript_to_gene.txt --fields \
-"       transcript_id,gene_id"    
+        "transcript_id,gene_id"    
     """
 }
 
