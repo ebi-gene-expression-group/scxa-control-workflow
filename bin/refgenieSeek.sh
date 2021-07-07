@@ -7,7 +7,7 @@ referenceType=$2
 spikes=$3
 outDir=${4:-'reference'}
 
-export columns=500
+export COLUMNS=500
 
 function find_orig_refgenie_asset_name() {
     asset_path=$1
@@ -52,7 +52,7 @@ else
     reference=$(refgenie alias get | grep $digest | awk -F ' │ ' '{print $2}' | awk -F',' '{print $1}')
 fi
 
-refinfo=$( env COLUMNS=500 refgenie list -g $reference )
+refinfo=$( refgenie list -g $reference )
 
 # Use references from the ISL setup. Use pre-baked conversions for when
 # ensembl species paths don't match organism
