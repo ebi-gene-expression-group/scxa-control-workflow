@@ -709,7 +709,7 @@ process check_privacy {
 }
 
 // Symlink to correct reference file, re-using the reference from last
-// quantification where appropriate
+// quantification where appropriate. spikes are used in quantification only.
 
 process add_reference {
 
@@ -722,55 +722,25 @@ process add_reference {
     publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
 
     input:
-        set val(espTag), val(expName), val(species), val(protocol) from TO_QUANTIFY_FOR_REFERENCE.join(ESP_TAGS_FOR_REFERENCE)
+        set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
 
     output:
-        set val(espTag), file("*.fa.gz"), file("*.gtf.gz"), stdout into NEW_REFERENCES_FOR_QUANT
-        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz"), stdout into NEW_REFERENCES_FOR_DOWNSTREAM
+        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file("contamination.txt"), file('spiked/*.index'), file('spiked/salmon_index') into PREPARED_REFERENCES
+        set val(espTag), file("spiked/*.gtf.gz") into GTF_FOR_T2GENE
+        set val("${expName}-${species}"), file("unspiked/*.fa.gz"), file("unspiked/*.gtf.gz"), file("contamination.txt") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
-    # Use references from the ISL setup. Use pre-baked conversions for when
-    # ensembl species paths don't match organism
-    
-    species=$species
-    if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; then
-        set +e
-        species_line=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES)
-        if [ \$? -eq 0 ]; then
-            species=\$(echo -e "\$species_line" | awk '{print \$2}')
-        fi
-        set -e
-    fi
+    refgenieSeek.sh $species ${params.islReferenceType} "" unspiked
 
-    if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
-        irap_species_conf=$IRAP_CONFIG_DIR/\${species}.conf
-        if [ ${params.islReferenceType} = 'newest' ]; then
-            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep \$species | awk '{print \$6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep \$species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
+    # If we have spikes, get the spikes references for use in quantification
 
-            cdna_gtf=\$(ls \$IRAP_DATA/reference/\${species}/\$gtf_pattern | sort -rV | head -n 1)
-            cdna_fasta=\$(ls \$IRAP_DATA/reference/\${species}/\$cdna_pattern | sort -rV | head -n 1)
-        else
-            cdna_fasta=$IRAP_DATA/reference/\$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-            cdna_gtf=$IRAP_DATA/reference/\$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
-        fi
-        if [ ! -e "\$cdna_fasta" ]; then
-            echo "Fasta file \$cdna_fasta does not exist" 1>&2
-            exit 1
-        elif [ ! -e "\$cdna_gtf" ]; then
-            echo "GTF file \$cdna_gtf does not exist" 1>&2
-            exit 1
-        fi
-        contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
+    spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
+    if [ \$spikes != 'None' ]; then
+        refgenieSeek.sh $species ${params.islReferenceType} "$spikes" spiked
     else
-        echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
-        exit 1
+        ln -s unspiked spiked
     fi
-   
-    echo -n "\$contamination_index"
-    
-    ln -s \$cdna_fasta
-    ln -s \$cdna_gtf
+    refgenie seek contamination/bowtie2_index > contamination.txt
     """
 }
 
@@ -778,48 +748,16 @@ process add_reference {
 // reused and new references depending on individual experiment statuses
 
 NEW_REFERENCES_FOR_DOWNSTREAM.unique()
+    .map{tuple(it[0], it[1], it[2], it[3].text)}
     .concat(REUSED_REFERENCES.unique())
     .into{
         REFERENCES_FOR_TERTIARY
         REFERENCES_FOR_BUNDLING
     }
 
-// Prepare a reference depending on spikes for quantification. Only needed for
-// quantification or re-aggregation
-
-process prepare_reference {
-
-    conda 'pyyaml' 
-    
-    cache 'deep'
-    
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
-
-    input:
-        set val(espTag), file(confFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from EXTENDED_CONF_FOR_REF.join(NEW_REFERENCES_FOR_QUANT)
-    
-    output:
-        set val(espTag), file("reference.fa.gz"), file("reference.gtf.gz"), val(contaminationIndex) into PREPARED_REFERENCES
-
-    """
-    spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
-    if [ \$spikes != 'None' ]; then
-        spikes_conf="$SCXA_PRE_CONF/reference/\${spikes}.conf"
-        spikes_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
-        spikes_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
-        
-        cat $referenceFasta \$spikes_fasta > reference.fa.gz
-        cat $referenceGtf \$spikes_gtf > reference.gtf.gz
-    else
-        cp -P $referenceGtf reference.gtf.gz
-        cp -P $referenceFasta reference.fa.gz
-    fi
-    """
-}
-
 // Synchronise the GTF and the FASTA 
 
-process synchronize_ref_files {
+process transcript_to_gene {
 
     publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: 'transcript_to_gene.txt'
     
@@ -833,16 +771,16 @@ process synchronize_ref_files {
     maxRetries 3
         
     input:
-        set val(espTag), file(referenceFasta), file(referenceGtf), val(contaminationIndex), val(expName), val(species), val(protocol) from PREPARED_REFERENCES.join(ESP_TAGS_FOR_SYNCH_REFS)
+        set val(espTag), file(referenceGtf) from GTF_FOR_T2GENE
 
     output:
-        set val(espTag), file('cleanedCdna.fa.gz'), file(referenceGtf), val(contaminationIndex) into CLEANED_REFERENCES
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
 
     """
-    gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header --version-transcripts --filter-cdnas ${referenceFasta} \
-        --filter-cdnas-field "transcript_id" --filter-cdnas-output cleanedCdna.fa.gz --feature-type "transcript" \
-        --first-field "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id"    
+    gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header \
+        --version-transcripts --feature-type "transcript" --first-field \
+        "transcript_id" --output-file transcript_to_gene.txt --fields \
+"       transcript_id,gene_id"    
     """
 }
 
@@ -885,7 +823,7 @@ TO_QUANTIFY_FOR_QUANT
     .join(ESP_TAGS_FOR_QUANT)
     .join(EXTENDED_CONF_FOR_QUANT)
     .join(ANALYSIS_META_FOR_QUANT)
-    .join(CLEANED_REFERENCES)
+    .join(PREPARED_REFERENCES.map{tuple(it[0], it[1], it[2], it[3].text, it[4], it[5])})
     .join(TRANSCRIPT_TO_GENE_QUANT)
     .join(PRIVACY_STATUS)
     .set{
@@ -918,7 +856,7 @@ process smart_quantify {
     maxRetries 10
     
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(kallistoIndex), file(salmonIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
         val flag from INIT_DONE_SMART
 
     output:
@@ -927,7 +865,7 @@ process smart_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser" "$privacyStatus"
+    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$kallistoIndex" "$salmonIndex" "$enaSshUser" "$privacyStatus"
     """
 }
 
@@ -947,7 +885,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(kallistoIndex), file(salmonIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
         val flag from INIT_DONE_DROPLET
 
     output:
@@ -955,7 +893,7 @@ process droplet_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser" "$privacyStatus"
+    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$kallistoIndex" "$salmonIndex" "$enaSshUser" "$privacyStatus"
     """
 }
 

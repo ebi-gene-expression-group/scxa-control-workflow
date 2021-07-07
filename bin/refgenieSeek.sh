@@ -75,6 +75,5 @@ salmon_index=$(find_index_path $reference salmon $referenceType)
 mkdir -p $outDir
 ln -s $fasta $outDir/$(find_orig_refgenie_asset_name $fasta)
 ln -s $gtf $outDir/$(find_orig_refgenie_asset_name $gtf)
-echo -en "$contamination" > $outDir/contamination.txt
 ln -s $salmon_index $outDir/salmon_index
 ln -s $kallisto_index $outDir/$(find_orig_refgenie_asset_name $fasta).index
