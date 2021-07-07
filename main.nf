@@ -713,6 +713,8 @@ process check_privacy {
 
 process add_reference {
 
+    conda "${baseDir}/envs/refgenie.yml"
+    
     conda 'pyyaml' 
     
     cache 'deep'
