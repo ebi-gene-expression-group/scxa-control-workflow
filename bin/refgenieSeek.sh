@@ -4,7 +4,8 @@ set -e
 
 species=$1
 referenceType=$2
-outDir=${3:-'reference'}
+spikes=$3
+outDir=${4:-'reference'}
 
 export columns=500
 
@@ -38,7 +39,12 @@ function find_index_path(){
 # more specific-looking name so files are more descriptive. e.g. 
 # homo_sapiens--latest to homo_sapiens--GRCh38.
 
-digest=$(refgenie alias get -a ${species}--${referenceType}) 
+spikesPart=''
+if [ -n "$spikes" ]; then
+    spikesPart="--spikes_$spikes"
+fi
+
+digest=$(refgenie alias get -a ${species}--${referenceType}${spikesPart}) 
 if [ $? -ne 0 ]; then
     echo "Refgenie doesn't seem to have the alias ${species}--${referenceType}" 1>&2
     exit 1
@@ -63,7 +69,6 @@ fi
 
 fasta=$(refgenie seek $reference/fasta_txome:cdna_$referenceType)
 gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
-contamination=$(refgenie seek contamination/bowtie2_index)
 kallisto_index=$(find_index_path $reference kallisto $referenceType)
 salmon_index=$(find_index_path $reference salmon $referenceType)
 
