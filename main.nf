@@ -736,7 +736,7 @@ process add_reference {
 
     spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
     if [ \$spikes != 'None' ]; then
-        refgenieSeek.sh $species ${params.islReferenceType} "$spikes" spiked
+        refgenieSeek.sh $species ${params.islReferenceType} "\$spikes" spiked
     else
         ln -s unspiked spiked
     fi
