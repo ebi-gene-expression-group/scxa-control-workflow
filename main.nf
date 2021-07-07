@@ -715,8 +715,6 @@ process add_reference {
 
     conda "${baseDir}/envs/refgenie.yml"
     
-    conda 'pyyaml' 
-    
     cache 'deep'
     
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
