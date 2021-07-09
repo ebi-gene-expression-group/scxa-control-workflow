@@ -19,8 +19,15 @@ function find_index_path(){
     local index_type=$2
     local reference_type=$3
 
+    # We need the software versions to match for the indexers
+    indexer_version=$(grep "${index_type}=" workflow/scxa-workflows/*/envs/*.yml | awk -F'=' '{print $2}' | tr -d '\n'
+    if -z [ "$indexer_version" ]; then
+        echo "Unable to detect indexer version from child workflows" 1>&2
+        exit 1
+    fi
+
     set +e
-    index_name=$(echo -e "$refinfo" | grep ${index_type}_index | awk -F' │ ' '{print $3}' | sed 's/,//g' | tr ' ' '\n' | grep cdna_${reference_type})
+    index_name=$(echo -e "$refinfo" | grep ${index_type}_index | awk -F' │ ' '{print $3}' | sed 's/,//g' | tr ' ' '\n' | grep "cdna_${reference_type}--${indexer_version}")
     if [ $? -ne 0 ]; then
         echo "No $reference_type $index_type index available for $reference" 1>&2
         return 1
