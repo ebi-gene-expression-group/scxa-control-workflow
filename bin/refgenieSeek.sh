@@ -20,7 +20,7 @@ function find_index_path(){
     local reference_type=$3
 
     # We need the software versions to match for the indexers
-    indexer_version=$(grep "${index_type}=" workflow/scxa-workflows/*/envs/*.yml | awk -F'=' '{print $2}' | tr -d '\n'
+    indexer_version=$(grep "${index_type}=" workflow/scxa-workflows/*/envs/*.yml | awk -F'=' '{print $2}' | tr -d '\n')
     if -z [ "$indexer_version" ]; then
         echo "Unable to detect indexer version from child workflows" 1>&2
         exit 1
