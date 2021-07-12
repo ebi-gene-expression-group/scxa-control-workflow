@@ -760,7 +760,7 @@ process find_contamination_index {
         set val(espTag), stdout into CONTAMINATION_INDEX
      
     """
-    refgenie seek contamination/bowtie2_index
+    refgenie seek contamination/bowtie2_index | tr -d \'\\n\'
     """
 }
 
