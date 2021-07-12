@@ -905,7 +905,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(kallistoIndex), file(salmonIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), file(kallistoIndex), file(salmonIndex), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
         val flag from INIT_DONE_DROPLET
 
     output:
