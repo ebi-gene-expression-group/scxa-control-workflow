@@ -842,7 +842,7 @@ TO_QUANTIFY_FOR_QUANT
     .join(ESP_TAGS_FOR_QUANT)
     .join(EXTENDED_CONF_FOR_QUANT)
     .join(ANALYSIS_META_FOR_QUANT)
-    .join(PREPARED_REFERENCES.map{tuple(it[0], it[1], it[2], it[3].text, it[4])})
+    .join(PREPARED_REFERENCES.map{tuple(it[0], it[1], it[2], it[3], it[4])})
     .join(CONTAMINATION_INDEX)
     .join(TRANSCRIPT_TO_GENE_QUANT)
     .join(PRIVACY_STATUS)
@@ -876,7 +876,7 @@ process smart_quantify {
     maxRetries 10
     
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(kallistoIndex), file(salmonIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), file(kallistoIndex), file(salmonIndex), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
         val flag from INIT_DONE_SMART
 
     output:
