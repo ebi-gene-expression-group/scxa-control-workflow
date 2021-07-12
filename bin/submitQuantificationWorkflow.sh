@@ -71,7 +71,7 @@ transcriptomeIndex=$salmonIndex
 if [ "$workflow" = 'smart-seq' ]; then
 
     enaSshOption="--enaSshUser $enaSshUser"
-    transcriptomeIndex=$kallistoIndex
+    transcriptomeIndex=$RESULTS_ROOT/$kallistoIndex
 
     # Supply a contamination index where provided in the config
 
