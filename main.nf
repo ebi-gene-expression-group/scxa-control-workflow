@@ -726,7 +726,7 @@ process add_reference {
         set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
 
     output:
-        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.index'), file('spiked/salmon_index') into PREPARED_REFERENCES
+        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
         set val(espTag), file("spiked/*.gtf.gz") into GTF_FOR_T2GENE
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
@@ -739,7 +739,9 @@ process add_reference {
     if [ \$spikes != 'None' ]; then
         refgenieSeek.sh $species ${params.islReferenceType} "\$spikes" spiked
     else
-        ln -s \$(pwd) spiked
+        # Copy unspiked symlinks to spiked if no spikes are required
+        mkdir spiked 
+        cp -P *.gtf.gz *.fa.gz salmon_index *.index spiked
     fi
     """
 }
