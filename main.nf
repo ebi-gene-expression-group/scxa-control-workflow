@@ -720,7 +720,7 @@ process add_reference {
     
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
         
-    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: '{*.fa.gz,*.gtf.gz}'
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copyNoFollow', overwrite: true, pattern: '{*.fa.gz,*.gtf.gz}'
 
     input:
         set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
