@@ -752,7 +752,7 @@ process find_contamination_index {
     conda "${baseDir}/envs/refgenie.yml"
   
     input:
-        set val(espTag), val(expName), val(species), val(protocol) FROM ESP_TAGS_FOR_CONTAMINATION 
+        set val(espTag), val(expName), val(species), val(protocol) from ESP_TAGS_FOR_CONTAMINATION 
 
     output:
         set val(espTag), stdout into CONTAMINATION_INDEX
