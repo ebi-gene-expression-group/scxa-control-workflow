@@ -59,4 +59,4 @@ mkdir -p $outDir
 ln -s $fasta $outDir/$(find_orig_refgenie_asset_name $fasta)
 ln -s $gtf $outDir/$(find_orig_refgenie_asset_name $gtf)
 ln -s $(dirname $salmon_index) $outDir/salmon_index
-ln -s $(ls $(dirname $kallisto_index)/*.idx) $outDir/$(find_orig_refgenie_asset_name $fasta).index
+ln -s $(ls $(dirname $kallisto_index)/*.idx) $outDir/$(find_orig_refgenie_asset_name $fasta).idx
