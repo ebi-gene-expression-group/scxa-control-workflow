@@ -14,34 +14,6 @@ function find_orig_refgenie_asset_name() {
     basename $(grep "cp " $(dirname $asset_path)/_refgenie_build/refgenie_commands.sh | head -n 1 | awk '{print $2}')
 }
 
-function find_index_path(){
-    local reference=$1
-    local index_type=$2
-    local reference_type=$3
-
-    # We need the software versions to match for the indexers
-    indexer_version=$(grep "${index_type}=" workflow/scxa-workflows/*/envs/*.yml | awk -F'=' '{print $2}' | tr -d '\n')
-    if -z [ "$indexer_version" ]; then
-        echo "Unable to detect indexer version from child workflows" 1>&2
-        exit 1
-    fi
-
-    set +e
-    index_name=$(echo -e "$refinfo" | grep ${index_type}_index | awk -F' │ ' '{print $3}' | sed 's/,//g' | tr ' ' '\n' | grep "cdna_${reference_type}--${indexer_version}")
-    if [ $? -ne 0 ]; then
-        echo "No $reference_type $index_type index available for $reference" 1>&2
-        return 1
-    else
-        asset_path=$(dirname $(refgenie seek $reference/${index_type}_index:$index_name))
-
-        if [ "$index_type" == 'kallisto' ]; then
-            asset_path=$(echo -n $(ls $asset_path/*.idx))
-        fi
-        echo -n "$asset_path"
-    fi
-    set -e
-}
-
 # Get the digest for the currently used alias. We want to resolve this to a
 # more specific-looking name so files are more descriptive. e.g. 
 # homo_sapiens--latest to homo_sapiens--GRCh38.
@@ -52,13 +24,13 @@ if [ -n "$spikes" ]; then
 fi
 
 digest=$(refgenie alias get -a ${species}--${referenceType}${spikesPart}) 
-if [ $? -ne 0 ]; then
+if [ $? -ne 0 ] || [ -z "$digest" ]; then
     echo "Refgenie doesn't seem to have the alias ${species}--${referenceType}" 1>&2
     exit 1
 else
+    echo "Got digest $digest for ${species}--${referenceType}${spikesPart}" 1>&2
     reference=$(refgenie alias get | grep $digest | awk -F ' │ ' '{print $2}' | awk -F',' '{print $1}')
 fi
-
 refinfo=$( refgenie list -g $reference )
 
 # Use references from the ISL setup. Use pre-baked conversions for when
@@ -76,11 +48,15 @@ fi
 
 fasta=$(refgenie seek $reference/fasta_txome:cdna_$referenceType)
 gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
-kallisto_index=$(find_index_path $reference kallisto $referenceType)
-salmon_index=$(find_index_path $reference salmon $referenceType)
+
+kallisto_version=$(grep "kallisto=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_smart-seq_quantification/envs/kallisto.yml | awk -F'=' '{print $2}' | tr -d '\n')
+kallisto_index=$(refgenie seek $reference/kallisto_index:cdna_${referenceType}--kallisto_${kallisto_version})
+
+salmon_version=$(grep "salmon=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_droplet_quantification/envs/alevin.yml | awk -F'=' '{print $2}' | tr -d '\n')
+salmon_index=$(refgenie seek $reference/salmon_index:cdna_${referenceType}--salmon_${salmon_version})
 
 mkdir -p $outDir
 ln -s $fasta $outDir/$(find_orig_refgenie_asset_name $fasta)
 ln -s $gtf $outDir/$(find_orig_refgenie_asset_name $gtf)
-ln -s $salmon_index $outDir/salmon_index
-ln -s $kallisto_index $outDir/$(find_orig_refgenie_asset_name $fasta).index
+ln -s $(dirname $salmon_index) $outDir/salmon_index
+ln -s $(ls $(dirname $kallisto_index)/*.idx) $outDir/$(find_orig_refgenie_asset_name $fasta).index
