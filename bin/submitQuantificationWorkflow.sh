@@ -9,8 +9,8 @@ sdrfFile=$6
 referenceFasta=$7
 transcriptToGene=$8
 contaminationIndex=$9
-kallistoIndex=$10
-salmonIndex=$11
+kallistoIndex=${10}
+salmonIndex=${11}
 enaSshUser=${12}
 privacyStatus=${13}
 
