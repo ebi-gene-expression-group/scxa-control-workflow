@@ -714,6 +714,8 @@ process check_privacy {
 
 process add_reference {
 
+    conda "${baseDir}/envs/refgenie.yml"
+
     cache 'deep'
     
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
