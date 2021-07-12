@@ -297,6 +297,7 @@ ESP_TAGS.into{
     ESP_TAGS_FOR_AGG_ROUTING
     ESP_TAGS_FOR_ES_CONFIG
     ESP_TAGS_FOR_PROT_LIST
+    ESP_TAGS_FOR_CONTAMINATION
     ESP_TAGS_FOR_CHANGEDCHECK
     ESP_TAGS_FOR_EXTEND
     ESP_TAGS_FOR_MARKING
@@ -622,7 +623,7 @@ process reuse_quantifications {
 
     output:
         set val(espTag), file("results/*") into REUSED_QUANT_RESULTS
-        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz"), stdout into REUSED_REFERENCES
+        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into REUSED_REFERENCES
         set val(espTag), file('transcript_to_gene.txt') into REUSED_TRANSCRIPT_TO_GENE
 
     """
@@ -713,24 +714,22 @@ process check_privacy {
 
 process add_reference {
 
-    conda "${baseDir}/envs/refgenie.yml"
-    
     cache 'deep'
     
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
         
-    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: '{unspiked/*.fa.gz,unspiked/*.gtf/gz,contamination.txt}'
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: '{*.fa.gz,*.gtf.gz}'
 
     input:
         set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
 
     output:
-        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file("contamination.txt"), file('spiked/*.index'), file('spiked/salmon_index') into PREPARED_REFERENCES
+        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.index'), file('spiked/salmon_index') into PREPARED_REFERENCES
         set val(espTag), file("spiked/*.gtf.gz") into GTF_FOR_T2GENE
-        set val("${expName}-${species}"), file("unspiked/*.fa.gz"), file("unspiked/*.gtf.gz"), file("contamination.txt") into NEW_REFERENCES_FOR_DOWNSTREAM
+        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
-    refgenieSeek.sh $species ${params.islReferenceType} "" unspiked
+    refgenieSeek.sh $species ${params.islReferenceType} "" \$(pwd)
 
     # If we have spikes, get the spikes references for use in quantification
 
@@ -738,9 +737,26 @@ process add_reference {
     if [ \$spikes != 'None' ]; then
         refgenieSeek.sh $species ${params.islReferenceType} "\$spikes" spiked
     else
-        ln -s unspiked spiked
+        ln -s \$(pwd) spiked
     fi
-    refgenie seek contamination/bowtie2_index > contamination.txt
+    """
+}
+
+// This process is parameterised by expName, species, protocol, to allow us to
+// control contamination index use for those species in future.
+
+process find_contamination_index {
+
+    conda "${baseDir}/envs/refgenie.yml"
+  
+    input:
+        set val(espTag), val(expName), val(species), val(protocol) FROM ESP_TAGS_FOR_CONTAMINATION 
+
+    output:
+        set val(espTag), stdout into CONTAMINATION_INDEX
+     
+    """
+    refgenie seek contamination/bowtie2_index
     """
 }
 
@@ -748,7 +764,6 @@ process add_reference {
 // reused and new references depending on individual experiment statuses
 
 NEW_REFERENCES_FOR_DOWNSTREAM.unique()
-    .map{tuple(it[0], it[1], it[2], it[3].text)}
     .concat(REUSED_REFERENCES.unique())
     .into{
         REFERENCES_FOR_TERTIARY
@@ -823,7 +838,8 @@ TO_QUANTIFY_FOR_QUANT
     .join(ESP_TAGS_FOR_QUANT)
     .join(EXTENDED_CONF_FOR_QUANT)
     .join(ANALYSIS_META_FOR_QUANT)
-    .join(PREPARED_REFERENCES.map{tuple(it[0], it[1], it[2], it[3].text, it[4], it[5])})
+    .join(PREPARED_REFERENCES.map{tuple(it[0], it[1], it[2], it[3].text, it[4])})
+    .join(CONTAMINATION_INDEX)
     .join(TRANSCRIPT_TO_GENE_QUANT)
     .join(PRIVACY_STATUS)
     .set{
@@ -1107,9 +1123,9 @@ NEW_MATCHED_META
 ES_TAGS_FOR_TERTIARY                                                                                            // esTag, expName, species
     .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
-    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
-    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
+    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf
+    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, cellMetadata
+    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
 process tertiary {
@@ -1132,7 +1148,7 @@ process tertiary {
     maxRetries 3
       
     input:
-        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into NEW_TERTIARY_RESULTS
@@ -1155,9 +1171,9 @@ NEW_TERTIARY_RESULTS
     .join(CONF_BY_EXP_SPECIES_FOR_BUNDLE)                                               // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile
     .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix
     .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
-    .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
-    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
-    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
+    .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf
+    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, condensedSdrf
+    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, condensedSdrf, cellMetadata 
     .set{BUNDLE_INPUTS}
 
 process bundle {
@@ -1171,7 +1187,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
