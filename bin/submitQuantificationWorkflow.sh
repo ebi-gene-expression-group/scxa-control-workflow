@@ -68,7 +68,7 @@ contIndex=''
 enaSshOption=
 transcriptomeIndex=$salmonIndex
 
-if [ "$worflow" = 'smart-seq' ]; then
+if [ "$workflow" = 'smart-seq' ]; then
 
     enaSshOption="--enaSshUser $enaSshUser"
     transcriptomeIndex=$kallistoIndex
