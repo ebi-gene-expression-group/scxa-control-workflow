@@ -66,7 +66,7 @@ mkdir -p $SCXA_RESULTS/$SUBDIR/reports
 
 contIndex=''
 enaSshOption=
-transcriptomeIndex=$salmonIndex
+transcriptomeIndex=$RESULTS_ROOT/$salmonIndex
 
 if [ "$workflow" = 'smart-seq' ]; then
 
