@@ -628,7 +628,7 @@ process reuse_quantifications {
         set val(espTag), file('gene_annotation.txt') into REUSED_GENE_META
 
     """
-    retrieveStoredFiles.sh $expName $species reference "*.fa.gz *.gtf.gz transcript_to_gene.txt" 
+    retrieveStoredFiles.sh $expName $species reference "*.fa.gz *.gtf.gz transcript_to_gene.txt gene_annotation.txt" 
     mkdir -p results
 
     if [ $isDroplet == 'True' ]; then
