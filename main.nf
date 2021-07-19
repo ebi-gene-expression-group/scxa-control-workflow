@@ -727,7 +727,7 @@ process add_reference {
 
     output:
         set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file("spiked/*.gtf.gz") into GTF_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
@@ -790,7 +790,7 @@ process transcript_to_gene {
     maxRetries 3
         
     input:
-        set val(espTag), val(expName), val(species), file(referenceGtf) from GTF_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from REFS_FOR_T2GENE
 
     output:
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
