@@ -168,6 +168,7 @@ ES_TAGS.unique().into{
     ES_TAGS_FOR_CONFIG
     ES_TAGS_FOR_CONDENSE
     ES_TAGS_FOR_META_MATCHING
+    ES_TAGS_FOR_GENE_ANNO
     ES_TAGS_FOR_TERTIARY
     ES_TAGS_FOR_REUSE_TERTIARY
     ES_TAGS_FOR_REUSE_AGG
@@ -728,7 +729,7 @@ process add_reference {
 
     output:
         set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_ANNO
+        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
@@ -746,12 +747,6 @@ process add_reference {
     fi
     """
 }
-
-REFS_FOR_ANNO
-    .into{
-        REFS_FOR_T2GENE
-        REFS_FOR_GENE_META
-    }
 
 // This process is parameterised by expName, species, protocol, to allow us to
 // control contamination index use for those species in future.
@@ -777,6 +772,7 @@ process find_contamination_index {
 NEW_REFERENCES_FOR_DOWNSTREAM.unique()
     .concat(REUSED_REFERENCES.unique())
     .into{
+        REFERENCES_FOR_GENE_ANNO
         REFERENCES_FOR_TERTIARY
         REFERENCES_FOR_BUNDLING
     }
@@ -827,10 +823,10 @@ process make_gene_annotation_table {
     maxRetries 3
         
     input:
-        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from REFS_FOR_GENE_META
+        set val(esTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from ES_TAGS_FOR_GENE_ANNO.join(REFERENCES_FOR_GENE_ANNO)
 
     output:
-        set val(espTag), file('gene_annotation.txt') into NEW_GENE_META
+        set val(esTag), file('gene_annotation.txt') into NEW_GENE_META
 
     """
     gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
