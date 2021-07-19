@@ -626,7 +626,7 @@ process reuse_quantifications {
         set val(espTag), file("results/*") into REUSED_QUANT_RESULTS
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into REUSED_REFERENCES
         set val(espTag), file('transcript_to_gene.txt') into REUSED_TRANSCRIPT_TO_GENE
-        set val(espTag), file('gene_annotation.txt') into REUSED_GENE_META
+        set val("${expName}-${species}"), file('gene_annotation.txt') into REUSED_GENE_META
 
     """
     retrieveStoredFiles.sh $expName $species reference "*.fa.gz *.gtf.gz transcript_to_gene.txt gene_annotation.txt" 
@@ -769,10 +769,12 @@ process find_contamination_index {
 // References used in tertiary analysis and bundling are a combination of the
 // reused and new references depending on individual experiment statuses
 
+REFERENCES_FOR_GENE_ANNO = Channel.create()
+
 NEW_REFERENCES_FOR_DOWNSTREAM.unique()
+    .tap( REFERENCES_FOR_GENE_ANNO ) 
     .concat(REUSED_REFERENCES.unique())
     .into{
-        REFERENCES_FOR_GENE_ANNO
         REFERENCES_FOR_TERTIARY
         REFERENCES_FOR_BUNDLING
     }
@@ -844,8 +846,8 @@ TRANSCRIPT_TO_GENE
         TRANSCRIPT_TO_GENE_AGGR
     }
 
-NEW_GENE_META.
-    concat(REUSED_GENE_META)
+NEW_GENE_META
+    .concat(REUSED_GENE_META.unique())
     .set{
         GENE_META
     }
