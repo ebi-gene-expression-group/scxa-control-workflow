@@ -796,10 +796,10 @@ process transcript_to_gene {
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
 
     """
-    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts
-        --parse-cdnas $referenceFasta  --parse-cdna-field "transcript_id" --feature-type
-        "transcript" --parse-cdna-names --fill-empty transcript_id --first-field
-        "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id"
+    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+        --parse-cdnas $referenceFasta  --parse-cdna-field "transcript_id" --feature-type \
+        "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
+        "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
         --no-header
     """
 }
