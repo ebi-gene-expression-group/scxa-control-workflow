@@ -625,6 +625,7 @@ process reuse_quantifications {
         set val(espTag), file("results/*") into REUSED_QUANT_RESULTS
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into REUSED_REFERENCES
         set val(espTag), file('transcript_to_gene.txt') into REUSED_TRANSCRIPT_TO_GENE
+        set val(espTag), file('gene_annotation.txt') into REUSED_GENE_META
 
     """
     retrieveStoredFiles.sh $expName $species reference "*.fa.gz *.gtf.gz transcript_to_gene.txt" 
@@ -727,7 +728,7 @@ process add_reference {
 
     output:
         set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_ANNO
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
@@ -745,6 +746,12 @@ process add_reference {
     fi
     """
 }
+
+REFS_FOR_ANNO
+    .into{
+        REFS_FOR_T2GENE
+        REFS_FOR_GENE_META
+    }
 
 // This process is parameterised by expName, species, protocol, to allow us to
 // control contamination index use for those species in future.
@@ -804,11 +811,47 @@ process transcript_to_gene {
     """
 }
 
+// Make a gene annotation table `
+
+process make_gene_annotation_table {
+
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: 'transcript_to_gene.txt'
+    
+    conda "${baseDir}/envs/atlas-gene-annotation-manipulation.yml"
+    
+    cache 'deep'
+
+    memory { 5.GB * task.attempt }
+
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3  ? 'retry' : 'ignore' }
+    maxRetries 3
+        
+    input:
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from REFS_FOR_GENE_META
+
+    output:
+        set val(espTag), file('gene_annotation.txt') into NEW_GENE_META
+
+    """
+    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+        --parse-cdnas $referenceFasta --parse-cdna-field "gene_id" --feature-type \
+        "gene" --parse-cdna-names --first-field --mito --mito-biotypes \
+        $params.mitoBiotypes --mito-chr $params.mitoChr --first-field "gene_id" \
+        --output-file gene_annotation.txt
+    """
+}
+
 TRANSCRIPT_TO_GENE
     .concat(REUSED_TRANSCRIPT_TO_GENE)
     .into{
         TRANSCRIPT_TO_GENE_QUANT
         TRANSCRIPT_TO_GENE_AGGR
+    }
+
+NEW_GENE_META.
+    concat(REUSED_GENE_META)
+    .set{
+        GENE_META
     }
 
 // Make a configuration for the Fastq provider, and make initial assessment
@@ -1129,8 +1172,9 @@ ES_TAGS_FOR_TERTIARY                                                            
     .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
     .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf
-    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, cellMetadata
-    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, cellMetadata, isDroplet
+    .join(GENE_META)                                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata
+    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata, cellMetadata
+    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
 process tertiary {
@@ -1153,7 +1197,7 @@ process tertiary {
     maxRetries 3
       
     input:
-        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(geneMetadata), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into NEW_TERTIARY_RESULTS
@@ -1161,7 +1205,7 @@ process tertiary {
     script:
 
         """
-            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
+            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$geneMetadata" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
         """
 }
 
