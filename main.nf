@@ -815,7 +815,7 @@ process transcript_to_gene {
 
 process make_gene_annotation_table {
 
-    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: 'transcript_to_gene.txt'
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: 'gene_annotation.txt'
     
     conda "${baseDir}/envs/atlas-gene-annotation-manipulation.yml"
     
