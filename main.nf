@@ -848,8 +848,9 @@ TRANSCRIPT_TO_GENE
 
 NEW_GENE_META
     .concat(REUSED_GENE_META.unique())
-    .set{
-        GENE_META
+    .gene{
+        GENE_META_FOR_TERTIARY
+        GENE_META_FOR_BUNDLING
     }
 
 // Make a configuration for the Fastq provider, and make initial assessment
@@ -1170,7 +1171,7 @@ ES_TAGS_FOR_TERTIARY                                                            
     .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
     .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf
-    .join(GENE_META)                                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata
+    .join(GENE_META_FOR_TERTIARY)                                                                               // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata
     .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata, cellMetadata
     .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
@@ -1219,8 +1220,9 @@ NEW_TERTIARY_RESULTS
     .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix
     .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
     .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf
-    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, condensedSdrf
-    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, condensedSdrf, cellMetadata 
+    .join(GENE_META_FOR_BUNDLING)                                                       // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, geneMetadata
+    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, geneMetadata, condensedSdrf
+    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, geneMetadata, condensedSdrf, cellMetadata 
     .set{BUNDLE_INPUTS}
 
 process bundle {
@@ -1234,7 +1236,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(geneMetadata) file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
@@ -1265,6 +1267,7 @@ process bundle {
         file("bundle/${expName}.condensed-sdrf.tsv")
         file("bundle/reference/${referenceFasta}")
         file("bundle/reference/${referenceGtf}")
+        file("bundle/reference/${geneMetadata}")
         file('bundle/tsne_perplexity_*.tsv')
         file('bundle/umap_n_neighbors_*.tsv')
         file('bundle/markers_*.tsv') optional true
@@ -1277,7 +1280,7 @@ process bundle {
         file("bundle/${expName}.project.h5ad")
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$geneMetadata" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
         """
 }
 
