@@ -9,7 +9,7 @@ expName=$1
 species=$2
 confFile=$3
 countMatrix=$4
-referenceGtf=$5
+geneMetadata=$5
 cellMetadata=$6
 isDroplet=$7
 galaxyCredentials=$8
@@ -28,7 +28,7 @@ gzip ${zipdir}/barcodes.tsv
 
 export species=$species
 export expName=$expName
-export gtf_file=$referenceGtf
+export gene_meta_file=$geneMetadata
 export matrix_file=${zipdir}/matrix.mtx.gz
 export genes_file=${zipdir}/genes.tsv.gz
 export barcodes_file=${zipdir}/barcodes.tsv.gz

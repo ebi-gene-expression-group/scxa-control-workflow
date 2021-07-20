@@ -168,6 +168,7 @@ ES_TAGS.unique().into{
     ES_TAGS_FOR_CONFIG
     ES_TAGS_FOR_CONDENSE
     ES_TAGS_FOR_META_MATCHING
+    ES_TAGS_FOR_GENE_ANNO
     ES_TAGS_FOR_TERTIARY
     ES_TAGS_FOR_REUSE_TERTIARY
     ES_TAGS_FOR_REUSE_AGG
@@ -297,6 +298,7 @@ ESP_TAGS.into{
     ESP_TAGS_FOR_AGG_ROUTING
     ESP_TAGS_FOR_ES_CONFIG
     ESP_TAGS_FOR_PROT_LIST
+    ESP_TAGS_FOR_CONTAMINATION
     ESP_TAGS_FOR_CHANGEDCHECK
     ESP_TAGS_FOR_EXTEND
     ESP_TAGS_FOR_MARKING
@@ -622,11 +624,12 @@ process reuse_quantifications {
 
     output:
         set val(espTag), file("results/*") into REUSED_QUANT_RESULTS
-        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz"), stdout into REUSED_REFERENCES
+        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into REUSED_REFERENCES
         set val(espTag), file('transcript_to_gene.txt') into REUSED_TRANSCRIPT_TO_GENE
+        set val("${expName}-${species}"), file('gene_annotation.txt') into REUSED_GENE_META
 
     """
-    retrieveStoredFiles.sh $expName $species reference "*.fa.gz *.gtf.gz transcript_to_gene.txt" 
+    retrieveStoredFiles.sh $expName $species reference "*.fa.gz *.gtf.gz transcript_to_gene.txt gene_annotation.txt" 
     mkdir -p results
 
     if [ $isDroplet == 'True' ]; then
@@ -709,117 +712,76 @@ process check_privacy {
 }
 
 // Symlink to correct reference file, re-using the reference from last
-// quantification where appropriate
+// quantification where appropriate. spikes are used in quantification only.
 
 process add_reference {
 
-    conda 'pyyaml' 
-    
+    conda "${baseDir}/envs/refgenie.yml"
+
     cache 'deep'
     
     errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
         
-    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copyNoFollow', overwrite: true, pattern: '{*.fa.gz,*.gtf.gz}'
 
     input:
-        set val(espTag), val(expName), val(species), val(protocol) from TO_QUANTIFY_FOR_REFERENCE.join(ESP_TAGS_FOR_REFERENCE)
+        set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
 
     output:
-        set val(espTag), file("*.fa.gz"), file("*.gtf.gz"), stdout into NEW_REFERENCES_FOR_QUANT
-        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz"), stdout into NEW_REFERENCES_FOR_DOWNSTREAM
+        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
+        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
+        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
-    # Use references from the ISL setup. Use pre-baked conversions for when
-    # ensembl species paths don't match organism
-    
-    species=$species
-    if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; then
-        set +e
-        species_line=\$(grep "^$species\$(printf '\\t')" $NONSTANDARD_SPECIES_NAMES)
-        if [ \$? -eq 0 ]; then
-            species=\$(echo -e "\$species_line" | awk '{print \$2}')
-        fi
-        set -e
-    fi
+    refgenieSeek.sh $species ${params.islReferenceType} "" \$(pwd)
 
-    if [ -n "\$ISL_GENOMES" ] && [ "\$IRAP_CONFIG_DIR" != '' ] && [ "\$IRAP_DATA" != '' ]; then
-        irap_species_conf=$IRAP_CONFIG_DIR/\${species}.conf
-        if [ ${params.islReferenceType} = 'newest' ]; then
-            gtf_pattern=\$(basename \$(cat \$ISL_GENOMES | grep \$species | awk '{print \$6}') | sed 's/RELNO/\\*/')
-            cdna_pattern=\$(basename \$(cat \$ISL_GENOMES | grep \$species | awk '{print \$5}') | sed 's/RELNO/\\*/' | sed 's/.fa.gz/.\\*.fa.gz/') 
+    # If we have spikes, get the spikes references for use in quantification
 
-            cdna_gtf=\$(ls \$IRAP_DATA/reference/\${species}/\$gtf_pattern | sort -rV | head -n 1)
-            cdna_fasta=\$(ls \$IRAP_DATA/reference/\${species}/\$cdna_pattern | sort -rV | head -n 1)
-        else
-            cdna_fasta=$IRAP_DATA/reference/\$species/\$(parseIslConfig.sh \$irap_species_conf cdna_file)   
-            cdna_gtf=$IRAP_DATA/reference/\$species/\$(parseIslConfig.sh \$irap_species_conf gtf_file)   
-        fi
-        if [ ! -e "\$cdna_fasta" ]; then
-            echo "Fasta file \$cdna_fasta does not exist" 1>&2
-            exit 1
-        elif [ ! -e "\$cdna_gtf" ]; then
-            echo "GTF file \$cdna_gtf does not exist" 1>&2
-            exit 1
-        fi
-        contamination_index=\$(parseIslConfig.sh \$irap_species_conf cont_index)  
+    spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
+    if [ \$spikes != 'None' ]; then
+        refgenieSeek.sh $species ${params.islReferenceType} "\$spikes" spiked
     else
-        echo "All of environment variables ISL_GENOMES, IRAP_CONFIG_DIR AND IRAP_DATA must be set" 1>&2
-        exit 1
+        # Copy unspiked symlinks to spiked if no spikes are required
+        mkdir spiked 
+        cp -P *.gtf.gz *.fa.gz salmon_index *.idx spiked
     fi
-   
-    echo -n "\$contamination_index"
-    
-    ln -s \$cdna_fasta
-    ln -s \$cdna_gtf
+    """
+}
+
+// This process is parameterised by expName, species, protocol, to allow us to
+// control contamination index use for those species in future.
+
+process find_contamination_index {
+
+    conda "${baseDir}/envs/refgenie.yml"
+  
+    input:
+        set val(espTag), val(expName), val(species), val(protocol) from ESP_TAGS_FOR_CONTAMINATION 
+
+    output:
+        set val(espTag), stdout into CONTAMINATION_INDEX
+     
+    """
+    refgenie seek contamination/bowtie2_index | tr -d \'\\n\'
     """
 }
 
 // References used in tertiary analysis and bundling are a combination of the
 // reused and new references depending on individual experiment statuses
 
+REFERENCES_FOR_GENE_ANNO = Channel.create()
+
 NEW_REFERENCES_FOR_DOWNSTREAM.unique()
+    .tap( REFERENCES_FOR_GENE_ANNO ) 
     .concat(REUSED_REFERENCES.unique())
     .into{
         REFERENCES_FOR_TERTIARY
         REFERENCES_FOR_BUNDLING
     }
 
-// Prepare a reference depending on spikes for quantification. Only needed for
-// quantification or re-aggregation
-
-process prepare_reference {
-
-    conda 'pyyaml' 
-    
-    cache 'deep'
-    
-    errorStrategy { task.attempt<=3 ? 'retry' : 'finish' }
-
-    input:
-        set val(espTag), file(confFile), file(referenceFasta), file(referenceGtf), val(contaminationIndex) from EXTENDED_CONF_FOR_REF.join(NEW_REFERENCES_FOR_QUANT)
-    
-    output:
-        set val(espTag), file("reference.fa.gz"), file("reference.gtf.gz"), val(contaminationIndex) into PREPARED_REFERENCES
-
-    """
-    spikes=\$(parseNfConfig.py --paramFile $confFile --paramKeys params,spikes)
-    if [ \$spikes != 'None' ]; then
-        spikes_conf="$SCXA_PRE_CONF/reference/\${spikes}.conf"
-        spikes_fasta=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,cdna)
-        spikes_gtf=$SCXA_DATA/reference/\$(parseNfConfig.py --paramFile \$spikes_conf --paramKeys params,reference,spikes,gtf)
-        
-        cat $referenceFasta \$spikes_fasta > reference.fa.gz
-        cat $referenceGtf \$spikes_gtf > reference.gtf.gz
-    else
-        cp -P $referenceGtf reference.gtf.gz
-        cp -P $referenceFasta reference.fa.gz
-    fi
-    """
-}
-
 // Synchronise the GTF and the FASTA 
 
-process synchronize_ref_files {
+process transcript_to_gene {
 
     publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: 'transcript_to_gene.txt'
     
@@ -833,16 +795,47 @@ process synchronize_ref_files {
     maxRetries 3
         
     input:
-        set val(espTag), file(referenceFasta), file(referenceGtf), val(contaminationIndex), val(expName), val(species), val(protocol) from PREPARED_REFERENCES.join(ESP_TAGS_FOR_SYNCH_REFS)
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from REFS_FOR_T2GENE
 
     output:
-        set val(espTag), file('cleanedCdna.fa.gz'), file(referenceGtf), val(contaminationIndex) into CLEANED_REFERENCES
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
 
     """
-    gtf2featureAnnotation.R --gtf-file ${referenceGtf} --no-header --version-transcripts --filter-cdnas ${referenceFasta} \
-        --filter-cdnas-field "transcript_id" --filter-cdnas-output cleanedCdna.fa.gz --feature-type "transcript" \
-        --first-field "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id"    
+    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+        --parse-cdnas $referenceFasta  --parse-cdna-field "transcript_id" --feature-type \
+        "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
+        "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
+        --no-header
+    """
+}
+
+// Make a gene annotation table `
+
+process make_gene_annotation_table {
+
+    publishDir "$SCXA_RESULTS/$expName/$species/reference", mode: 'copy', overwrite: true, pattern: 'gene_annotation.txt'
+    
+    conda "${baseDir}/envs/atlas-gene-annotation-manipulation.yml"
+    
+    cache 'deep'
+
+    memory { 5.GB * task.attempt }
+
+    errorStrategy { task.exitStatus == 130 || task.exitStatus == 137 || task.attempt < 3  ? 'retry' : 'ignore' }
+    maxRetries 3
+        
+    input:
+        set val(esTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from ES_TAGS_FOR_GENE_ANNO.join(REFERENCES_FOR_GENE_ANNO)
+
+    output:
+        set val(esTag), file('gene_annotation.txt') into NEW_GENE_META
+
+    """
+    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+        --parse-cdnas $referenceFasta --parse-cdna-field "gene_id" --feature-type \
+        "gene" --parse-cdna-names --mito --mito-biotypes $params.mitoBiotypes \
+        --mito-chr $params.mitoChr --first-field "gene_id" --output-file \
+        gene_annotation.txt
     """
 }
 
@@ -851,6 +844,13 @@ TRANSCRIPT_TO_GENE
     .into{
         TRANSCRIPT_TO_GENE_QUANT
         TRANSCRIPT_TO_GENE_AGGR
+    }
+
+NEW_GENE_META
+    .concat(REUSED_GENE_META.unique())
+    .gene{
+        GENE_META_FOR_TERTIARY
+        GENE_META_FOR_BUNDLING
     }
 
 // Make a configuration for the Fastq provider, and make initial assessment
@@ -885,7 +885,8 @@ TO_QUANTIFY_FOR_QUANT
     .join(ESP_TAGS_FOR_QUANT)
     .join(EXTENDED_CONF_FOR_QUANT)
     .join(ANALYSIS_META_FOR_QUANT)
-    .join(CLEANED_REFERENCES)
+    .join(PREPARED_REFERENCES.map{tuple(it[0], it[1], it[2], it[3], it[4])})
+    .join(CONTAMINATION_INDEX)
     .join(TRANSCRIPT_TO_GENE_QUANT)
     .join(PRIVACY_STATUS)
     .set{
@@ -918,7 +919,7 @@ process smart_quantify {
     maxRetries 10
     
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), file(kallistoIndex), file(salmonIndex), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from SMART_INPUTS
         val flag from INIT_DONE_SMART
 
     output:
@@ -927,7 +928,7 @@ process smart_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser" "$privacyStatus"
+    submitQuantificationWorkflow.sh 'smart-seq' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$kallistoIndex" "$salmonIndex" "$enaSshUser" "$privacyStatus"
     """
 }
 
@@ -947,7 +948,7 @@ process droplet_quantify {
     errorStrategy { task.attempt<=5 ? 'retry' : 'ignore' }
 
     input:
-        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
+        set val(espTag), val(isDroplet), val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary), file(referenceFasta), file(referenceGtf), file(kallistoIndex), file(salmonIndex), val(contaminationIndex), file(transcriptToGene), val(privacyStatus) from DROPLET_INPUTS
         val flag from INIT_DONE_DROPLET
 
     output:
@@ -955,7 +956,7 @@ process droplet_quantify {
         file('quantification.log')    
 
     """
-    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$enaSshUser" "$privacyStatus"
+    submitQuantificationWorkflow.sh 'droplet' "$expName" "$species" "$protocol" "$confFile" "$metaForQuant" "$referenceFasta" "$transcriptToGene" "$contaminationIndex" "$kallistoIndex" "$salmonIndex" "$enaSshUser" "$privacyStatus"
     """
 }
 
@@ -1169,9 +1170,10 @@ NEW_MATCHED_META
 ES_TAGS_FOR_TERTIARY                                                                                            // esTag, expName, species
     .join(CONF_BY_EXP_SPECIES_FOR_TERTIARY)                                                                     // esTag, expName, species, confFile 
     .join(NEW_COUNT_MATRICES_FOR_TERTIARY.concat(TO_RETERTIARY.map{ r -> tuple(r[0])}.join(REUSED_COUNT_MATRICES_FOR_TERTIARY)))       // esTag, expName, species, confFile, countMatrix
-    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex
-    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata
-    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, contIndex, cellMetadata, isDroplet
+    .join(REFERENCES_FOR_TERTIARY)                                                                              // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf
+    .join(GENE_META_FOR_TERTIARY)                                                                               // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata
+    .join(MATCHED_META_FOR_TERTIARY)                                                                            // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata, cellMetadata
+    .join(IS_DROPLET_EXP_SPECIES_FOR_TERTIARY)                                                                  // esTag, expName, species, confFile, countMatrix, referenceFasta, referenceGtf, geneMetadata, cellMetadata, isDroplet
     .set{TERTIARY_INPUTS}
 
 process tertiary {
@@ -1194,7 +1196,7 @@ process tertiary {
     maxRetries 3
       
     input:
-        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(contIndex), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
+        set val(esTag), val(expName), val(species), file(confFile), file(countMatrix), file(referenceFasta), file(referenceGtf), file(geneMetadata), file(cellMetadata), val(isDroplet) from TERTIARY_INPUTS
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into NEW_TERTIARY_RESULTS
@@ -1202,7 +1204,7 @@ process tertiary {
     script:
 
         """
-            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$referenceGtf" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
+            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$geneMetadata" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
         """
 }
 
@@ -1217,9 +1219,10 @@ NEW_TERTIARY_RESULTS
     .join(CONF_BY_EXP_SPECIES_FOR_BUNDLE)                                               // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile
     .join(NEW_COUNT_MATRICES_FOR_BUNDLING.concat(REUSED_COUNT_MATRICES_FOR_BUNDLING))   // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix
     .join(NEW_TPM_MATRICES.concat(REUSED_TPM_MATRICES), remainder: true)                                 // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix
-    .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex
-    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf
-    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, contIndex, condensedSdrf, cellMetadata 
+    .join(REFERENCES_FOR_BUNDLING)                                                      // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf
+    .join(GENE_META_FOR_BUNDLING)                                                       // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, geneMetadata
+    .join(CONDENSED_FOR_BUNDLING.concat(REUSED_CONDENSED))                              // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, geneMetadata, condensedSdrf
+    .join(MATCHED_META_FOR_BUNDLING)                                                    // esTag, filteredMatrix, normalisedMatrix, clusters, umap, tsne, markers, softwareReport, projectFile, expName, species, protocolList, confFile, rawMatrix, tpmMatrix, referenceFasta, referenceGtf, geneMetadata, condensedSdrf, cellMetadata 
     .set{BUNDLE_INPUTS}
 
 process bundle {
@@ -1233,7 +1236,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(contaminationIndex), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(geneMetadata) file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
@@ -1264,6 +1267,7 @@ process bundle {
         file("bundle/${expName}.condensed-sdrf.tsv")
         file("bundle/reference/${referenceFasta}")
         file("bundle/reference/${referenceGtf}")
+        file("bundle/reference/${geneMetadata}")
         file('bundle/tsne_perplexity_*.tsv')
         file('bundle/umap_n_neighbors_*.tsv')
         file('bundle/markers_*.tsv') optional true
@@ -1276,7 +1280,7 @@ process bundle {
         file("bundle/${expName}.project.h5ad")
         
         """
-            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
+            submitBundleWorkflow.sh "$expName" "$species" "$protocolList" "$confFile" "$referenceFasta" "$referenceGtf" "$geneMetadata" "$tertiaryWorkflow" "$condensedSdrf" "$cellMetadata" "$rawMatrix" "$filteredMatrix" "$normalisedMatrix" "$tpmMatrix" "$clusters" markers tsne umap $softwareReport $projectFile
         """
 }
 

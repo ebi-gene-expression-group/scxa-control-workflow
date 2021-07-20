@@ -1,3 +1,3 @@
 name: atlas-gene-annotation-manipulation
 dependencies:
-  - atlas-gene-annotation-manipulation=0.0.1
+  - atlas-gene-annotation-manipulation=1.0.1

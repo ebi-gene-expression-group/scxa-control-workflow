@@ -9,8 +9,10 @@ sdrfFile=$6
 referenceFasta=$7
 transcriptToGene=$8
 contaminationIndex=$9
-enaSshUser=${10}
-privacyStatus=${11}
+kallistoIndex=${10}
+salmonIndex=${11}
+enaSshUser=${12}
+privacyStatus=${13}
 
 # Remove existing results downstrea of this step
 
@@ -64,10 +66,12 @@ mkdir -p $SCXA_RESULTS/$SUBDIR/reports
 
 contIndex=''
 enaSshOption=
+transcriptomeIndex=$RESULTS_ROOT/$salmonIndex
 
-if [ "$worflow" = 'smart-seq' ]; then
+if [ "$workflow" = 'smart-seq' ]; then
 
     enaSshOption="--enaSshUser $enaSshUser"
+    transcriptomeIndex=$RESULTS_ROOT/$kallistoIndex
 
     # Supply a contamination index where provided in the config
 
@@ -88,6 +92,7 @@ nextflow run \
     --resultsRoot $RESULTS_ROOT \
     --manualDownloadFolder $manualDownloadFolder \
     --transcriptToGene $RESULTS_ROOT/$transcriptToGene \
+    --transcriptomeIndex $transcriptomeIndex \
     $contIndex $enaSshOption \
     -resume \
     $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_${workflow}_quantification/main.nf \
