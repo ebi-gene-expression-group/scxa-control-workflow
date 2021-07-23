@@ -848,7 +848,7 @@ TRANSCRIPT_TO_GENE
 
 NEW_GENE_META
     .concat(REUSED_GENE_META.unique())
-    .gene{
+    .into{
         GENE_META_FOR_TERTIARY
         GENE_META_FOR_BUNDLING
     }
@@ -1236,7 +1236,7 @@ process bundle {
     maxRetries 20
     
     input:
-        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(geneMetadata) file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
+        set val(esTag), file(filteredMatrix), file(normalisedMatrix), file(clusters), file('*'), file('*'), file('*'), file(softwareReport), file(projectFile), val(expName), val(species), val(protocolList), file(confFile), file(rawMatrix), file(tpmMatrix), file(referenceFasta), file(referenceGtf), file(geneMetadata), file(condensedSdrf), file(cellMetadata) from BUNDLE_INPUTS
             
     output:
         file('bundle/software.tsv')
