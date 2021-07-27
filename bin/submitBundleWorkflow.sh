@@ -6,7 +6,7 @@ protocolList=$3
 confFile=$4
 referenceFasta=$5
 referenceGtf=$6
-geneAnnotation=$7
+geneMetadata=$7
 tertiaryWorkflow=$8
 condensedSdrf=$9
 cellMeta=${10}
@@ -54,7 +54,7 @@ nextflow run \
     --condensedSdrf ${condensedSdrf} \
     --rawMatrix ${rawMatrix} $TPM_OPTIONS \
     --referenceFasta $referenceFasta \
-    --geneAnnotation $geneAnnotation \
+    --geneMetadata $geneMetadata \
     --referenceGtf $referenceGtf $TERTIARY_OPTIONS \
     -resume \
     $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_bundle/main.nf \
