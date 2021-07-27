@@ -1200,6 +1200,7 @@ process tertiary {
 
     output:
         set val(esTag), file("matrices/raw_filtered.zip"), file("matrices/filtered_normalised.zip"), file("clusters_for_bundle.txt"), file("umap"), file("tsne"), file("markers"), file('clustering_software_versions.txt'), file('project.h5ad') into NEW_TERTIARY_RESULTS
+        set val(esTag), file('scrublet.png') optional true into SCRUBLET_PLOTS 
 
     script:
 
