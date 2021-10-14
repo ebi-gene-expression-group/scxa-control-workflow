@@ -1205,6 +1205,14 @@ process tertiary {
     script:
 
         """
+            # It can be useful to resume a Galaxy workflow when this control
+            # workflow is disrupted somehow. But usually when a failure is
+            # detected 'live', it's a lethal one, and we need to fully restart
+            # with a new history, so we delete the state file.
+            
+            if [ $task.attempt -gt 1 ]; then
+                rm -f $TMPDIR/${expName}.${species}.galaxystate
+            fi
             submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$geneMetadata" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
         """
 }
