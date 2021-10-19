@@ -50,10 +50,10 @@ fasta=$(refgenie seek $reference/fasta_txome:cdna_$referenceType)
 gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
 
 kallisto_version=$(grep "kallisto=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_smart-seq_quantification/envs/kallisto.yml | awk -F'=' '{print $2}' | tr -d '\n')
-kallisto_index=$(refgenie seek $reference/kallisto_index:cdna_${referenceType}--kallisto_${kallisto_version})
+kallisto_index=$(refgenie seek $reference/kallisto_index:cdna_${referenceType}--kallisto_v${kallisto_version})
 
 salmon_version=$(grep "salmon=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_droplet_quantification/envs/alevin.yml | awk -F'=' '{print $2}' | tr -d '\n')
-salmon_index=$(refgenie seek $reference/salmon_index:cdna_${referenceType}--salmon_${salmon_version})
+salmon_index=$(refgenie seek $reference/salmon_index:cdna_${referenceType}--salmon_v${salmon_version})
 
 mkdir -p $outDir
 ln -s $fasta $outDir/$(find_orig_refgenie_asset_name $fasta)
