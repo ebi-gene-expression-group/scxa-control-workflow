@@ -23,16 +23,6 @@ if [ -n "$spikes" ]; then
     spikesPart="--spikes_$spikes"
 fi
 
-digest=$(refgenie alias get -a ${species}--${referenceType}${spikesPart}) 
-if [ $? -ne 0 ] || [ -z "$digest" ]; then
-    echo "Refgenie doesn't seem to have the alias ${species}--${referenceType}" 1>&2
-    exit 1
-else
-    echo "Got digest $digest for ${species}--${referenceType}${spikesPart}" 1>&2
-    reference=$(refgenie alias get | grep $digest | awk -F ' │ ' '{print $2}' | awk -F',' '{print $1}')
-fi
-refinfo=$( refgenie list -g $reference )
-
 # Use references from the ISL setup. Use pre-baked conversions for when
 # ensembl species paths don't match organism
 
@@ -45,6 +35,16 @@ if [ -n "$NONSTANDARD_SPECIES_NAMES" ] && [ -e "$NONSTANDARD_SPECIES_NAMES" ]; t
     fi
     set -e
 fi
+
+digest=$(refgenie alias get -a ${species}--${referenceType}${spikesPart}) 
+if [ $? -ne 0 ] || [ -z "$digest" ]; then
+    echo "Refgenie doesn't seem to have the alias ${species}--${referenceType}" 1>&2
+    exit 1
+else
+    echo "Got digest $digest for ${species}--${referenceType}${spikesPart}" 1>&2
+    reference=$(refgenie alias get | grep $digest | awk -F ' │ ' '{print $2}' | awk -F',' '{print $1}')
+fi
+refinfo=$( refgenie list -g $reference )
 
 fasta=$(refgenie seek $reference/fasta_txome:cdna_$referenceType)
 gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
