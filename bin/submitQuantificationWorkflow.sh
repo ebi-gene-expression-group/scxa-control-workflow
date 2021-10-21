@@ -93,6 +93,7 @@ nextflow run \
     --manualDownloadFolder $manualDownloadFolder \
     --transcriptToGene $RESULTS_ROOT/$transcriptToGene \
     --transcriptomeIndex $transcriptomeIndex \
+    --fastqProviderConfig $FASTQ_PROVIDER_CONFIG \ 
     $contIndex $enaSshOption \
     -resume \
     $SCXA_WORKFLOW_ROOT/workflow/scxa-workflows/w_${workflow}_quantification/main.nf \
