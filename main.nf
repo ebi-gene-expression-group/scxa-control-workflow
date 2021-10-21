@@ -868,7 +868,8 @@ process initialise_downloader {
         val true into INIT_DONE
 
     """
-    initialiseDownload.sh ${baseDir}/params.config $NXF_TEMP/atlas-fastq-provider/download_config.sh $NXF_TEMP/atlas-fastq-provider/fastq_provider.probe 
+    downloaderConfig=\${FASTQ_PROVIDER_CONFIG:-$NXF_TEMP/atlas-fastq-provider/download_config.sh}
+    initialiseDownload.sh ${baseDir}/params.config \$downloaderConfig $NXF_TEMP/atlas-fastq-provider/fastq_provider.probe 
     """
 }
 
