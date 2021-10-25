@@ -164,7 +164,7 @@ cat $SCXA_RESULTS/all.done.txt | while read -r l; do
     bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
 
     if [ $? -ne 0 ]; then
-        for tmpWfDir in work/scxa-control-workflow_$expId nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow nextflow/${expId}; do
+        for tmpWfDir in work/scxa-control-workflow_$expId work/$expId nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow nextflow/${expId}; do
             if [ -d "${SCXA_WORKFLOW_ROOT}/${tmpWfDir}" ]; then
                 nohup rm -rf ${SCXA_WORKFLOW_ROOT}/${tmpWfDir} &
             fi
