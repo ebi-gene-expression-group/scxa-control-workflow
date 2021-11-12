@@ -835,7 +835,10 @@ process make_gene_annotation_table {
         --parse-cdnas $referenceFasta --parse-cdna-field "gene_id" --feature-type \
         "gene" --parse-cdna-names --mito --mito-biotypes $params.mitoBiotypes \
         --mito-chr $params.mitoChr --first-field "gene_id" --output-file \
-        gene_annotation.txt
+        gene_annotation.txt.tmp
+    
+    # Make sure gene_name etc present
+    checkGeneAnnoColumns.R gene_annotation.txt.tmp gene_annotation.txt
     """
 }
 
