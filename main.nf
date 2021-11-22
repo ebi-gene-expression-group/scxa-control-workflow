@@ -1364,7 +1364,7 @@ process cleanup {
         file("all.done${doneSuffix}.txt") into DONEFILE
 
     """
-    touch $SCXA_WORK/.success
+    touch $SCXA_WORK/.success${doneSuffix}
     cat ${bundleLines} | while read -r l; do
         expName=\$(echo "\$l" | awk '{print \$1}')
         species=\$(echo "\$l" | awk '{print \$2}')
