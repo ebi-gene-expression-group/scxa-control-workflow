@@ -84,6 +84,7 @@ popd > /dev/null
 
 export PATH=$SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin:$PATH
 
+echo "Checking experiments for submission"
 while read -r idfFile; do
     idfFileName=$(basename $idfFile)
     expId=$(echo $idfFileName | awk -F'.' '{print $1}')
@@ -143,6 +144,7 @@ done <<< "$(ls $SCXA_WORKFLOW_ROOT/metadata/*/*/*.idf.txt)"
 # List all finished bundles for loading, exluding anything that might have been
 # added to the excluded set after completion
 
+echo "Getting completed result set..."
 ls $SCXA_WORKFLOW_ROOT/results/*/*/bundle/MANIFEST | while read -r l; do dirname $l; done | awk -F'/' '{OFS="\t";} {print $(NF-2),$(NF-1),$0}' | while read -r m; do
     exp=$(echo -e "$m" | awk '{print $1}');
     grep "^$exp$(printf '\t')" $SCXA_RESULTS/excluded.txt > /dev/null;
@@ -155,13 +157,16 @@ done > $SCXA_RESULTS/all.done.txt
 # within the workflow. We'll have to tweak this if we ever allow multi-species
 # experiments, since the dirs are not currently tagged by species.
 
+echo "Cleaning up..."
+bjobsOutput=$(bjobs -w)
+
 cat $SCXA_RESULTS/all.done.txt | while read -r l; do
     expId=$(echo "$l" | awk '{print $1}')
     species=$(echo "$l" | awk '{print $2}')
 
     controlJobName="${expId}_${controlJobSuffix}"
 
-    bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
+    echo -e "$bjobsOutput" | grep " ${controlJobName}" > /dev/null 2>&1
 
     if [ $? -ne 0 ]; then
         for tmpWfDir in work/scxa-control-workflow_$expId work/$expId nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow nextflow/${expId}; do
