@@ -167,7 +167,7 @@ if [ $? -ne 0 ]; then
     rm -rf run.out run.err .nextflow.log*  
     bsub \
         -J "${controlJobName}" \
-        -M 4096 -R "rusage[mem=4096]" \
+        -M 8192 -R "rusage[mem=8192]" \
         -u $SCXA_REPORT_EMAIL \
         -o run.out \
         -e run.err \
