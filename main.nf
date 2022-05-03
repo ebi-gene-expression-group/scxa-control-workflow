@@ -193,8 +193,6 @@ META_WITH_SPECIES_IDF
 process generate_configs {
 
     cache 'deep'
-    
-    errorStrategy 'ignore'
 
     conda 'r-optparse r-data.table r-workflowscriptscommon pyyaml'
 
@@ -265,8 +263,6 @@ process check_controlled_access{
     conda 'pyyaml' 
     
     cache false
-    
-    errorStrategy 'ignore'
 
     input:
         set val(expName), val(species), val(protocol), file(confFile), file(metaForQuant), file(metaForTertiary) from CONF_ANALYSIS_META_BY_EXP_SPECIES_PROTOCOL
