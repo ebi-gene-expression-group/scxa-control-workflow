@@ -193,8 +193,6 @@ META_WITH_SPECIES_IDF
 process generate_configs {
 
     cache 'deep'
-    
-    errorStrategy 'ignore'
 
     conda 'r-optparse r-data.table r-workflowscriptscommon pyyaml'
 
