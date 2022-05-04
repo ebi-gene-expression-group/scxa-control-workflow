@@ -420,7 +420,7 @@ if ( !is.null(opt$idf_file) ) {
   ## Check the experiment type
     
   exp.type <- tolower(idf["aeexperimenttype",1])
-  valid.exp.types = c( single_cell = "RNA-seq of coding RNA from single cells", bulk = "RNA-seq of coding RNA" )
+  valid.exp.types = c( single_cell = "RNA-seq of coding RNA from single cells", single_cell_nucleus = "single nucleus rna sequencing", bulk = "RNA-seq of coding RNA" )
     
   if ( ! exp.type %in% tolower(valid.exp.types) ){
     perror("IDF error in AEExperimentType: Invalid value (", exp.type,") expected ",paste(valid.exp.types, sep=" or ", collapse=" or "))
@@ -435,6 +435,8 @@ if ( !is.null(opt$idf_file) ) {
     addWarning("IDF shows bulk experiment ('RNA-seq of coding RNA'), but SDRF indicated single-cell (so should be 'RNA-seq of coding RNA from single cells')")
   } else if ( exp.type.name == 'single_cell' && ! is.singlecell ){
     addWarning("IDF shows single cell ('RNA-seq of coding RNA from single cells'), but SDRF indicated bulk (so should be 'RNA-seq of coding RNA')")
+  } else if ( exp.type.name == 'single_cell_nucleus' && ! is.singlecell ){
+    addWarning("IDF shows single cell ('single nucleus rna sequencing'), but SDRF indicated bulk (so should be 'RNA-seq of coding RNA')")  
   } 
  
   ## - Experimental Factor Name (mandatory) exist in the SDRF
