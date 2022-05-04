@@ -434,7 +434,7 @@ if ( !is.null(opt$idf_file) ) {
   if (is.singlecell && exp.type.name == 'bulk'){
     addWarning("IDF shows bulk experiment ('RNA-seq of coding RNA'), but SDRF indicated single-cell (so should be 'RNA-seq of coding RNA from single cells')")
   } else if ( exp.type.name %in% c('single_cell', 'single_nucleus') && ! is.singlecell ){
-    addWarning(paste("IDF shows non-bulk data ('", exp.type.name, "'), but SDRF indicated bulk (so should be 'RNA-seq of coding RNA')")
+    addWarning(paste("IDF shows non-bulk data ('", exp.type.name, "'), but SDRF indicated bulk (so should be 'RNA-seq of coding RNA')"))
   } 
  
   ## - Experimental Factor Name (mandatory) exist in the SDRF
