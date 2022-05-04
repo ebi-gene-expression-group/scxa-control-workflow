@@ -420,7 +420,7 @@ if ( !is.null(opt$idf_file) ) {
   ## Check the experiment type
     
   exp.type <- tolower(idf["aeexperimenttype",1])
-  valid.exp.types = c( single_cell = "RNA-seq of coding RNA from single cells", single_cell_nucleus = "single nucleus rna sequencing", bulk = "RNA-seq of coding RNA" )
+  valid.exp.types = c( single_cell = "RNA-seq of coding RNA from single cells", single_nucleus = "single nucleus rna sequencing", bulk = "RNA-seq of coding RNA" )
     
   if ( ! exp.type %in% tolower(valid.exp.types) ){
     perror("IDF error in AEExperimentType: Invalid value (", exp.type,") expected ",paste(valid.exp.types, sep=" or ", collapse=" or "))
