@@ -1075,9 +1075,15 @@ configs <- lapply(species_list, function(species){
           species.protocol.sdrf[[uri_field]] <- paste('sra', species.protocol.sdrf[[sra.col]], files, sep='/')
         }else{
 
+          # For each library we check if there is a fastq URI that can supply the file
+          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)         
+                              
+          missing_uri_files <- files[which(! apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, any))]
+          if (length(missing_file_uris) > 0){
+            stop(paste("Can't find URIs matching files:", paste(missing_uri_files, collapse=',')))
+          }
+                                                         
           nlibs <- nrow(species.protocol.sdrf)
-          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
-          
           if (nlibs > 1){
             uri_fields <- uri_cols[apply(uri_select, 1, function(x) which(x))]
           }else{
