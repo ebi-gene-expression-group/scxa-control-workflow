@@ -139,7 +139,7 @@ while read -r idfFile; do
         fi
     fi
 
-done <<< "$(ls $SCXA_WORKFLOW_ROOT/metadata/*/*/*.idf.txt)"
+done <<< "$(ls $SCXA_WORKFLOW_ROOT/metadata/*/*/*.idf.txt | grep -v ANND)"
 
 # List all finished bundles for loading, exluding anything that might have been
 # added to the excluded set after completion
