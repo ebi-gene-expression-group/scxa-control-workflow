@@ -1079,7 +1079,7 @@ configs <- lapply(species_list, function(species){
           uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)         
                               
           missing_uri_files <- files[which(! apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, any))]
-          if (length(missing_file_uris) > 0){
+          if (length(missing_uri_files) > 0){
             stop(paste("Can't find URIs matching files:", paste(missing_uri_files, collapse=',')))
           }
                                                          
