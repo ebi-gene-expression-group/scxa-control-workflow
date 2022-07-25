@@ -960,7 +960,7 @@ configs <- lapply(species_list, function(species){
       "\nparams{",
       paste0("    name = '", opt$name, "'"),
       paste0("    organism = '", species, "'"),
-      paste0("    protocol = '", protocol, "'")
+      paste0("    protocol = '", protocol, "'"),
       paste0("    experimentType = '", exp.type.name, "'")
     )
 
