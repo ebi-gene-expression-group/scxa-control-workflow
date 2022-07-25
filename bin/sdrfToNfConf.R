@@ -961,6 +961,7 @@ configs <- lapply(species_list, function(species){
       paste0("    name = '", opt$name, "'"),
       paste0("    organism = '", species, "'"),
       paste0("    protocol = '", protocol, "'")
+      paste0("    experimentType = '", exp.type.name, "'")
     )
 
     config_fields <- c(run = run.col, layout = library.layout.col)
