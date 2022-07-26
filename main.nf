@@ -397,6 +397,7 @@ IS_DROPLET.into{
     IS_DROPLET_PROT
     IS_DROPLET_FOR_EXP_SPECIES_TEST
     IS_DROPLET_FOR_REUSE_QUANT
+    IS_DROPLET_FOR_T2G
 }
 
 ESP_TAGS_FOR_IS_DROPLET
@@ -791,17 +792,22 @@ process transcript_to_gene {
     maxRetries 3
         
     input:
-        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from REFS_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE.join(IS_DROPLET_FOR_T2G)
 
     output:
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
 
     """
-    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+    if [ $isDroplet == 'True' ]; then
+        pyroe make-splici $referenceFasta $referenceGtf 100 splici_transcriptome
+        mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
+    else
+        gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
         --parse-cdnas $referenceFasta  --parse-cdna-field "transcript_id" --feature-type \
         "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
         "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
         --no-header
+    fi
     """
 }
 
