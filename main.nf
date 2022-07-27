@@ -740,7 +740,7 @@ process add_reference {
     else
         # Copy unspiked symlinks to spiked if no spikes are required
         mkdir spiked 
-        cp -P *.gtf.gz *.fa.gz salmon_index *.idx spiked
+        cp -P *.gtf.gz *.fa.gz *.fa salmon_index *.idx spiked
     fi
     """
 }
