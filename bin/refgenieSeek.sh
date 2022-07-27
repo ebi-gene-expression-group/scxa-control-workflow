@@ -47,6 +47,7 @@ fi
 refinfo=$( refgenie list -g $reference )
 
 fasta=$(refgenie seek $reference/fasta_txome:cdna_$referenceType)
+genome_fasta=$(refgenie seek $reference/fasta:genome)
 gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
 
 kallisto_version=$(grep "kallisto=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_smart-seq_quantification/envs/kallisto.yml | awk -F'=' '{print $2}' | tr -d '\n')
@@ -57,6 +58,7 @@ salmon_index=$(refgenie seek $reference/salmon_index:cdna_${referenceType}--salm
 
 mkdir -p $outDir
 ln -s $fasta $outDir/$(find_orig_refgenie_asset_name $fasta)
+ln -s $genome_fasta $outDir/$(find_orig_refgenie_asset_name $genome_fasta)
 ln -s $gtf $outDir/$(find_orig_refgenie_asset_name $gtf)
 ln -s $(dirname $salmon_index) $outDir/salmon_index
 ln -s $(ls $(dirname $kallisto_index)/*.idx) $outDir/$(find_orig_refgenie_asset_name $fasta).idx
