@@ -799,7 +799,7 @@ process transcript_to_gene {
 
     """
     if [ $isDroplet == 'True' ]; then
-        pyroe make-splici *.fa *.gtf.gz 100 splici_transcriptome
+        pyroe make-splici ${referenceFasta} ${referenceGtf} 100 splici_transcriptome
         mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
     else
         gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
