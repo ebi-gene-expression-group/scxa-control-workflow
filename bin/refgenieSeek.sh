@@ -48,7 +48,7 @@ refinfo=$( refgenie list -g $reference )
 
 fasta=$(refgenie seek $reference/fasta_txome:cdna_$referenceType)
 genome_fasta=$(refgenie seek $reference/fasta:genome)
-gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
+gtf=$(refgenie seek {$sepcies}--newest/ensembl_gtf:$referenceType )
 
 kallisto_version=$(grep "kallisto=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_smart-seq_quantification/envs/kallisto.yml | awk -F'=' '{print $2}' | tr -d '\n')
 kallisto_index=$(refgenie seek $reference/kallisto_index:cdna_${referenceType}--kallisto_v${kallisto_version})
