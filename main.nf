@@ -799,8 +799,8 @@ process transcript_to_gene {
 
     """
     if [ $isDroplet == 'True' ]; then
-        gunzip $referenceFasta
-        gunzip $referenceGtf
+        gunzip -f $referenceFasta
+        gunzip -f $referenceGtf
         pyroe make-splici *.fa *.gtf 100 splici_transcriptome
         mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
     else
