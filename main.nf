@@ -726,7 +726,7 @@ process add_reference {
 
     output:
         set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file('spiked/*.fa'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
         set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
@@ -799,9 +799,7 @@ process transcript_to_gene {
 
     """
     if [ $isDroplet == 'True' ]; then
-        gunzip -f $referenceFasta
-        gunzip -f $referenceGtf
-        pyroe make-splici *.fa *.gtf 100 splici_transcriptome
+        pyroe make-splici *.fa *.gtf.gz 100 splici_transcriptome
         mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
     else
         gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
