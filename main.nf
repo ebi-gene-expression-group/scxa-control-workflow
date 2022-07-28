@@ -725,9 +725,9 @@ process add_reference {
         set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
 
     output:
-        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
+        set val(espTag), file('spiked/*.cdna.*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
         set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
-        set val("${expName}-${species}"), file(" *.cdna.*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
+        set val("${expName}-${species}"), file("*.cdna.*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
     refgenieSeek.sh $species ${params.islReferenceType} "" \$(pwd)
