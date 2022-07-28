@@ -726,7 +726,7 @@ process add_reference {
 
     output:
         set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
         set val("${expName}-${species}"), file(" *.cdna.*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
