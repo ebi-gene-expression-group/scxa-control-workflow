@@ -53,7 +53,7 @@ gtf=$(refgenie seek $reference/ensembl_gtf:$referenceType )
 kallisto_version=$(grep "kallisto=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_smart-seq_quantification/envs/kallisto.yml | awk -F'=' '{print $2}' | tr -d '\n')
 kallisto_index=$(refgenie seek $reference/kallisto_index:cdna_${referenceType}--kallisto_v${kallisto_version})
 
-salmon_version=$(grep "salmon=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_droplet_quantification/envs/alevin.yml | awk -F'=' '{print $2}' | tr -d '\n')
+salmon_version=$(grep "salmon=" ${SCXA_WORKFLOW_ROOT}/workflow/scxa-workflows/w_droplet_quantification/envs/alevin_fry.yml | awk -F'=' '{print $2}' | tr -d '\n')
 salmon_index=$(refgenie seek $reference/salmon_index:splici_${referenceType}--salmon_v${salmon_version})
 
 mkdir -p $outDir
