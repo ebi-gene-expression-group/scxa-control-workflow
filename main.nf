@@ -727,7 +727,7 @@ process add_reference {
     output:
         set val(espTag), file('spiked/*.cdna.*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
         set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE_DROPLET
-        set val(espTag), val(expName), val(species), file("*.cdna.*.fa.gz"), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE_NON_DROPLET
+        set val(espTag), val(expName), val(species), file("*.cdna.*.fa.gz") into REFS_FOR_T2GENE_NON_DROPLET
         set val("${expName}-${species}"), file("*.cdna.*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
@@ -794,7 +794,7 @@ process transcript_to_gene {
         
     input:
         set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_T2G)
-        set val(espTag), val(expName), val(species), file(referenceCDNA) from REFS_FOR_T2GENE_NON_DROPLET.map{r -> tuple(r[0], r[1], r[2], r[4])}
+        set val(espTag), val(expName), val(species), file(referenceCDNA) from REFS_FOR_T2GENE_NON_DROPLET
        
 
     output:
