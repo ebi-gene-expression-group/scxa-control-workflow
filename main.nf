@@ -726,7 +726,8 @@ process add_reference {
 
     output:
         set val(espTag), file('spiked/*.cdna.*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE_DROPLET
+        set val(espTag), val(expName), val(species), file("*.cdna.*.fa.gz"), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE_NON_DROPLET
         set val("${expName}-${species}"), file("*.cdna.*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
@@ -792,7 +793,9 @@ process transcript_to_gene {
     maxRetries 3
         
     input:
-        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE.join(IS_DROPLET_FOR_T2G)
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_T2G)
+        set val(espTag), val(expName), val(species), file(referenceCDNA), file(referenceGtf) from REFS_FOR_T2GENE_NON_DROPLET
+       
 
     output:
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
@@ -803,7 +806,7 @@ process transcript_to_gene {
         mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
     else
         gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
-        --parse-cdnas $referenceFasta  --parse-cdna-field "transcript_id" --feature-type \
+        --parse-cdnas $referenceCDNA --parse-cdna-field "transcript_id" --feature-type \
         "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
         "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
         --no-header
