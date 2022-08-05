@@ -794,7 +794,7 @@ process transcript_to_gene {
         
     input:
         set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_T2G)
-        set val(espTag), val(expName), val(species), file(referenceCDNA), file(Gtf) from REFS_FOR_T2GENE_NON_DROPLET
+        set val(espTag), val(expName), val(species), file(referenceCDNA) from REFS_FOR_T2GENE_NON_DROPLET.map{r -> tuple(r[0], r[1], r[2], r[4])}
        
 
     output:
