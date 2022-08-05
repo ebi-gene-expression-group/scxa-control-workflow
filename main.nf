@@ -805,7 +805,7 @@ process transcript_to_gene {
         pyroe make-splici ${referenceFasta} ${referenceGtf} 90 splici_transcriptome
         mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
     else
-        gtf2featureAnnotation.R --gtf-file $Gtf --version-transcripts \
+        gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
         --parse-cdnas $referenceCDNA --parse-cdna-field "transcript_id" --feature-type \
         "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
         "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
