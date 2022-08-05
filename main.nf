@@ -794,7 +794,7 @@ process transcript_to_gene {
         
     input:
         set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_T2G)
-        set val(espTag), val(expName), val(species), file(referenceCDNA), file(referenceGtf) from REFS_FOR_T2GENE_NON_DROPLET
+        set val(espTag), val(expName), val(species), file(referenceCDNA), file(Gtf) from REFS_FOR_T2GENE_NON_DROPLET
        
 
     output:
@@ -805,7 +805,7 @@ process transcript_to_gene {
         pyroe make-splici ${referenceFasta} ${referenceGtf} 90 splici_transcriptome
         mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
     else
-        gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+        gtf2featureAnnotation.R --gtf-file $Gtf --version-transcripts \
         --parse-cdnas $referenceCDNA --parse-cdna-field "transcript_id" --feature-type \
         "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
         "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
