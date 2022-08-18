@@ -1,4 +1,4 @@
 name: atlas-gene-annotation-manipulation
 dependencies:
   - atlas-gene-annotation-manipulation=1.1.0
-  - pyroe
+  - pyroe=0.6.2
