@@ -397,7 +397,7 @@ IS_DROPLET.into{
     IS_DROPLET_PROT
     IS_DROPLET_FOR_EXP_SPECIES_TEST
     IS_DROPLET_FOR_REUSE_QUANT
-    IS_DROPLET_FOR_T2G
+    IS_DROPLET_FOR_TRANSCRIPT_TO_GENE
 }
 
 ESP_TAGS_FOR_IS_DROPLET
@@ -793,7 +793,7 @@ process transcript_to_gene {
     maxRetries 3
         
     input:
-        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_T2G)
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_TRANSCRIPT_TO_GENE)
         set val(espTag), val(expName), val(species), file(referenceCDNA) from REFS_FOR_T2GENE_NON_DROPLET
        
 
