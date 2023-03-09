@@ -690,7 +690,7 @@ process reuse_tertiary {
 
 process check_privacy {
 
-    executor 'local'
+    conda "${baseDir}/envs/jq.yml"
 
     input:
         set val(espTag), val(expName), val(species), val(protocol) from TO_QUANTIFY_FOR_PRIVACY_CHECK.join(ESP_TAGS_FOR_PRIVACY_CHECK)
@@ -699,12 +699,37 @@ process check_privacy {
         set val(espTag), stdout into PRIVACY_STATUS
 
     """
-    # replace with biostudies
-    privacyStatus=\$(wget -O - http://peach.ebi.ac.uk:8480/api/privacy.txt?acc=${expName} 2>/dev/null | tr "\\t" "\\n" | awk -F':' '/privacy/ {print \$2}')
-    if [ -z "\$privacyStatus" ]; then
-      privacyStatus=public
-    fi    
-    echo -n "\$privacyStatus"
+    apiKey="isPublic"
+    apiSearch="https://www.ebi.ac.uk/biostudies/api/v1/search?type=study&accession=${expName}"
+    response=$(curl $apiSearch)
+
+    if [ -z "${response}" ]; then
+       #echo "ERROR: Got empty response from ${apiSearch} - unable to determine privacy status" >&2
+       exit 1
+    else
+        responseHit=$(echo ${response} | jq .hits[0])
+        if [[ "${responseHit}" == "null" ]]; then
+            #echo "WARNING: This search returned no hit: ${apiSearch}" >&2
+            expInfo=""
+        else
+            expInfo=$(echo $responseHit | jq ."${apiKey}")
+            #if [[ "${expInfo}" == "null" ]]; then
+            #    echo "WARNING: This key does not exist: ${apiKey}" >&2
+            #fi
+        fi
+    fi
+
+    if [[ -z "$expInfo" ]]; then 
+        expInfo="false"; 
+    fi
+
+    if [ "$expInfo" == "true" ]; then
+        privacyStatus=public
+    else
+        privacyStatus=private
+    fi
+
+    echo -n "$privacyStatus"
     """
 }
 
