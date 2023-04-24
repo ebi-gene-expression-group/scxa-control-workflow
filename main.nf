@@ -194,7 +194,7 @@ process generate_configs {
 
     cache 'deep'
 
-    conda 'r-optparse r-data.table r-workflowscriptscommon pyyaml'
+    conda 'r-base r-optparse r-data.table r-workflowscriptscommon pyyaml'
 
     input:
         set val(esTag), val(expName), val(species), file(idfFile), file(sdrfFile), file(cellsFile) from  ES_TAGS_FOR_CONFIG.join(META_WITH_SPECIES_FOR_QUANT)
