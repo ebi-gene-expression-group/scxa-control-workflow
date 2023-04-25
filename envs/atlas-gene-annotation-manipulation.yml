@@ -2,7 +2,7 @@ name: atlas-gene-annotation-manipulation
 channels:
   - bioconda
   - conda-forge
-  - ebi-gene-expression-group
+  - defaults
 dependencies:
   - atlas-gene-annotation-manipulation=1.1.0
   - pyroe=0.6.2
