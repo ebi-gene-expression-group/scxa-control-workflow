@@ -699,36 +699,43 @@ process check_privacy {
         set val(espTag), stdout into PRIVACY_STATUS
 
     """
-    apiKey="isPublic"
-    apiSearch="https://www.ebi.ac.uk/biostudies/api/v1/search?type=study&accession=${expName}"
-    response=\$(curl \$apiSearch)
+    if echo "\$expName" | grep -q "MTAB"; then
+        
+       apiKey="isPublic"
+       apiSearch="https://www.ebi.ac.uk/biostudies/api/v1/search?type=study&accession=${expName}"
+       response=\$(curl \$apiSearch)
 
-    if [ -z "\${response}" ]; then
-       #echo "ERROR: Got empty response from \${apiSearch} - unable to determine privacy status" >&2
-       exit 1
-    else
-        responseHit=\$(echo \${response} | jq .hits[0])
-        if [[ "\${responseHit}" == "null" ]]; then
-            #echo "WARNING: This search returned no hit: \${apiSearch}" >&2
-            expInfo=""
-        else
-            expInfo=\$(echo \$responseHit | jq ."\${apiKey}")
-            #if [[ "\${expInfo}" == "null" ]]; then
-            #    echo "WARNING: This key does not exist: \${apiKey}" >&2
-            #fi
-        fi
-    fi
+       if [ -z "\${response}" ]; then
+          #echo "ERROR: Got empty response from \${apiSearch} - unable to determine privacy status" >&2
+          exit 1
+       else
+           responseHit=\$(echo \${response} | jq .hits[0])
+           if [[ "\${responseHit}" == "null" ]]; then
+               #echo "WARNING: This search returned no hit: \${apiSearch}" >&2
+               expInfo=""
+           else
+               expInfo=\$(echo \$responseHit | jq ."\${apiKey}")
+               #if [[ "\${expInfo}" == "null" ]]; then
+               #    echo "WARNING: This key does not exist: \${apiKey}" >&2
+               #fi
+           fi
+       fi
 
-    if [[ -z "\$expInfo" ]]; then 
+       if [[ -z "\$expInfo" ]]; then 
         expInfo="false"; 
-    fi
+       fi
 
-    if [ "\$expInfo" == "true" ]; then
-        privacyStatus=public
+       if [ "\$expInfo" == "true" ]; then
+           privacyStatus=public
+       else
+           privacyStatus=private
+       fi
+       
     else
-        privacyStatus=private
+        # it's not MTAB
+        privacyStatus=public
     fi
-
+    
     echo -n "\$privacyStatus"
     """
 }
