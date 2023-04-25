@@ -1,7 +1,7 @@
 name: atlas-gene-annotation-manipulation
 channels:
-  - conda-forge
   - bioconda
+  - conda-forge
   - ebi-gene-expression-group
 dependencies:
   - atlas-gene-annotation-manipulation=1.1.0
