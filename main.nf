@@ -194,7 +194,7 @@ process generate_configs {
 
     cache 'deep'
 
-    conda 'r-optparse r-data.table r-workflowscriptscommon pyyaml'
+    conda 'r-base r-optparse r-data.table r-workflowscriptscommon pyyaml'
 
     input:
         set val(esTag), val(expName), val(species), file(idfFile), file(sdrfFile), file(cellsFile) from  ES_TAGS_FOR_CONFIG.join(META_WITH_SPECIES_FOR_QUANT)
@@ -397,6 +397,7 @@ IS_DROPLET.into{
     IS_DROPLET_PROT
     IS_DROPLET_FOR_EXP_SPECIES_TEST
     IS_DROPLET_FOR_REUSE_QUANT
+    IS_DROPLET_FOR_TRANSCRIPT_TO_GENE
 }
 
 ESP_TAGS_FOR_IS_DROPLET
@@ -694,41 +695,47 @@ process check_privacy {
 
     input:
         set val(espTag), val(expName), val(species), val(protocol) from TO_QUANTIFY_FOR_PRIVACY_CHECK.join(ESP_TAGS_FOR_PRIVACY_CHECK)
-
     output:
         set val(espTag), stdout into PRIVACY_STATUS
 
     """
-    apiKey="isPublic"
-    apiSearch="https://www.ebi.ac.uk/biostudies/api/v1/search?type=study&accession=${expName}"
-    response=\$(curl \$apiSearch)
+    if echo "\$expName" | grep -q "MTAB"; then
+        
+       apiKey="isPublic"
+       apiSearch="https://www.ebi.ac.uk/biostudies/api/v1/search?type=study&accession=${expName}"
+       response=\$(curl \$apiSearch)
 
-    if [ -z "\${response}" ]; then
-       #echo "ERROR: Got empty response from \${apiSearch} - unable to determine privacy status" >&2
-       exit 1
-    else
-        responseHit=\$(echo \${response} | jq .hits[0])
-        if [[ "\${responseHit}" == "null" ]]; then
-            #echo "WARNING: This search returned no hit: \${apiSearch}" >&2
-            expInfo=""
-        else
-            expInfo=\$(echo \$responseHit | jq ."\${apiKey}")
-            #if [[ "\${expInfo}" == "null" ]]; then
-            #    echo "WARNING: This key does not exist: \${apiKey}" >&2
-            #fi
-        fi
-    fi
+       if [ -z "\${response}" ]; then
+          #echo "ERROR: Got empty response from \${apiSearch} - unable to determine privacy status" >&2
+          exit 1
+       else
+           responseHit=\$(echo \${response} | jq .hits[0])
+           if [[ "\${responseHit}" == "null" ]]; then
+               #echo "WARNING: This search returned no hit: \${apiSearch}" >&2
+               expInfo=""
+           else
+               expInfo=\$(echo \$responseHit | jq ."\${apiKey}")
+               #if [[ "\${expInfo}" == "null" ]]; then
+               #    echo "WARNING: This key does not exist: \${apiKey}" >&2
+               #fi
+           fi
+       fi
 
-    if [[ -z "\$expInfo" ]]; then 
+       if [[ -z "\$expInfo" ]]; then 
         expInfo="false"; 
-    fi
+       fi
 
-    if [ "\$expInfo" == "true" ]; then
-        privacyStatus=public
+       if [ "\$expInfo" == "true" ]; then
+           privacyStatus=public
+       else
+           privacyStatus=private
+       fi
+       
     else
-        privacyStatus=private
+        # it's not MTAB
+        privacyStatus=public
     fi
-
+    
     echo -n "\$privacyStatus"
     """
 }
@@ -750,9 +757,10 @@ process add_reference {
         set val(espTag), file(confFile), val(expName), val(species), val(protocol) from EXTENDED_CONF_FOR_REF.join(TO_QUANTIFY_FOR_REFERENCE).join(ESP_TAGS_FOR_REFERENCE)
 
     output:
-        set val(espTag), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
-        set val(espTag), val(expName), val(species), file('spiked/*.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE
-        set val("${expName}-${species}"), file("*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
+        set val(espTag), file('spiked/*.cdna.*.fa.gz'), file("spiked/*.gtf.gz"), file('spiked/*.idx'), file('spiked/salmon_index') into PREPARED_REFERENCES
+        set val(espTag), val(expName), val(species), file('spiked/*toplevel.fa.gz'), file("spiked/*.gtf.gz") into REFS_FOR_T2GENE_DROPLET
+        set val(espTag), val(expName), val(species), file("*.cdna.*.fa.gz") into REFS_FOR_T2GENE_NON_DROPLET
+        set val("${expName}-${species}"), file("*.cdna.*.fa.gz"), file("*.gtf.gz") into NEW_REFERENCES_FOR_DOWNSTREAM
 
     """
     refgenieSeek.sh $species ${params.islReferenceType} "" \$(pwd)
@@ -817,17 +825,24 @@ process transcript_to_gene {
     maxRetries 3
         
     input:
-        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf) from REFS_FOR_T2GENE
+        set val(espTag), val(expName), val(species), file(referenceFasta), file(referenceGtf), val(isDroplet) from REFS_FOR_T2GENE_DROPLET.join(IS_DROPLET_FOR_TRANSCRIPT_TO_GENE)
+        set val(espTag), val(expName), val(species), file(referenceCDNA) from REFS_FOR_T2GENE_NON_DROPLET
+       
 
     output:
         set val(espTag), file('transcript_to_gene.txt') into TRANSCRIPT_TO_GENE
 
     """
-    gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
-        --parse-cdnas $referenceFasta  --parse-cdna-field "transcript_id" --feature-type \
+    if [ $isDroplet == 'True' ]; then
+        pyroe make-splici ${referenceFasta} ${referenceGtf} 90 splici_transcriptome
+        mv splici_transcriptome/splici_fl*.tsv transcript_to_gene.txt
+    else
+        gtf2featureAnnotation.R --gtf-file $referenceGtf --version-transcripts \
+        --parse-cdnas $referenceCDNA --parse-cdna-field "transcript_id" --feature-type \
         "transcript" --parse-cdna-names --fill-empty transcript_id --first-field \
         "transcript_id" --output-file transcript_to_gene.txt --fields "transcript_id,gene_id" \
         --no-header
+    fi
     """
 }
 
