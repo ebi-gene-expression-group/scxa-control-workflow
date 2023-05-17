@@ -1078,7 +1078,8 @@ configs <- lapply(species_list, function(species){
 
           # For each library we check if there is a fastq URI that can supply the file
           uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)         
-                              
+          
+          # the following line gives an error: dim(X) must have a positive length
           missing_uri_files <- files[which(! apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, any))]
           if (length(missing_uri_files) > 0){
             stop(paste("Can't find URIs matching files:", paste(missing_uri_files, collapse=',')))
