@@ -162,7 +162,7 @@ for ( n in names(opt) ) {
 }
 
 ################################################################################
-# First round SDRF field checks: before we know about field content 
+# First round SDRF field checks: before we know about field content
 ################################################################################
 
 # Load the SDRF
