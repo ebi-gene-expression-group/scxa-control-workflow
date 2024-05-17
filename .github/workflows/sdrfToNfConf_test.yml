@@ -1,0 +1,37 @@
+name: R script check
+
+on:
+  push:
+    branches:
+      - bugfix/uri-sdrf
+  pull_request:
+    branches:
+      - bugfix/uri-sdrf
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v3
+      
+    - name: set up R
+      uses: r-lib/actions/setup-r@v2
+      with:
+        r-version: 3.6.3
+          
+    - name: install devtools related dependencies
+      run: sudo apt install build-essential libcurl4-openssl-dev libbz2-dev liblzma-dev #libcurl4-gnutls-dev libxml2-dev libssl-dev
+
+    - name: install dependencies
+      run: |
+        Rscript -e 'install.packages(c("data.table", "optparse", "devtools"))'
+        Rscript -e 'devtools::install_github("ebi-gene-expression-group/workflow-scripts-common")'
+    - name: run test
+      run: |
+        set -e
+        out_test1=$(pwd)/test1
+        Rscript bin/sdrfToNfConf.R --sdrf=tests/E-MTAB-4850.homo_sapiens.sdrf.txt --idf=tests/E-MTAB-4850.homo_sapiens.idf.txt --name=E-MTAB-4850 --verbose --out_conf $out_test1
+
+    - name: check for errors
+      run: Rscript -e 'stopifnot(identical(geterrmessage(), ""))'
