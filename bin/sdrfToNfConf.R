@@ -1077,7 +1077,7 @@ configs <- lapply(species_list, function(species){
         }else{
 
           # For each library we check if there is a fastq URI that can supply the file
-          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)         
+          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
           
           if (is.data.frame(uri_select) || is.matrix(uri_select)) {
             # the following line gives an error: dim(X) must have a positive length
