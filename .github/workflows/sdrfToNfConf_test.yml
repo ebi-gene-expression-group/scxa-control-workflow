@@ -3,10 +3,10 @@ name: R script check
 on:
   push:
     branches:
-      - develop
+      - bugfix/uri-sdrf
   pull_request:
     branches:
-      - develop
+      - bugfix/uri-sdrf
 
 jobs:
   run_script:
@@ -21,7 +21,7 @@ jobs:
         r-version: 3.6.3
           
     - name: install devtools related dependencies
-      run: sudo apt install build-essential libcurl4-gnutls-dev libxml2-dev libssl-dev
+      run: sudo apt install build-essential libcurl4-openssl-dev libbz2-dev liblzma-dev #libcurl4-gnutls-dev libxml2-dev libssl-dev
 
     - name: install dependencies
       run: |
