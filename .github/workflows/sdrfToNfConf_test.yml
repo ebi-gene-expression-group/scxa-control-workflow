@@ -1,0 +1,32 @@
+name: R script check
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  run_script:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout code
+      uses: actions/checkout@v2
+      
+    - name: set up R
+      uses: r-lib/actions/setup-r@v1
+      
+    - name: install dependencies
+      run: |
+        Rscript -e 'install.packages(c("data.table", "optparse", "devtools"), repos="https://cran.rstudio.com")' 
+        Rscript -e 'devtools::install_github('https://github.com/ebi-gene-expression-group/workflowscriptscommon', ref='develop')'
+    - name: run test
+      run: |
+        set -e
+        out_test1=$(pwd)/test1
+        Rscript bin/sdrfToNfConf.R --sdrf=tests/E-MTAB-4850.homo_sapiens.sdrf.txt --idf=tests/E-MTAB-4850.homo_sapiens.idf.txt --name=E-MTAB-4850 --verbose --out_conf $out_test1
+
+    - name: check for errors
+      run: Rscript -e 'stopifnot(identical(geterrmessage(), ""))'
