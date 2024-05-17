@@ -1084,7 +1084,7 @@ configs <- lapply(species_list, function(species){
             # if not a matrix or a data.frame
             missing_uri_files <- files[which(! apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, any))]
           } else {
-            missing_uri_files <- files[which(! apply(as.data.frame( apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files) ), 1, any))]
+            missing_uri_files <- files[which(! any(apply(species.protocol.sdrf[, uri_cols], 2, function(x) basename(x) == files))  )]
           }
             
           if (length(missing_uri_files) > 0){
