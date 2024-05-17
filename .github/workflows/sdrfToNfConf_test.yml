@@ -20,8 +20,8 @@ jobs:
       
     - name: install dependencies
       run: |
-        Rscript -e 'install.packages(c("data.table", "optparse", "remotes"), repos="https://cran.rstudio.com")' 
-        Rscript -e 'remotes::install_github("ebi-gene-expression-group/workflowscriptscommon", ref="develop")'
+        Rscript -e 'install.packages(c("data.table", "optparse", "devtools"))'
+        Rscript -e 'devtools::install_github("ebi-gene-expression-group/workflow-scripts-common")'
     - name: run test
       run: |
         set -e
