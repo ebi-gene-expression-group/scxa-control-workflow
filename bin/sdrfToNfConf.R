@@ -24,6 +24,9 @@ option_list <- list(
   make_option(c("--nc_window"), type="numeric", dest="nc_window", default=10, help="Clusters window [default %default]"),  
   make_option(c("-s", "--sdrf"), type="character", dest="sdrf_file", default=NA, help="SDRF file name"),
   make_option(c("-i", "--idf"), type="character", dest="idf_file", default=NULL, help="IDF file name"),
+  make_option(c("-e", "--cells"), type="character", dest="cells_file", default=NULL, help="Cells file name (droplet experiments only)"),
+  make_option(c("-f", "--cell_meta_fields"), type="character", dest="cell_meta_fields", default=NULL, help="Comma-separated list of cell metadata fields important for analysis"),
+  make_option(c("-t", "--cell_type_fields"), type="character", dest="cell_type_fields", default=NULL, help="Comma-separated list of possible fields for cell type"),
   make_option(c("--sc"), action="store_true",default=FALSE,dest="is_sc",help="Single cell experiment?. Default is FALSE."),
   make_option(c("-c","--check_only"),action="store_true",dest="check_only",default=FALSE,help="Checks the sdrf/idf but skips the generation of the configuration file."),
   make_option(c("-v","--verbose"),action="store_true",dest="verbose",default=FALSE,help="Produce verbose output."),
@@ -168,6 +171,14 @@ print.info("Loading SDRF ",opt$sdrf_file," ...")
 sdrf <- read.tsv(opt$sdrf_file,header=TRUE,comment.char="",fill=TRUE)
 print.info("Loading SDRF...done.")
 
+if ( ! is.null(opt$cells_file)){
+    print.info("Loading cells ",opt$cells_file," ...")
+    cells <- read.tsv(opt$cells_file,header=TRUE,comment.char="",fill=TRUE)
+    print.info("Loading cell-wise metadata...done.")
+}else{
+    cells <- sdrf
+}
+
 # Set some variable names we'll be using a lot. getActualColnames() will set
 # things to null when they're not present
 
@@ -188,23 +199,62 @@ sc.quality.col <- getActualColnames('single cell quality', sdrf)
 libary.layout.col <- getActualColnames('library layout', sdrf)
 spike.in.col <- getActualColnames('spike_in', sdrf)
 fastq.col <- getActualColnames('fastq uri', sdrf)
+sra.col <- getActualColnames('sra uri', sdrf)
 cell.count.col <- getActualColnames('cell count', sdrf)
 hca.bundle.uuid.col <- getActualColnames('HCA bundle uuid', sdrf)
 hca.bundle.version.col <- getActualColnames('HCA bundle version', sdrf)
+controlled.access.col <- getActualColnames('controlled access', sdrf)
+batch.col <- NULL
 
+# We may have been supplied with some cell-wise fields to extract
+
+cell.meta.cols <- NULL
+cell.type.col <- NULL
+
+if (! is.null(opt$cell_meta_fields)){
+
+    if ( ! is.null(opt$cells_file)){
+        cell.meta.source <- cells
+        cell.id.col <- getActualColnames('cell id', cells)
+    }else{
+        cell.meta.source <- sdrf
+        cell.id.col <- run.col
+    }
+    
+    # See if cell type fields specifically have been supplied
+
+    if (! is.null(opt$cell_type_fields)){
+        cell_type_fields <- unlist(strsplit(opt$cell_type_fields, ','))
+        
+        for (ctf in cell_type_fields){
+            actf <- getActualColnames(ctf, cell.meta.source)
+            if (! is.null(actf)){
+                cell.type.col <- actf
+                break
+            }
+        }
+    }
+    
+    cell_meta_fields <- unlist(strsplit(opt$cell_meta_fields, ','))
+    cell_meta_fields <- unlist(lapply(cell_meta_fields, function(x) getActualColnames(x, cell.meta.source)))
+    cell.meta.cols <- unique(c(cell.id.col, cell.type.col, cell_meta_fields[ ! is.null(cell_meta_fields)]))
+}
 ena.sample.col <- getActualColnames('ena_sample', sdrf)
 organism.col <- getActualColnames('organism', sdrf)
 
 # Define protocols in case of single cell  
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
-supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq")
-sc.droplet.protocols <- c("10xv1", "10xv1a", "10xv1i", "10xv2", "10xv3", "drop-seq", "10x 3' v2", "10x 3' v3", "10x 5' v1", "10x 5' v2")
+
+supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq", "seq-well", "10x5prime")
+sc.droplet.protocols <- c("10xv1", "10xv1a", "10xv1i", "10xv2", "10xv3", "drop-seq", "10x 3' v2", "10x 3' v3", "10x 5' v1", "10x 5' v2", "seq-well", "10x5prime")
+
   
 # Check the protocol and use to determine single-cell
 
 is.singlecell <- FALSE
 is.hca <- ! is.null(hca.bundle.uuid.col)
+is.sra <- ! is.null(sra.col)
 
 if ( ! is.null(protocol.col)){
 
@@ -250,10 +300,9 @@ for (comp in names(compare)){
     q(status=1)
   }
 }
-
 ## Verify presence of mandatory columns (SDRF) and regularise names
 
-cols.for.download <- ifelse(is.hca, c(hca.bundle.uuid.col, hca.bundle.version.col) , fastq.col)
+cols.for.download <- ifelse(is.hca, c(hca.bundle.uuid.col, hca.bundle.version.col) , ifelse(is.sra, sra.col, fastq.col))
 expected.cols <- c("Source Name")
 expected.comment.cols <- c("LIBRARY_STRATEGY","LIBRARY_SOURCE","LIBRARY_SELECTION","LIBRARY_LAYOUT",cols.for.download)
 expected.characteristic.cols <- c()
@@ -361,15 +410,19 @@ if ( !is.null(opt$idf_file) ) {
   
   # Additional IDF checks for Atlas
   
-  if ( ! tolower(idf["experimenttype",1]) %in% c("baseline","differential") ){
-    perror("IDF error in EAExperimentType: Invalid value (",idf["experimenttype",1],") expected baseline or differential")
+  exp_types <- idf["experimenttype",]
+  exp_types <- exp_types[exp_types != '' & ! is.na(exp_types)]
+  invalid_exp_types <- exp_types[! exp_types %in% c("baseline","differential","trajectory")]
+
+  if (length(invalid_exp_types) > 0){
+    perror("IDF error in EAExperimentType, the following types are invalid:", paste(invalid_exp_types, collapse=','))
     q(status=1)
   }
    
   ## Check the experiment type
     
   exp.type <- tolower(idf["aeexperimenttype",1])
-  valid.exp.types = c( single_cell = "RNA-seq of coding RNA from single cells", bulk = "RNA-seq of coding RNA" )
+  valid.exp.types = c( single_cell = "RNA-seq of coding RNA from single cells", single_nucleus = "single nucleus rna sequencing", bulk = "RNA-seq of coding RNA" )
     
   if ( ! exp.type %in% tolower(valid.exp.types) ){
     perror("IDF error in AEExperimentType: Invalid value (", exp.type,") expected ",paste(valid.exp.types, sep=" or ", collapse=" or "))
@@ -382,8 +435,8 @@ if ( !is.null(opt$idf_file) ) {
 
   if (is.singlecell && exp.type.name == 'bulk'){
     addWarning("IDF shows bulk experiment ('RNA-seq of coding RNA'), but SDRF indicated single-cell (so should be 'RNA-seq of coding RNA from single cells')")
-  } else if ( exp.type.name == 'single_cell' && ! is.singlecell ){
-    addWarning("IDF shows single cell ('RNA-seq of coding RNA from single cells'), but SDRF indicated bulk (so should be 'RNA-seq of coding RNA')")
+  } else if ( exp.type.name %in% c('single_cell', 'single_nucleus') && ! is.singlecell ){
+    addWarning(paste("IDF shows non-bulk data ('", exp.type.name, "'), but SDRF indicated bulk (so should be 'RNA-seq of coding RNA')"))
   } 
  
   ## - Experimental Factor Name (mandatory) exist in the SDRF
@@ -427,6 +480,13 @@ if ( !is.null(opt$idf_file) ) {
       perror("IDF error in EAAdditionalAttributes:",paste(idf.attrs[not.present],sep=",")," not found in SDRF")
       q(status=1)
     }
+  }
+
+  # Retrieve batch field if present
+
+  if ( "batcheffect" %in% rownames(idf)){
+    batch.col <- getActualColnames(idf["batcheffect",1], sdrf)
+    cell.meta.cols <- c(cell.meta.cols, batch.col)
   }
 }
 
@@ -472,6 +532,13 @@ print.info("Checking the presence of columns... done.")
 # Further SDRF checks now we know the right fields are there and we can look at
 # the content
 ################################################################################
+
+## Check if there are any controlled access runs
+
+controlled.access='no'
+if ( ! is.null(controlled.access.col) && any(sdrf[[controlled.access.col]] == 'yes')){
+   controlled.access='yes'
+}
 
 ## User can specify species, in which case we can discard irrelevant rows
 
@@ -561,7 +628,9 @@ if ( is.singlecell ) {
     "10x 3' v3" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     "10x 5' v1" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     "10x 5' v2" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    "drop-seq" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    "drop-seq" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "seq-well" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    "10x5prime" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     "smart-seq" = cols.for.download,
     "smart-seq2" = cols.for.download,
     "smarter" = cols.for.download,
@@ -581,6 +650,8 @@ if ( is.singlecell ) {
     "10x 5' v1" = c('index1 file'),
     "10x 5' v2" = c('index1 file'),
     "drop-seq" = c(),
+    "seq-well" = c(),
+    "10x5prime" = c(),
     "smart-seq2" = c(),
     "smarter" = c(),
     "smart-like" = c()
@@ -595,7 +666,15 @@ if ( is.singlecell ) {
       'cdna_read_offset' = 0,
       'end' =  '5'
     ),
-    "10xv3" = list(
+    '10x5prime' = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 10,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    '10xv3' = list(
       'umi_barcode_offset' = 16,  
       'umi_barcode_size' = 12,  
       'cell_barcode_size' = 16,  
@@ -636,6 +715,14 @@ if ( is.singlecell ) {
       'end' =  '5'
     ),
     "drop-seq" = list(
+      'umi_barcode_offset' = 12,  
+      'umi_barcode_size' = 8,  
+      'cell_barcode_size' = 12,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    'seq-well' = list(
       'umi_barcode_offset' = 12,  
       'umi_barcode_size' = 8,  
       'cell_barcode_size' = 12,  
@@ -765,6 +852,9 @@ names(run.fastq.files) <- unique(sdrf[[run.col]])
 
 sdrf.by.species.protocol <- lapply(split(sdrf, sdrf[[organism.col]]), function(x) split(x, x[[protocol.col]]) )
 
+# Filter any cells file to match the protocol-wise data
+cells.by.species.protocol <- list()
+
 # Run the checks first
 
 species.protocol.properties <- list()
@@ -781,7 +871,9 @@ for (species in names(sdrf.by.species.protocol)){
       protocol = tolower(protocol),
       has.spikes = FALSE,
       has.techreps = FALSE,
-      has.strandedness = FALSE
+      has.strandedness = FALSE,
+      has.controlled.access = FALSE,
+      has.cell.meta = FALSE
     )
   
     # Filtering could have removed all rows for a species
@@ -858,6 +950,18 @@ for (species in names(sdrf.by.species.protocol)){
       }
     }
   
+    ## Check if there are any controlled access runs
+
+    if ( ! is.null(controlled.access.col) && any(sdrf[[controlled.access.col]] == 'yes')){
+       properties$has.controlled.access=TRUE
+    }
+
+    # Check if there are inferred cell types in the SDRF
+
+    if ( (! is.null(cell.meta.cols))){
+        properties$has.cell.meta=TRUE
+    }
+
     species.protocol.properties[[species]][[protocol]] <- properties 
   }
 }
@@ -887,21 +991,28 @@ configs <- lapply(species_list, function(species){
  
     species.protocol.sdrf <- sdrf.by.species.protocol[[species]][[protocol]]
     properties <- species.protocol.properties[[species]][[protocol]]
-  
-    # layout is the SDRF with the duplicated lanes for paired end removed
-    species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
-    rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
-  
+ 
+    # layout is the SDRF with the duplicated lanes for paired end (and possibly technical replication) removed
+    if(properties$has.techrep) {
+      species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[techrep.col]]),,drop=FALSE]
+      rownames(species.protocol.layout) <- species.protocol.layout[[techrep.col]]
+    }else{   
+      species.protocol.layout <- species.protocol.sdrf[!duplicated(species.protocol.sdrf[[run.col]]),,drop=FALSE]
+      rownames(species.protocol.layout) <- species.protocol.layout[[run.col]]
+    }
+
     # Generate starting config file content
 
     config <- c(
       "\nparams{",
       paste0("    name = '", opt$name, "'"),
       paste0("    organism = '", species, "'"),
-      paste0("    protocol = '", protocol, "'")
+      paste0("    protocol = '", protocol, "'"),
+      paste0("    experimentType = '", exp.type.name, "'")
     )
 
     config_fields <- c(run = run.col, layout = library.layout.col)
+    
     if (!  is.droplet.protocol(protocol)){
       if ( length(fastq.fields) > 1 ){
         perror('Multiple fastq fields on non-droplet experiment')
@@ -948,6 +1059,12 @@ configs <- lapply(species_list, function(species){
     if (properties$has.strandedness){
       config_fields['strand'] <- strand.col
     }
+
+    # Do any rows need controlled access analysis?
+
+    if (properties$has.controlled.access){
+      config_fields['controlled_access'] <- controlled.access.col
+    }
     
     # For droplet techs, add colums with strighforward statements of the URIs
     # that contain barcodes and cDNAs, and record which columns to use (unless
@@ -959,7 +1076,7 @@ configs <- lapply(species_list, function(species){
       umi_field <- getActualColnames('umi barcode read', sdrf)
       cb_field <- getActualColnames('cell barcode read', sdrf)
       
-      if (! is.hca){
+      if (! any(is.hca, is.sra)){
         uri_cols <- which(colnames(sdrf) == fastq.col)
         if (length(uri_cols) < 2 ){
           perror('Less than 2 FASTQ URI fields supplied for droplet experiment- expect at least two, probably one for barcode/UMI, one for cDNA.')
@@ -1002,11 +1119,26 @@ configs <- lapply(species_list, function(species){
 
         if (is.hca){
           species.protocol.sdrf[[uri_field]] <- paste('hca', species.protocol.sdrf[[hca.bundle.uuid.col]], species.protocol.sdrf[[hca.bundle.version.col]], files, sep='/')
+        }else if(is.sra){
+          species.protocol.sdrf[[uri_field]] <- paste('sra', species.protocol.sdrf[[sra.col]], files, sep='/')
         }else{
 
-          nlibs <- nrow(species.protocol.sdrf)
-          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)
+          # For each library we check if there is a fastq URI that can supply the file
+          uri_select <- apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files)         
           
+          if (is.data.frame(uri_select) || is.matrix(uri_select)) {
+            # the following line gives an error: dim(X) must have a positive length
+            # if not a matrix or a data.frame
+            missing_uri_files <- files[which(! apply(apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files), 1, any))]
+          } else {
+            missing_uri_files <- files[which(! apply(as.data.frame( apply(species.protocol.sdrf[,uri_cols], 2, function(x) basename(x) == files) ), 1, any))]
+          }
+            
+          if (length(missing_uri_files) > 0){
+            stop(paste("Can't find URIs matching files:", paste(missing_uri_files, collapse=',')))
+          }
+                                                         
+          nlibs <- nrow(species.protocol.sdrf)
           if (nlibs > 1){
             uri_fields <- uri_cols[apply(uri_select, 1, function(x) which(x))]
           }else{
@@ -1042,6 +1174,37 @@ configs <- lapply(species_list, function(species){
           config_fields[field_label] <- field_name
         }
       }
+      
+    }
+
+    # Choose the info we'll be putting in the cells metadata file. This file
+    # will mostly be used to determine when analysis-relevant metdata has
+    # changed between runs. In the case of a droplet experiment without a cells
+    # file, the file of run IDs will not be cell identifiers per se, but will
+    # serve to differentiate this run from a future one where that file is
+    # present.
+    
+    if ( is.droplet.protocol(protocol) && ! is.null(opt$cells_file)){
+      cell_run_techrep_ids <- unlist(lapply(strsplit(cells[[cell.id.col]], '-'), function(x) x[1]  ))
+      if(properties$has.techrep) {
+        cell.relate.col <- techrep.col    
+      }else{
+        cell.relate.col <- run.col
+      }
+
+      # This is a droplet protocol, expect cell type info to be in the cells
+      # file. We relate this back to our protocol-wise SDRF dataframe to match
+      # cells to protocol
+   
+      if ( ! is.null(batch.col)){
+        cells[[batch.col]] <- sdrf[match(cell_run_techrep_ids, species.protocol.sdrf[[cell.relate.col]]), batch.col ]
+      }
+
+      cells.by.species.protocol[[species]][[protocol]] <<- cells[cell_run_techrep_ids %in% species.protocol.sdrf[[cell.relate.col]], cell.meta.cols, drop = FALSE]
+    }else{
+      # This is not a droplet protocol, or does not have a cells file, expect
+      # cell type info to be in the SDRF file
+      cells.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, cell.meta.cols, drop = FALSE]        
     }    
 
     # Record field containing cell counts, where present
@@ -1052,6 +1215,20 @@ configs <- lapply(species_list, function(species){
     }
     config_fields['cell_count'] <- cell.count.col
 
+    # Re-save the tweaked SDRF for output
+    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, config_fields]        
+
+    # Add cell metadata fields we need to know about, but which didn't need to
+    # go in the tweaked SDRF (i.e. they're relevant for tertiary analysis)
+
+    if ( ! is.null(batch.col)){
+        config_fields['batch'] <- batch.col
+    }
+
+    if ( ! is.null(cell.type.col)){
+        config_fields['cell_type'] <- cell.type.col
+    }
+   
     # Create the config fields section
 
     config <- c(
@@ -1060,10 +1237,7 @@ configs <- lapply(species_list, function(species){
       unlist(lapply(names(config_fields), function(x) paste0("        ", x," = '", config_fields[x], "'"))),
       '    }\n'
     )
-
-    # Re-save the tweaked SDRF for output
-    sdrf.by.species.protocol[[species]][[protocol]] <<- species.protocol.sdrf[, config_fields]        
- 
+    
     # Put spikes in if present
 
     config <- c (config, spikes)
@@ -1101,18 +1275,16 @@ configs <- lapply(species_list, function(species){
     # Generate metadata file content to save
   
     metadata <- NULL
-    sdfcols2save2tsv <- getActualColnames(unique(c(
-      factors,
-      idf.factors,
-      idf.attrs,
-      techrep.col
-    )), species.protocol.sdrf)
+
+    metadata_cols <- unique(c(factors, idf.factors, idf.attrs, techrep.col))
+    sdfcols2save2tsv <- getActualColnames(metadata_cols, species.protocol.sdrf)
   
     if (length(sdfcols2save2tsv) > 0){
       metadata <- species.protocol.layout[,sdfcols2save2tsv, drop = FALSE]
       metadata <- cbind(run=rownames(metadata),metadata)
+      colnames(metadata) <- c('run', metadata_cols)
     }
-  
+
     list(config=config, metadata=metadata)
   })
 })
@@ -1164,15 +1336,17 @@ for (species in names(configs)){
 
     # If there's only one protocol, don't add a protocol suffix to the the outputs
 
-    file_suffix <- species
+    file_prefix <- paste(protocol, species, sep='.')
 
-    if ( length(protocol_configs) > 1 ){
-      file_suffix <- paste(species, protocol, sep='.')
-    }
+    conf.file <- file.path(opt$out_conf, paste0(file_prefix,'.',  opt$name, ".conf"))
+    meta.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".metadata.tsv"))
 
-    conf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".conf"))
-    meta.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".metadata.tsv"))
-    sdrf.file <- file.path(opt$out_conf, paste0(opt$name, '.', file_suffix, ".sdrf.txt"))
+    # These two files subset the metadata to that which inpacts on
+    # quantification and on tertiary analysis. Changes in these outputs between
+    # runs can be used to detect if changes to metadata require re-analysis
+    
+    sdrf.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".meta_for_quant.txt"))
+    cells.file <- file.path(opt$out_conf, paste0(file_prefix, '.', opt$name, ".meta_for_tertiary.txt"))
   
     config <- configs[[species]][[protocol]]$config
     metadata <- configs[[species]][[protocol]]$metadata
@@ -1186,8 +1360,10 @@ for (species in names(configs)){
       pinfo("Created ", meta.file)
     }
     write.tsv(sdrf.by.species.protocol[[species]][[protocol]], file=sdrf.file)
+    write.tsv(cells.by.species.protocol[[species]][[protocol]], file=cells.file)
     writeLines(config, con = conf.file)
     pinfo("Created ", conf.file)
+    pinfo("Created ", cells.file)
   }
 }
 

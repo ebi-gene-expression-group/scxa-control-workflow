@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 
-usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-t <tertiary workflow>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
+usage() { echo "Usage: $0 [-e <experiment ID>] [-q <re-use existing quantifications where present, yes or no>] [-a <re-use existing aggregations where present, yes or no>] [-u <re-use existing tertiary results where present, yes or no>] [-w <overwrite exising results, yes or no>]"  1>&2; }  
 
 e=
-s=no
-t=none
+q=no
 u=no
 w=no
 
@@ -18,9 +17,6 @@ while getopts ":e:q:a:t:u:w:" o; do
             ;;
         a)
             a=${OPTARG}
-            ;;
-        t)
-            t=${OPTARG}
             ;;
         u)
             u=${OPTARG}
@@ -41,7 +37,6 @@ shift $((OPTIND-1))
 expName=$e
 skipQuantification=$q
 skipAggregation=$a
-tertiaryWorkflow=$t
 skipTertiary=$u
 overwrite=$w
 
@@ -50,8 +45,10 @@ workflow=scxa-control-workflow
 # Change working dir for experiment-specific runs
 
 workingDir="$SCXA_WORKFLOW_ROOT/work/${workflow}"
+successMarker="$SCXA_WORKFLOW_ROOT/work/.success"
 if [ -n "$expName" ]; then
     workingDir="${workingDir}_$expName"
+    successMarker="$SCXA_WORKFLOW_ROOT/work/.success.$expName"
 fi
 
 cd $SCXA_WORKFLOW_ROOT
@@ -84,9 +81,12 @@ popd > /dev/null
 
 # Build the Nextflow command
 
+controlJobName=${SCXA_ENV}_$workflow
+
 expNamePart=
 if [ -n "$expName" ]; then
     expNamePart="--expName $expName"
+    controlJobName="${expName}_${controlJobName}"
 fi
 
 skipQuantificationPart=
@@ -129,33 +129,30 @@ if [ -n "$overwrite" ]; then
     overwritePart="--overwrite $overwrite"
 fi
 
-tertiaryWorkflowPart=
-galaxyCredentialsPart=
+tertiaryWorkflowPart="--tertiaryWorkflow scanpy-galaxy"
 
-if [ -n "$tertiaryWorkflow" ]; then
-    tertiaryWorkflowPart="--tertiaryWorkflow $tertiaryWorkflow"
-
-    if [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
-        if [ -z "$GALAXY_CREDENTIALS" ]; then
-            echo "Please set the GALAXY_CREDENTIALS environment variable"
-            exit 1
-        fi
-        galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
-    fi
+if [ -z "$GALAXY_CREDENTIALS" ]; then
+    echo "Please set the GALAXY_CREDENTIALS environment variable"
+    exit 1
+else
+    echo "Galaxy credentials at $GALAXY_CREDENTIALS"
+fi
+galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
+if [ -n "$GALAXY_INSTANCE" ]; then
+    galaxyCredentialsPart="$galaxyCredentialsPart --galaxyInstance $GALAXY_INSTANCE"
 fi
 
-nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
+nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
+echo "$nextflowCommand"
 
 # Run the LSF submission if it's not already running
 
-bjobs -w | grep "${SCXA_ENV}_$workflow" > /dev/null 2>&1
+bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 
     # If workflow completed successfully we can clean up the work dir. If not,
     # then the caching from the work dir will be useful to resume
-
-    successMarker="$SCXA_WORKFLOW_ROOT/work/.success"
 
     if [ -e "$successMarker" ]; then
         echo "Previous run succeeded, cleaning up $workingDir"
@@ -165,14 +162,17 @@ if [ $? -ne 0 ]; then
     fi
 
     echo "Submitting job"
+    echo -e "mkdir -p nextflow/${controlJobName}"
+    mkdir -p "nextflow/${controlJobName}" && pushd "nextflow/${controlJobName}" > /dev/null
     rm -rf run.out run.err .nextflow.log*  
     bsub \
-        -J ${SCXA_ENV}_$workflow \
-        -M 4096 -R "rusage[mem=4096]" \
+        -J "${controlJobName}" \
+        -M 16000 -R "rusage[mem=16000]" \
         -u $SCXA_REPORT_EMAIL \
         -o run.out \
         -e run.err \
         "$nextflowCommand" 
+    popd > /dev/null
 else
     echo "Workflow process already running" 
 fi   

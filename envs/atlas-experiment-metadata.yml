@@ -1,0 +1,3 @@
+name: atlas-experiment-metadata
+dependencies:
+  - atlas-experiment-metadata=0.1.2

@@ -1,3 +1,8 @@
-name: atlas-fastq-provider
+name: atlas-gene-annotation-manipulation
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
 dependencies:
-  - atlas-gene-annotation-manipulation=0.0.1
+  - atlas-gene-annotation-manipulation=1.1.0
+  - pyroe=0.6.2
