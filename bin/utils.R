@@ -1,5 +1,5 @@
 pinfo <- function(...) {
-    cat(paste0("[INFO ",format(Sys.time(), format="%d/%m-%H:%M"),"] ",...,"\n"))
+    cat(paste0("[INFO ", format(Sys.time(), format="%d/%m-%H:%M"),"] ",...,"\n"))
 }
 
 perror <- function(...) {
@@ -10,12 +10,12 @@ pwarning <- function(...) {
   cat(paste0("[WARNING] ",...,"\n"),file=stderr())
 }
 
-read.tsv <- function(f,header=TRUE, comment.char="", nrows=-1L,fill=FALSE, quote="\"", colClasses=NULL, drop=NULL) {
+read.tsv <- function(f, header=TRUE, comment.char="", nrows=-1L,fill=FALSE, quote="\"", colClasses=NULL, drop=NULL) {
     tsv.data <- NULL
 
     suppressPackageStartupMessages(require(data.table))
     
-    fread(input=f,sep = "\t", nrows=nrows, header=header,check.names=FALSE,data.table=FALSE,fill=fill,drop=drop, quote=quote,colClasses=colClasses)
+    fread(input=f, sep = "\t", nrows=nrows, header=header, check.names=FALSE,data.table=FALSE, fill=fill, drop=drop, quote=quote, colClasses=colClasses)
 }
 
 write.tsv <- function(x, file, header=TRUE){
