@@ -199,7 +199,7 @@ organism.col <- getActualColnames('organism', sdrf)
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
 supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq")
-sc.droplet.protocols <- c("10xv1", "10xv1a", "10xv1i", "10xv2", "10xv3", "drop-seq", "10x 3' v2", "10x 3' v3", "10x 5' v2", "10x 5' v1")
+sc.droplet.protocols <- c("10xv1", "10xv1a", "10xv1i", "10xv2", "10xv3", "drop-seq", "10x 3' v2", "10x 3' v3", "10x 5' v1", "10x 5' v2")
   
 # Check the protocol and use to determine single-cell
 
