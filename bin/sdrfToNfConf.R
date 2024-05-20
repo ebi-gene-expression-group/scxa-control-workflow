@@ -245,8 +245,10 @@ organism.col <- getActualColnames('organism', sdrf)
 # Define protocols in case of single cell  
 
 sc.opt.cols <- c("single cell quality","input molecule","end bias","single cell library method","read1 file","read2 file","index1 file", "index2 file","index3 file")
-supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq","seq-well","10x5prime")
-sc.droplet.protocols <- c('10xv1', '10xv1a', '10xv1i', '10xv2', '10xv3', 'drop-seq','seq-well', '10x5prime')
+
+supported.single.cell.protocols <- c("smart-seq", "smart-seq2","smarter","smart-like","10xv2","10xv3","drop-seq", "seq-well", "10x5prime")
+sc.droplet.protocols <- c("10xv1", "10xv1a", "10xv1i", "10xv2", "10xv3", "drop-seq", "10x 3' v2", "10x 3' v3", "10x 5' v1", "10x 5' v2", "seq-well", "10x5prime")
+
   
 # Check the protocol and use to determine single-cell
 
@@ -609,17 +611,26 @@ if ( is.singlecell ) {
   # 10Xv1a: read 1 = cDNA, read 2 = UMI barcode, index 1 = cell barcode, index 2 = sample barcode (not required)
   # 10Xv1i: read 1 = interleaved cDNA + UMI barcode, read 2 = interleaved cDNA + UMI barcode, index 1 = cell barcode, index 2 = sample barcode (not required)
   # 10Xv2: read 1 = cell + UMI barcodes, read 2 = cDNA, index 1 = sample barcode (not required)
+  # 10Xv3: read 1 = cell + UMI barcodes, read 2 = cDNA, index 1 = sample barcode (not required)
+  # 10x 3' v2: read 1 = cell + UMI barcodes, read 2 = cDNA, index 1 = sample barcode (not required)
+  # 10x 3' v3: read 1 = cell + UMI barcodes, read 2 = cDNA, index 1 = sample barcode (not required)
+  # 10x 5' v1: read 1 = cell + UMI barcodes, read 2 = cDNA, index 1 = sample barcode (not required)
+  # 10x 5' v2: read 1 = cell + UMI barcodes, read 2 = cDNA, index 1 = sample barcode (not required)
   # Drop-seq: read 1 = cell + UMI barcodes, read 2 = cDNA
   
   sc.required.fastq.fields = list(
-    '10xv1' = c('read1 file', 'read2 file'),    
-    '10xv1a' = c('read1 file', 'read2 file', 'index1 file'),         
-    '10xv1i' = c('read1 file', 'read2 file', 'index1 file'),
-    '10xv2' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    '10xv3' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
-    'drop-seq' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
-    'seq-well' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
-    '10x5prime' = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    "10xv1" = c('read1 file', 'read2 file'),    
+    "10xv1a" = c('read1 file', 'read2 file', 'index1 file'),         
+    "10xv1i" = c('read1 file', 'read2 file', 'index1 file'),
+    "10xv2" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "10xv3" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "10x 3' v2" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "10x 3' v3" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "10x 5' v1" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "10x 5' v2" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "drop-seq" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
+    "seq-well" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'), 
+    "10x5prime" = c(cols.for.download, 'read1 file', 'read2 file', 'cDNA read', 'umi barcode read', 'cell barcode read'),
     "smart-seq" = cols.for.download,
     "smart-seq2" = cols.for.download,
     "smarter" = cols.for.download,
@@ -629,21 +640,25 @@ if ( is.singlecell ) {
   row.required.fastq.fields <- lapply(sc.required.fastq.fields[match(protocols, tolower(names(sc.required.fastq.fields)))], getActualColnames, sdrf)
   
   sc.optional.fastq.fields = list(
-    '10xv1' = c('index1 file', 'index2 file'),    
-    '10xv1a' = c('index2 file'),         
-    '10xv1i' = c('index2 file'),
-    '10xv2' = c('index1 file'),
-    '10xv3' = c('index1 file'),
-    'drop-seq' = c(),
-    'seq-well' = c(),
-    '10x5prime' = c(),
+    "10xv1" = c('index1 file', 'index2 file'),    
+    "10xv1a" = c('index2 file'),         
+    "10xv1i" = c('index2 file'),
+    "10xv2" = c('index1 file'),
+    "10xv3" = c('index1 file'),
+    "10x 3' v2" = c('index1 file'),
+    "10x 3' v3" = c('index1 file'),
+    "10x 5' v1" = c('index1 file'),
+    "10x 5' v2" = c('index1 file'),
+    "drop-seq" = c(),
+    "seq-well" = c(),
+    "10x5prime" = c(),
     "smart-seq2" = c(),
     "smarter" = c(),
     "smart-like" = c()
   )
 
   droplet.protocol.defaults = list(
-    '10xv2' = list(
+    "10xv2" = list(
       'umi_barcode_offset' = 16,  
       'umi_barcode_size' = 10,  
       'cell_barcode_size' = 16,  
@@ -667,7 +682,39 @@ if ( is.singlecell ) {
       'cdna_read_offset' = 0,
       'end' =  '5'
     ),
-    'drop-seq' = list(
+    "10x 3' v2" = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 10,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    "10x 3' v3" = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 12,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    "10x 5' v1" = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 12,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    "10x 5' v2" = list(
+      'umi_barcode_offset' = 16,  
+      'umi_barcode_size' = 12,  
+      'cell_barcode_size' = 16,  
+      'cell_barcode_offset' = 0,  
+      'cdna_read_offset' = 0,
+      'end' =  '5'
+    ),
+    "drop-seq" = list(
       'umi_barcode_offset' = 12,  
       'umi_barcode_size' = 8,  
       'cell_barcode_size' = 12,  
