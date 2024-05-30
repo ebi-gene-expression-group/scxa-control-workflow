@@ -55,7 +55,7 @@ if [ -e  $submissionMarker ]; then
 else
     touch $submissionMarker
 fi
-
+# this needs migration
 currentJobs=$(bjobs -w | grep $controlJobSuffix)
 nJobsRunning=$(echo -e "$currentJobs" | wc -l)
 maxToSubmit=$((maxExpsToRun-nJobsRunning))
@@ -133,6 +133,7 @@ while read -r idfFile; do
             echo "Submitting $expId for re-analysis"
             $SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -e $expId -q $q -a $a -u $u -w $w 
 
+            # this needs migration
             currentJobs=$(bjobs -w | grep $controlJobSuffix)
             submitted=$((submitted+1))
 
@@ -158,6 +159,7 @@ done > $SCXA_RESULTS/all.done.txt
 # experiments, since the dirs are not currently tagged by species.
 
 echo "Cleaning up..."
+# this needs migration
 bjobsOutput=$(bjobs -w)
 
 cat $SCXA_RESULTS/all.done.txt | while read -r l; do

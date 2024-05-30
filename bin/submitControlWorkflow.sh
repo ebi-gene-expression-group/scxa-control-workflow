@@ -145,8 +145,9 @@ fi
 nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
 echo "$nextflowCommand"
 
-# Run the LSF submission if it's not already running
+# Run the SLURM submission if it's not already running
 
+# this needs migration
 bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
@@ -165,6 +166,7 @@ if [ $? -ne 0 ]; then
     echo -e "mkdir -p nextflow/${controlJobName}"
     mkdir -p "nextflow/${controlJobName}" && pushd "nextflow/${controlJobName}" > /dev/null
     rm -rf run.out run.err .nextflow.log*  
+    # this needs migration
     bsub \
         -J "${controlJobName}" \
         -M 16000 -R "rusage[mem=16000]" \
