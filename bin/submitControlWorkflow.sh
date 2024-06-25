@@ -44,8 +44,8 @@ workflow=scxa-control-workflow
 
 # Change working dir for experiment-specific runs
 
-workingDir="$SCXA_WORKFLOW_ROOT/work/${workflow}"
-successMarker="$SCXA_WORKFLOW_ROOT/work/.success"
+workingDir="$SCXA_WORKFLOW_ROOT/data/work/${workflow}"
+successMarker="$SCXA_WORKFLOW_ROOT/data/work/.success"
 if [ -n "$expName" ]; then
     workingDir="${workingDir}_$expName"
     successMarker="$SCXA_WORKFLOW_ROOT/work/.success.$expName"
