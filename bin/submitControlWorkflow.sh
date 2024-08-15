@@ -166,6 +166,7 @@ if [ $? -ne 0 ]; then
     mkdir -p "nextflow/${controlJobName}" && pushd "nextflow/${controlJobName}" > /dev/null
     rm -rf run.out run.err .nextflow.log*  
     bsub \
+        -W 72:00 \
         -J "${controlJobName}" \
         -M 16000 -R "rusage[mem=16000]" \
         -u $SCXA_REPORT_EMAIL \
