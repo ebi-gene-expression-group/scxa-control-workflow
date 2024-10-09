@@ -147,8 +147,7 @@ echo "$nextflowCommand"
 
 # Run the SLURM submission if it's not already running
 
-# this needs migration
-bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
+squeue -o "%.100j" | grep -w "${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 
@@ -166,14 +165,16 @@ if [ $? -ne 0 ]; then
     echo -e "mkdir -p nextflow/${controlJobName}"
     mkdir -p "nextflow/${controlJobName}" && pushd "nextflow/${controlJobName}" > /dev/null
     rm -rf run.out run.err .nextflow.log*  
-    # this needs migration
-    bsub \
-        -J "${controlJobName}" \
-        -M 16000 -R "rusage[mem=16000]" \
-        -u $SCXA_REPORT_EMAIL \
-        -o run.out \
-        -e run.err \
-        "$nextflowCommand" 
+
+    sbatch \
+        --job-name="${controlJobName}" \
+        --mem=16000 \
+        --mail-user=$SCXA_REPORT_EMAIL \
+        --mail-type=END,FAIL \
+        --output=run.out \
+        --error=run.err \
+        --wrap="$nextflowCommand"
+
     popd > /dev/null
 else
     echo "Workflow process already running" 
