@@ -145,9 +145,9 @@ fi
 nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
 echo "$nextflowCommand"
 
-# Run the LSF submission if it's not already running
+# Run the SLURM submission if it's not already running
 
-bjobs -w | grep " ${controlJobName}" > /dev/null 2>&1
+squeue -o "%j" | grep -w "${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 
@@ -165,13 +165,17 @@ if [ $? -ne 0 ]; then
     echo -e "mkdir -p nextflow/${controlJobName}"
     mkdir -p "nextflow/${controlJobName}" && pushd "nextflow/${controlJobName}" > /dev/null
     rm -rf run.out run.err .nextflow.log*  
-    bsub \
-        -J "${controlJobName}" \
-        -M 16000 -R "rusage[mem=16000]" \
-        -u $SCXA_REPORT_EMAIL \
-        -o run.out \
-        -e run.err \
-        "$nextflowCommand" 
+
+    sbatch \
+        --job-name="${controlJobName}" \
+        --mem=16000 \
+        --time=7-00:00:00 \
+        --mail-user=$SCXA_REPORT_EMAIL \
+        --mail-type=END,FAIL \
+        --output=run.out \
+        --error=run.err \
+        --wrap="$nextflowCommand"
+
     popd > /dev/null
 else
     echo "Workflow process already running" 
