@@ -169,6 +169,7 @@ if [ $? -ne 0 ]; then
     sbatch \
         --job-name="${controlJobName}" \
         --mem=16000 \
+        --time=7-00:00:00 \
         --mail-user=$SCXA_REPORT_EMAIL \
         --mail-type=END,FAIL \
         --output=run.out \
