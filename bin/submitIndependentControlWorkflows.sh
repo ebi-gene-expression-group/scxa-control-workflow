@@ -56,7 +56,7 @@ else
     touch $submissionMarker
 fi
 
-currentJobs=$(squeue -o "%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R" | grep $controlJobSuffix)
+currentJobs=$(squeue -o "%i %P %j %u %t %M %D %R" | grep $controlJobSuffix)
 nJobsRunning=$(echo -e "$currentJobs" | wc -l)
 maxToSubmit=$((maxExpsToRun-nJobsRunning))
 
