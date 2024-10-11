@@ -147,7 +147,7 @@ echo "$nextflowCommand"
 
 # Run the SLURM submission if it's not already running
 
-squeue -o "%.100j" | grep -w "${controlJobName}" > /dev/null 2>&1
+squeue -o "%j" | grep -w "${controlJobName}" > /dev/null 2>&1
 
 if [ $? -ne 0 ]; then
 
