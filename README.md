@@ -37,6 +37,10 @@ Clone this repo into a directory called 'workflow' under the directory from wher
 
 You will also need to clone [scxa-workflows](https://github.com/ebi-gene-expression-group/scxa-workflows), which contains child workflows as submodules, and acts as a central place to store parameters. Clone it under the same directory, so that you have (RUN DIR)/workflow/scxa-workflows. 
 
+### Job scheduling and workload management system
+
+Current config setup for SLURM.
+
 ## Run the workflow
 
 Routine analysis is triggered (from the above directories) like:

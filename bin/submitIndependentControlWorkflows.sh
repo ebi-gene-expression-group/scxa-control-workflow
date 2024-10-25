@@ -56,7 +56,7 @@ else
     touch $submissionMarker
 fi
 
-currentJobs=$(bjobs -w | grep $controlJobSuffix)
+currentJobs=$(squeue -o "%i %P %j %u %t %M %D %R" | grep $controlJobSuffix)
 nJobsRunning=$(echo -e "$currentJobs" | wc -l)
 maxToSubmit=$((maxExpsToRun-nJobsRunning))
 
@@ -133,7 +133,7 @@ while read -r idfFile; do
             echo "Submitting $expId for re-analysis"
             $SCXA_WORKFLOW_ROOT/workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -e $expId -q $q -a $a -u $u -w $w 
 
-            currentJobs=$(bjobs -w | grep $controlJobSuffix)
+            currentJobs=$(squeue -o "%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R" | grep $controlJobSuffix)
             submitted=$((submitted+1))
 
         fi
@@ -158,7 +158,8 @@ done > $SCXA_RESULTS/all.done.txt
 # experiments, since the dirs are not currently tagged by species.
 
 echo "Cleaning up..."
-bjobsOutput=$(bjobs -w)
+
+squeueOutput=$(squeue -o "%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R")
 
 cat $SCXA_RESULTS/all.done.txt | while read -r l; do
     expId=$(echo "$l" | awk '{print $1}')
@@ -166,7 +167,7 @@ cat $SCXA_RESULTS/all.done.txt | while read -r l; do
 
     controlJobName="${expId}_${controlJobSuffix}"
 
-    echo -e "$bjobsOutput" | grep " ${controlJobName}" > /dev/null 2>&1
+    echo -e "$squeueOutput" | grep " ${controlJobName}" > /dev/null 2>&1
 
     if [ $? -ne 0 ]; then
         for tmpWfDir in work/scxa-control-workflow_$expId work/$expId nextflow/${expId}_${SCXA_ENV}_scxa-control-workflow nextflow/${expId}; do
