@@ -11,14 +11,6 @@ if ( params.containsKey('enaSshUser') ){
     enaSshUser = params.enaSshUser
 }
 
-galaxyCredentials = ''
-if ( params.containsKey('galaxyCredentials')){
-    galaxyCredentials = params.galaxyCredentials
-}
-galaxyInstance = ''
-if ( params.containsKey('galaxyInstance')){
-    galaxyInstance = params.galaxyInstance
-}
 
 skipQuantification = 'no'
 skipAggregation = 'no'
@@ -1225,8 +1217,6 @@ process tertiary {
     // deletion, no cause to error
 
     validExitStatus 0,3
-
-    maxForks params.maxConcurrentScanpyGalaxy
 
     conda "${baseDir}/envs/galaxy-workflow-executor.yml"
 
