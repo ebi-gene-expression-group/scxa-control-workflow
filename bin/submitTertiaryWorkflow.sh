@@ -3,7 +3,7 @@
 scriptDir=$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 source $scriptDir/utils.sh
 
-# Submit a workflow for Galaxy
+# Submit tertiary workflow
 
 expName=$1
 species=$2
@@ -17,7 +17,7 @@ galaxyInstance=${9:-ebi_cluster_ge_user}
 
 rm -rf $SCXA_RESULTS/$expName/$species/bundle
 
-# Galaxy workflow wants the matrix components separately
+# Nextflow subworkflow wants the matrix components separately
 
 zipdir=$(unzip -qql ${countMatrix} | head -n1 | tr -s ' ' | cut -d' ' -f5- | sed 's|/||')
 unzip ${countMatrix} 
@@ -60,7 +60,6 @@ fi
 
 # This script is under /bin of the scxa-workflows repo
 
-export state_file=$TMPDIR/${expName}.${species}.galaxystate
 run_tertiary_workflow.sh
 
 if [ $? -eq 0 ]; then
