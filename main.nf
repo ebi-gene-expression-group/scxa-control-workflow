@@ -519,8 +519,6 @@ process reset_experiment{
             reset_stages="bundle"
         fi
 
-        rm -f $TMPDIR/${expName}.${species}.galaxystate
-
         for stage in \$reset_stages; do
             rm -rf $SCXA_RESULTS/$expName/$species/\$stage
         done
@@ -1213,12 +1211,7 @@ process tertiary {
     
     cache 'deep'
     
-    // Exit status of 3 is just Galaxy being annoying with history
-    // deletion, no cause to error
-
-    validExitStatus 0,3
-
-    conda "${baseDir}/envs/galaxy-workflow-executor.yml"
+    // conda "${baseDir}/envs/nextflow.yml"  // This can be enabled after complete migration to DSL2
 
     publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
     
@@ -1235,16 +1228,8 @@ process tertiary {
 
     script:
 
-        """
-            # It can be useful to resume a Galaxy workflow when this control
-            # workflow is disrupted somehow. But usually when a failure is
-            # detected 'live', it's a lethal one, and we need to fully restart
-            # with a new history, so we delete the state file.
-            
-            if [ $task.attempt -gt 1 ]; then
-                rm -f $TMPDIR/${expName}.${species}.galaxystate
-            fi
-            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$geneMetadata" "$cellMetadata" "$isDroplet" "$galaxyCredentials" "$galaxyInstance"
+        """            
+            submitTertiaryWorkflow.sh "$expName" "$species" "$confFile" "$countMatrix" "$geneMetadata" "$cellMetadata" "$isDroplet"
         """
 }
 

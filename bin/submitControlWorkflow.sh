@@ -130,20 +130,9 @@ if [ -n "$overwrite" ]; then
     overwritePart="--overwrite $overwrite"
 fi
 
-tertiaryWorkflowPart="--tertiaryWorkflow scanpy-galaxy"
+tertiaryWorkflowPart="--tertiaryWorkflow scanpy-workflow"  
 
-if [ -z "$GALAXY_CREDENTIALS" ]; then
-    echo "Please set the GALAXY_CREDENTIALS environment variable"
-    exit 1
-else
-    echo "Galaxy credentials at $GALAXY_CREDENTIALS"
-fi
-galaxyCredentialsPart="--galaxyCredentials $GALAXY_CREDENTIALS"
-if [ -n "$GALAXY_INSTANCE" ]; then
-    galaxyCredentialsPart="$galaxyCredentialsPart --galaxyInstance $GALAXY_INSTANCE"
-fi
-
-nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $galaxyCredentialsPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
+nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
 echo "$nextflowCommand"
 
 # Run the SLURM submission if it's not already running
