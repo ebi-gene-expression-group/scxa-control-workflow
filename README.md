@@ -12,14 +12,14 @@ It's actually a workflow-of-workflows comprising:
 
  * [scxa-smartseq-quantification-workflow](https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow)
  * [scxa-aggregation-workflow](https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow)
- * Clustering using Scanpy, via Galaxy workflows encoded [here](https://github.com/ebi-gene-expression-group/scxa-workflows)
+ * [scxa-tertiary-workflow](https://github.com/ebi-gene-expression-group/scxa-tertiary-workflow), that runs scanpy-scripts [here](https://github.com/ebi-gene-expression-group/scanpy-scripts)
  * [scxa-bundle-workflow](https://github.com/ebi-gene-expression-group/scxa-bundle-workflow)
 
 ## Setup
 
 ### Conda/ Bioconda
 
-Workflow dependencies are managed via Conda and Bioconda, so you'll need to set that up, see instructions [here](https://bioconda.github.io/#install-conda). 
+Workflow dependencies are managed via conda-forge, Bioconda and/or containers. For conda, so you'll need to set that up, see instructions [here](https://bioconda.github.io/#install-conda). 
 
 ### Nextflow
 
