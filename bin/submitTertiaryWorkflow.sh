@@ -59,20 +59,20 @@ fi
 run_tertiary_workflow.sh
 
 if [ $? -eq 0 ]; then
-    mkdir -p matrices
+    #mkdir -p matrices
                     
     # Group associated matrix files
     for matrix_type in raw_filtered filtered_normalised; do
-        mkdir -p matrices/${matrix_type} 
+        # mkdir -p matrices/${matrix_type} 
                         
-        for file in matrix.mtx genes.tsv barcodes.tsv; do
-            if [ ! -e ${matrix_type}_${file} ]; then
-                echo "${matrix_type}_${file} does not exist" 1>&2
-                exit 2
-            else
-                mv ${matrix_type}_${file} matrices/${matrix_type}/${file}
-            fi
-        done
+        # for file in matrix.mtx genes.tsv barcodes.tsv; do
+        #    if [ ! -e ${matrix_type}_${file} ]; then
+        #        echo "${matrix_type}_${file} does not exist" 1>&2
+        #        exit 2
+        #    else
+        #        mv ${matrix_type}_${file} matrices/${matrix_type}/${file}
+        #    fi
+        # done
                         
         pushd matrices > /dev/null 
         zip -r ${matrix_type}.zip ${matrix_type}
@@ -81,18 +81,18 @@ if [ $? -eq 0 ]; then
                    
     # Organise other outputs
                  
-    mkdir -p tsne && mv tsne_* tsne 
-    mkdir -p umap && mv umap_* umap
-    mkdir -p markers
+    # mkdir -p tsne && mv tsne_* tsne 
+    # mkdir -p umap && mv umap_* umap
+    # mkdir -p markers
     set +e
                     
-    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_resolution)
+    marker_files=$(ls markers/markers_* 2>/dev/null | grep -v markers_resolution)
     if [ $? -ne 0 ]; then
-        echo "No marker files present"
-        touch markers/NOMARKERS
-    else
-        mv $marker_files markers
+         echo "No marker files present"
+         touch markers/NOMARKERS
+    # else
+    #    mv $marker_files markers
     fi
 
-    rm -f state_file
+    # rm -f state_file
 fi 
