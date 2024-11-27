@@ -33,6 +33,7 @@ export barcodes_file=${zipdir}/barcodes.tsv.gz
 export cell_meta_file=$cellMetadata
 export tpm_filtering='False'
 export create_conda_env=no
+export SCXA_WORKDIR=$SCXA_WORK
        
 if [ "$isDroplet" = 'True' ]; then
     export FLAVOUR=w_droplet_clustering
