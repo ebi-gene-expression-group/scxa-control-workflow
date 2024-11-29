@@ -1212,6 +1212,7 @@ process tertiary {
     cache 'deep'
     
     // conda "${baseDir}/envs/nextflow.yml"  // This can be enabled after complete migration to DSL2
+    conda 'pyyaml' 
 
     publishDir "$SCXA_RESULTS/$expName/$species/scanpy", mode: 'copy', overwrite: true
     
