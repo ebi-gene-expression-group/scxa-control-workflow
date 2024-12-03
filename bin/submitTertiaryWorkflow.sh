@@ -34,6 +34,7 @@ export cell_meta_file=$cellMetadata
 export tpm_filtering='False'
 export create_conda_env=no
 export SCXA_WORKDIR=$SCXA_WORK
+export SCXA_OUTDIR=$SCXA_WORKDIR/$expName/$species/scanpy
        
 if [ "$isDroplet" = 'True' ]; then
     export FLAVOUR=w_droplet_clustering
@@ -58,6 +59,11 @@ fi
 # This script is under /bin of the scxa-workflows repo
 echo $(pwd)
 run_tertiary_workflow.sh
+echo $(pwd)
+
+
+pushd $SCXA_OUTDIR > /dev/null 
+
 echo $(pwd)
 if [ $? -eq 0 ]; then
     #mkdir -p matrices
@@ -96,4 +102,6 @@ if [ $? -eq 0 ]; then
     fi
 
     # rm -f state_file
+
+    popd > /dev/null
 fi 
