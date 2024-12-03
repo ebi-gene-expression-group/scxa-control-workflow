@@ -34,7 +34,7 @@ export cell_meta_file=$cellMetadata
 export tpm_filtering='False'
 export create_conda_env=no
 export SCXA_WORKDIR=$SCXA_WORK
-export SCXA_OUTDIR=$SCXA_WORKDIR/$expName/$species/scanpy
+export SCXA_OUTDIR="."
        
 if [ "$isDroplet" = 'True' ]; then
     export FLAVOUR=w_droplet_clustering
