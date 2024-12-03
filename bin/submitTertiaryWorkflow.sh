@@ -56,9 +56,9 @@ if [ "$batchField" != 'None' ]; then
 fi
 
 # This script is under /bin of the scxa-workflows repo
-
+echo $(pwd)
 run_tertiary_workflow.sh
-
+echo $(pwd)
 if [ $? -eq 0 ]; then
     #mkdir -p matrices
                     
