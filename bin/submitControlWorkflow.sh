@@ -130,7 +130,7 @@ if [ -n "$overwrite" ]; then
     overwritePart="--overwrite $overwrite"
 fi
 
-tertiaryWorkflowPart="--tertiaryWorkflow scanpy-workflow"  
+tertiaryWorkflowPart="--tertiaryWorkflow scanpy-NFworkflow"  
 
 nextflowCommand="nextflow run -N $SCXA_REPORT_EMAIL -resume $(pwd)/workflow/${workflow}/main.nf $expNamePart $skipQuantificationPart $skipAggregationPart $tertiaryWorkflowPart $skipTertiaryPart $overwritePart --enaSshUser fg_atlas_sc -work-dir $workingDir"
 echo "$nextflowCommand"
