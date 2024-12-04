@@ -49,7 +49,7 @@ Current config setup for SLURM.
 Routine analysis is triggered (from the above directories) like:
 
 ```
-./workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -t scanpy-workflow
+./workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -t scanpy-NFworkflow
 ```
 
 This will look for SDRF files in the directory specified by the environment variable SCXA_SDRF_DIR, triggering analyses for any new experiments found there, running quantifications via Nextflow child workflows, and tertiary analysis. 
