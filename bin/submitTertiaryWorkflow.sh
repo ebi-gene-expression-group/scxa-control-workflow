@@ -93,12 +93,12 @@ if [ $? -eq 0 ]; then
     # mkdir -p markers
     set +e
                     
-    marker_files=$(ls markers/markers_* 2>/dev/null | grep -v markers_resolution)
+    marker_files=$(ls markers_* 2>/dev/null | grep -v markers_resolution)
     if [ $? -ne 0 ]; then
          echo "No marker files present"
          touch markers/NOMARKERS
-    # else
-    #    mv $marker_files markers
+     else
+        mv $marker_files markers
     fi
 
     # rm -f state_file
