@@ -51,6 +51,8 @@ if [ "$cellTypeField" != 'None' ]; then
 fi
 
 batchField=$(parseNfConfig.py --paramFile $confFile --paramKeys params,fields,batch)
+echo "confFile $confFile"
+echo "batchField $batchField"
 if [ "$batchField" != 'None' ]; then
     export batch_field=$(sanitise_field "$batchField")
     echo "Batch field: $batch_field"
