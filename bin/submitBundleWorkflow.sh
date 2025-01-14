@@ -31,7 +31,7 @@ if [ "$tpmMatrix" != 'null' ] && [ $tpm_filesize -gt 0 ]; then
 fi
 
 TERTIARY_OPTIONS=''
-if [ "$tertiaryWorkflow" == 'scanpy-galaxy' ]; then
+if [ "$tertiaryWorkflow" == 'scanpy-NFworkflow' ]; then
     TERTIARY_OPTIONS="--tertiaryWorkflow $tertiaryWorkflow --rawFilteredMatrix ${filteredMatrix} --normalisedMatrix ${normalisedMatrix} --clusters ${clusters} --tsneDir $tsneDir --umapDir $umapDir --markersDir $markersDir --tertiarySoftwareReport ${softwareReport} --projectFile ${projectFile}"
 fi 
 

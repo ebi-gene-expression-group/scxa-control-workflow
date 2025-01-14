@@ -10,16 +10,19 @@ This is a Nextflow workflow which:
 
 It's actually a workflow-of-workflows comprising:
 
+ * [scxa-droplet-quantification-workflow](https://github.com/ebi-gene-expression-group/scxa-droplet-quantification-workflow)
  * [scxa-smartseq-quantification-workflow](https://github.com/ebi-gene-expression-group/scxa-smartseq-quantification-workflow)
  * [scxa-aggregation-workflow](https://github.com/ebi-gene-expression-group/scxa-aggregation-workflow)
- * Clustering using Scanpy, via Galaxy workflows encoded [here](https://github.com/ebi-gene-expression-group/scxa-workflows)
+ * [scxa-tertiary-workflow](https://github.com/ebi-gene-expression-group/scxa-tertiary-workflow), via scanpy-scripts [here](https://github.com/ebi-gene-expression-group/scanpy-scripts)
  * [scxa-bundle-workflow](https://github.com/ebi-gene-expression-group/scxa-bundle-workflow)
+
+These are submodules of [scxa-workflows](https://github.com/ebi-gene-expression-group/scxa-workflows).
 
 ## Setup
 
-### Conda/ Bioconda
+### Conda/ Bioconda / Singularity
 
-Workflow dependencies are managed via Conda and Bioconda, so you'll need to set that up, see instructions [here](https://bioconda.github.io/#install-conda). 
+Workflow dependencies are managed via conda-forge, Bioconda and/or containers. For conda, so you'll need to set that up, see instructions [here](https://bioconda.github.io/#install-conda). 
 
 ### Nextflow
 
@@ -46,10 +49,10 @@ Current config setup for SLURM.
 Routine analysis is triggered (from the above directories) like:
 
 ```
-./workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -t scanpy-galaxy
+./workflow/scxa-control-workflow/bin/submitControlWorkflow.sh -t scanpy-NFworkflow
 ```
 
-This will look for SDRF files in the directory specified by the environment variable SCXA_SDRF_DIR, triggering analyses for any new experiments found there, running quantifications via Nextflow child workflows, and tertiary analysis via the API to a Galaxy setup. 
+This will look for SDRF files in the directory specified by the environment variable SCXA_SDRF_DIR, triggering analyses for any new experiments found there, running quantifications via Nextflow child workflows, and tertiary analysis. 
 
 ### Outputs
 

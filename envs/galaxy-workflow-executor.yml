@@ -1,3 +1,0 @@
-name: galaxy-workflow-executor
-dependencies:
-  - galaxy-workflow-executor=0.2.4
