@@ -224,13 +224,14 @@ if (! is.null(opt$cell_meta_fields)){
     # See if cell type fields specifically have been supplied
 
     if (! is.null(opt$cell_type_fields)){
+        cell.type.col <- c()         # initialize empty vector
+      
         cell_type_fields <- unlist(strsplit(opt$cell_type_fields, ','))
         
         for (ctf in cell_type_fields){
             actf <- getActualColnames(ctf, cell.meta.source)
             if (! is.null(actf)){
-                cell.type.col <- actf
-                break
+                cell.type.col <- c(cell.type.col, actf)
             }
         }
     }
