@@ -1241,9 +1241,15 @@ configs <- lapply(species_list, function(species){
     }
 
     if ( ! is.null(cell.type.col)){
+        pinfo("=============")
+        pinfo()
+        pinfo("cell.type.col")
+        pinfo(cell.type.col)
+        pinfo()
+        pinfo("=============")
         config_fields['cell_type'] <- cell.type.col
     }
-   
+    pinfo(config_fields['cell_type'])
     # Create the config fields section
 
     config <- c(
