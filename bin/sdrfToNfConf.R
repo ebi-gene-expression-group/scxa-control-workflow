@@ -231,8 +231,10 @@ if (! is.null(opt$cell_meta_fields)){
         for (ctf in cell_type_fields){
             actf <- getActualColnames(ctf, cell.meta.source)
             if (! is.null(actf)){
+                pinfo(actf," cell.meta.source")
                 cell.type.col <- c(cell.type.col, actf)
             }
+            pinfo(cell.type.col)
         }
     }
     
