@@ -227,13 +227,21 @@ if (! is.null(opt$cell_meta_fields)){
         cell.type.col <- c()         # initialize empty vector
       
         cell_type_fields <- unlist(strsplit(opt$cell_type_fields, ','))
-        
+        pinfo("cell_type_fields")
+        pinfo(cell_type_fields)
+        pinfo("cell.meta.source")
+        pinfo(cell.meta.source)
+      
+      
         for (ctf in cell_type_fields){
+            pinfo("ctf")
+            pinfo(ctf)
+          
             actf <- getActualColnames(ctf, cell.meta.source)
             pinfo("cell.type.col")
             pinfo(cell.type.col)
             if (! is.null(actf)){
-                pinfo(actf," cell.meta.source")
+                pinfo(actf," actf")
                 cell.type.col <- c(cell.type.col, actf)
             }
             pinfo("cell.type.col")
