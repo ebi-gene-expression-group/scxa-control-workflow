@@ -1249,7 +1249,7 @@ configs <- lapply(species_list, function(species){
         pinfo("=============")
         config_fields['cell_type'] <- cell.type.col
     }
-    pinfo(config_fields['cell_type'])
+    pinfo(config_fields)
     # Create the config fields section
 
     config <- c(
