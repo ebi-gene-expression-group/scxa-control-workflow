@@ -241,10 +241,11 @@ if (! is.null(opt$cell_meta_fields)){
             pinfo("cell.type.col")
             pinfo(cell.type.col)
             if (! is.null(actf)){
-                pinfo(actf," actf")
+                pinfo("     if")
+                pinfo("     actf", actf)
                 cell.type.col <- c(cell.type.col, actf)
             }
-            pinfo("cell.type.col")
+            pinfo("     cell.type.col")
             pinfo(cell.type.col)
         }
     }
