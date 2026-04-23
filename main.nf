@@ -1363,8 +1363,6 @@ NOT_UPDATED_BUNDLES
 // process so future runs are not delayed.
 
 process cleanup {
-    
-    executor 'local'
 
     errorStrategy 'ignore'
     
