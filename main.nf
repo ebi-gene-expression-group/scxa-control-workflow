@@ -1112,7 +1112,7 @@ process condense_sdrf {
     conda "${baseDir}/envs/atlas-experiment-metadata.yml"
     
     memory { 4.GB * task.attempt }
-    errorStrategy { task.exitStatus == 130 || task.exitStatus ==  255 ? 'retry' : 'ignore' }
+    errorStrategy { task.exitStatus in 137..140 || task.exitStatus ==  255 ? 'retry' : 'ignore' }
     maxRetries 10
 
     input:
@@ -1363,8 +1363,6 @@ NOT_UPDATED_BUNDLES
 // process so future runs are not delayed.
 
 process cleanup {
-    
-    executor 'local'
 
     errorStrategy 'ignore'
     
