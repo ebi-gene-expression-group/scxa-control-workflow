@@ -224,14 +224,29 @@ if (! is.null(opt$cell_meta_fields)){
     # See if cell type fields specifically have been supplied
 
     if (! is.null(opt$cell_type_fields)){
+        cell.type.col <- c()         # initialize empty vector
+      
         cell_type_fields <- unlist(strsplit(opt$cell_type_fields, ','))
-        
+        pinfo("cell_type_fields")
+        pinfo(cell_type_fields)
+        pinfo("cell.meta.source")
+        pinfo(cell.meta.source)
+      
+      
         for (ctf in cell_type_fields){
+            pinfo("ctf")
+            pinfo(ctf)
+          
             actf <- getActualColnames(ctf, cell.meta.source)
+            pinfo("cell.type.col")
+            pinfo(cell.type.col)
             if (! is.null(actf)){
-                cell.type.col <- actf
-                break
+                pinfo("     if")
+                pinfo("     actf", actf)
+                cell.type.col <- c(cell.type.col, actf)
             }
+            pinfo("     cell.type.col")
+            pinfo(cell.type.col)
         }
     }
     
@@ -1226,9 +1241,15 @@ configs <- lapply(species_list, function(species){
     }
 
     if ( ! is.null(cell.type.col)){
+        pinfo("=============")
+        pinfo()
+        pinfo("cell.type.col")
+        pinfo(cell.type.col)
+        pinfo()
+        pinfo("=============")
         config_fields['cell_type'] <- cell.type.col
     }
-   
+    pinfo(config_fields)
     # Create the config fields section
 
     config <- c(
